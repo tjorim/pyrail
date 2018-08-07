@@ -60,7 +60,7 @@ class iRail:
                 except ValueError:
                     return -1
             except requests.exceptions.RequestException as e:
-                print e
+                print(e)
                 try:
                     session.get('https://1.1.1.1/', timeout=1)
                 except requests.exceptions.ConnectionError:
