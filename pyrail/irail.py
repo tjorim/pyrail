@@ -52,27 +52,43 @@ class iRail:
             params = {'format': self.format, 'lang': self.lang}
             if args:
                 params.update(args)
-            return session.get(url, params=params, headers=headers)
+            try:
+                response = session.get(url, params=params, headers=headers)
+                try:
+                    json_data = response.json()
+                    return json_data
+                except ValueError:
+                    return -1
+            except requests.exceptions.RequestException as e:
+                print e
+                try:
+                    session.get('https://1.1.1.1/', timeout=1)
+                except requests.exceptions.ConnectionError:
+                    print("Your internet connection doesn't seem to be working.")
+                    return -1
+                else:
+                    print("The iRail API doesn't seem to be working.")
+                    return -1
 
     def get_stations(self):
         """Retrieve a list of all stations."""
-        response = self.do_request('stations')
-        return response.json()
+        json_data = self.do_request('stations')
+        return json_data
 
     def get_liveboard(self, station=None, id=None):
         if bool(station) ^ bool(id):
             extra_params = {'station': station, 'id': id}
-            response = self.do_request('liveboard', extra_params)
-            return response.json()
+            json_data = self.do_request('liveboard', extra_params)
+            return json_data
 
     def get_connections(self, from=None, to=None):
         if from and to:
             extra_params = {'from': from, 'to': to}
-            response = self.do_request('connections', extra_params)
-            return response.json()
+            json_data = self.do_request('connections', extra_params)
+            return json_data
 
     def get_vehicle(self, id=None):
         if id:
             extra_params = {'id': id}
-            response = self.do_request('vehicle', extra_params)
-            return response.json()
+            json_data = self.do_request('vehicle', extra_params)
+            return json_data
