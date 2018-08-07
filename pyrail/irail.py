@@ -6,9 +6,9 @@ base_url = 'https://api.irail.be/{}/'
 
 methods = {
     'stations': [],
-    'liveboard': ['station'],
-    'connections': ['from', 'to'],
-    'vehicle': ['id'],
+    'liveboard': ['id', 'station', 'date', 'time', 'arrdep', 'alerts'],
+    'connections': ['from', 'to', 'date', 'time', 'timesel', 'typeOfTransport', 'alerts', 'results'],
+    'vehicle': ['id', 'date', 'alerts'],
     'disturbances': []
     }
 
@@ -58,3 +58,21 @@ class iRail:
         """Retrieve a list of all stations."""
         response = self.do_request('stations')
         return response.json()
+
+    def get_liveboard(self, station=None, id=None):
+        if bool(station) ^ bool(id):
+            extra_params = {'station': station, 'id': id}
+            response = self.do_request('liveboard', extra_params)
+            return response.json()
+
+    def get_connections(self, from=None, to=None):
+        if from and to:
+            extra_params = {'from': from, 'to': to}
+            response = self.do_request('connections', extra_params)
+            return response.json()
+
+    def get_vehicle(self, id=None):
+        if id:
+            extra_params = {'id': id}
+            response = self.do_request('vehicle', extra_params)
+            return response.json()
