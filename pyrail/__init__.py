@@ -1,1 +1,1 @@
-name = "pyrail"
+from .irail import iRail
