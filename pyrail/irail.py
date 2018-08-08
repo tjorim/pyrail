@@ -81,9 +81,9 @@ class iRail:
             json_data = self.do_request('liveboard', extra_params)
             return json_data
 
-    def get_connections(self, from=None, to=None):
-        if from and to:
-            extra_params = {'from': from, 'to': to}
+    def get_connections(self, from_station=None, to_station=None):
+        if from_station and to_station:
+            extra_params = {'from': from_station, 'to': to_station}
             json_data = self.do_request('connections', extra_params)
             return json_data
 
