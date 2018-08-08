@@ -16,6 +16,6 @@ deploy:
     - python setup.py sdist bdist_wheel
     - twine upload dist/*
   only:
-    - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
+    - tags
   except:
     - branches
