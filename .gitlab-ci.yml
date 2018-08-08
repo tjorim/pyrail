@@ -1,0 +1,18 @@
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+  image: python:alpine
+  variables:
+    TWINE_USERNAME: SECURE
+    TWINE_PASSWORD: SECURE
+  before_script:
+    - pip install twine
+  script:
+    - python setup.py sdist bdist_wheel
+    - twine upload dist/*
+  only:
+    - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
+  except:
+    - branches
