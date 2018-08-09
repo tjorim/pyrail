@@ -14,7 +14,7 @@ setup(
     version=version,
     author="Jorim Tielemans",
     author_email="tielemans.jorim@gmail.com",
-    description="Python wrapper for the iRail API",
+    description="A Python wrapper for the iRail API",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://gitlab.com/tjorim/pyrail",
