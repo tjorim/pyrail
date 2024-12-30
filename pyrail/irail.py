@@ -16,12 +16,8 @@ headers = {'user-agent': 'pyRail (tielemans.jorim@gmail.com)'}
 
 class iRail:
 
-    def __init__(self, format=None, lang=None):
-        if format is None:
-            format = 'json'
+    def __init__(self, format='json', lang='en'):
         self.format = format
-        if lang is None:
-            lang = 'en'
         self.lang = lang
 
     @property
