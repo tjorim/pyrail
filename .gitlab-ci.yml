@@ -1,21 +1,27 @@
 image: python:alpine
 
 stages:
+  - test
   - deploy
 
 before_script:
-  - pip install twine
+  - pip install -r requirements.txt
 
 variables:
   TWINE_USERNAME: SECURE
   TWINE_PASSWORD: SECURE
+
+test:
+  stage: test
+  script:
+    - python -m unittest discover -s tests
+  rules:
+    - if: $CI_MERGE_REQUEST_ID  # Run tests for merge requests
 
 deploy:
   stage: deploy
   script:
     - python setup.py sdist bdist_wheel
     - twine upload dist/*
-  only:
-    - tags
-  except:
-    - branches
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"  # Deploy only when merging into the main branch
