@@ -29,6 +29,7 @@ class iRail:
         self.burst_tokens = 5
         self.last_request_time = time.time()
         self.lock = Lock()
+        self.etag_cache = {}
         logger.info("iRail instance created")
 
     @property
@@ -90,6 +91,13 @@ class iRail:
             params = {'format': self.format, 'lang': self.lang}
             if args:
                 params.update(args)
+            headers = {}
+
+            # Add If-None-Match header if we have a cached ETag
+            if method in self.etag_cache:
+                logger.debug(f"Adding If-None-Match header with value: {self.etag_cache[method]}")
+                headers['If-None-Match'] = self.etag_cache[method]
+
             try:
                 response = session.get(url, params=params, headers=headers)
                 if response.status_code == 429:
@@ -97,11 +105,21 @@ class iRail:
                     retry_after = int(response.headers.get("Retry-After", 1))
                     time.sleep(retry_after)
                     return self.do_request(method, args)
-                try:
-                    json_data = response.json()
-                    return json_data
-                except ValueError:
-                    return -1
+                if response.status_code == 200:
+                    # Cache the ETag from the response
+                    if 'Etag' in response.headers:
+                        self.etag_cache[method] = response.headers['Etag']
+                    try:
+                        json_data = response.json()
+                        return json_data
+                    except ValueError:
+                        return -1
+                elif response.status_code == 304:
+                    logger.info("Data not modified, using cached data")
+                    return None
+                else:
+                    logger.error(f"Request failed with status code: {response.status_code}")
+                    return None
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request failed: {e}")
                 try:
