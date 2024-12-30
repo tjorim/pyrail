@@ -1,6 +1,10 @@
+import logging
 import requests
 import time
 from threading import Lock
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 session = requests.Session()
 
@@ -25,6 +29,7 @@ class iRail:
         self.burst_tokens = 5
         self.last_request_time = time.time()
         self.lock = Lock()
+        logger.info("iRail instance created")
 
     @property
     def format(self):
@@ -49,6 +54,7 @@ class iRail:
             self.__lang = 'en'
 
     def _refill_tokens(self):
+        logger.debug("Refilling tokens")
         current_time = time.time()
         elapsed = current_time - self.last_request_time
         self.last_request_time = current_time
@@ -64,6 +70,7 @@ class iRail:
             self.burst_tokens = 5
 
     def do_request(self, method, args=None):
+        logger.info(f"Starting request to endpoint: {method}")
         with self.lock:
             self._refill_tokens()
 
@@ -71,6 +78,7 @@ class iRail:
                 if self.burst_tokens >= 1:
                     self.burst_tokens -= 1
                 else:
+                    logger.warning("Rate limiting, waiting for tokens")
                     time.sleep(1 - (time.time() - self.last_request_time))
                     self._refill_tokens()
                     self.tokens -= 1
@@ -85,6 +93,7 @@ class iRail:
             try:
                 response = session.get(url, params=params, headers=headers)
                 if response.status_code == 429:
+                    logger.warning("Rate limited, waiting for retry-after header")
                     retry_after = int(response.headers.get("Retry-After", 1))
                     time.sleep(retry_after)
                     return self.do_request(method, args)
@@ -94,14 +103,14 @@ class iRail:
                 except ValueError:
                     return -1
             except requests.exceptions.RequestException as e:
-                print(e)
+                logger.error(f"Request failed: {e}")
                 try:
                     session.get('https://1.1.1.1/', timeout=1)
                 except requests.exceptions.ConnectionError:
-                    print("Your internet connection doesn't seem to be working.")
+                    logger.error("Internet connection failed")
                     return -1
                 else:
-                    print("The iRail API doesn't seem to be working.")
+                    logger.error("iRail API failed")
                     return -1
 
     def get_stations(self):
