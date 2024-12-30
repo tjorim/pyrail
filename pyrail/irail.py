@@ -1,4 +1,6 @@
 import requests
+import time
+from threading import Lock
 
 session = requests.Session()
 
@@ -19,6 +21,10 @@ class iRail:
     def __init__(self, format='json', lang='en'):
         self.format = format
         self.lang = lang
+        self.tokens = 3
+        self.burst_tokens = 5
+        self.last_request_time = time.time()
+        self.lock = Lock()
 
     @property
     def format(self):
@@ -42,7 +48,35 @@ class iRail:
         else:
             self.__lang = 'en'
 
+    def _refill_tokens(self):
+        current_time = time.time()
+        elapsed = current_time - self.last_request_time
+        self.last_request_time = current_time
+
+        # Refill tokens based on elapsed time
+        self.tokens += elapsed * 3  # 3 tokens per second
+        if self.tokens > 3:
+            self.tokens = 3
+
+        # Refill burst tokens
+        self.burst_tokens += elapsed * 3  # 3 burst tokens per second
+        if self.burst_tokens > 5:
+            self.burst_tokens = 5
+
     def do_request(self, method, args=None):
+        with self.lock:
+            self._refill_tokens()
+
+            if self.tokens < 1:
+                if self.burst_tokens >= 1:
+                    self.burst_tokens -= 1
+                else:
+                    time.sleep(1 - (time.time() - self.last_request_time))
+                    self._refill_tokens()
+                    self.tokens -= 1
+            else:
+                self.tokens -= 1
+
         if method in methods:
             url = base_url.format(method)
             params = {'format': self.format, 'lang': self.lang}
@@ -50,6 +84,10 @@ class iRail:
                 params.update(args)
             try:
                 response = session.get(url, params=params, headers=headers)
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get("Retry-After", 1))
+                    time.sleep(retry_after)
+                    return self.do_request(method, args)
                 try:
                     json_data = response.json()
                     return json_data
