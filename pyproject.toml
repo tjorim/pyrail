@@ -9,12 +9,17 @@ homepage = "https://github.com/tjorim/pyrail"
 repository = "https://github.com/tjorim/pyrail"
 documentation = "https://github.com/tjorim/pyrail"
 keywords = ["irail", "nmbs"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+packages = [
+    { include = "pyrail" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 requests = "^2.32.3"
 
-
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
