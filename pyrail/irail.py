@@ -1,17 +1,8 @@
-import requests
-
-session = requests.Session()
+from .api_methods import methods
+import aiohttp
+import asyncio
 
 base_url = 'https://api.irail.be/{}/'
-
-methods = {
-    'stations': [],
-    'liveboard': ['id', 'station', 'date', 'time', 'arrdep', 'alerts'],
-    'connections': ['from', 'to', 'date', 'time', 'timesel', 'typeOfTransport', 'alerts', 'results'],
-    'vehicle': ['id', 'date', 'alerts'],
-    'disturbances': []
-    }
-
 headers = {'user-agent': 'pyRail (tielemans.jorim@gmail.com)'}
 
 class iRail:
@@ -46,49 +37,45 @@ class iRail:
         else:
             self.__lang = 'en'
 
-    def do_request(self, method, args=None):
+    async def do_request(self, method, args=None):
         if method in methods:
             url = base_url.format(method)
             params = {'format': self.format, 'lang': self.lang}
             if args:
                 params.update(args)
-            try:
-                response = session.get(url, params=params, headers=headers)
+            
+            async with aiohttp.ClientSession(headers=headers) as session:
                 try:
-                    json_data = response.json()
-                    return json_data
-                except ValueError:
-                    return -1
-            except requests.exceptions.RequestException as e:
-                print(e)
-                try:
-                    session.get('https://1.1.1.1/', timeout=1)
-                except requests.exceptions.ConnectionError:
-                    print("Your internet connection doesn't seem to be working.")
-                    return -1
-                else:
-                    print("The iRail API doesn't seem to be working.")
+                    async with session.get(url, params=params) as response:
+                        if response.status == 200:
+                            try:
+                                return await response.json()
+                            except aiohttp.ContentTypeError:
+                                return -1
+                        else:
+                            print(f"HTTP error: {response.status}")
+                            return -1
+                except aiohttp.ClientError as e:
+                    print(f"Request failed: {e}")
                     return -1
 
-    def get_stations(self):
+            
+
+    async def get_stations(self):
         """Retrieve a list of all stations."""
-        json_data = self.do_request('stations')
-        return json_data
+        return await self.do_request('stations')
 
-    def get_liveboard(self, station=None, id=None):
+    async def get_liveboard(self, station=None, id=None):
         if bool(station) ^ bool(id):
             extra_params = {'station': station, 'id': id}
-            json_data = self.do_request('liveboard', extra_params)
-            return json_data
+            return await self.do_request('liveboard', extra_params)
 
-    def get_connections(self, from_station=None, to_station=None):
+    async def get_connections(self, from_station=None, to_station=None):
         if from_station and to_station:
             extra_params = {'from': from_station, 'to': to_station}
-            json_data = self.do_request('connections', extra_params)
-            return json_data
+            return await self.do_request('connections', extra_params)
 
-    def get_vehicle(self, id=None):
+    async def get_vehicle(self, id=None):
         if id:
             extra_params = {'id': id}
-            json_data = self.do_request('vehicle', extra_params)
-            return json_data
+            return await self.do_request('vehicle', extra_params)
