@@ -5,9 +5,14 @@ description = "A Python wrapper for the iRail API"
 authors = ["Jorim Tielemans <tielemans.jorim@gmail.com>"]
 license = "Apache-2.0"
 readme = "README.md"
+homepage = "https://github.com/tjorim/pyrail"
+repository = "https://github.com/tjorim/pyrail"
+documentation = "https://github.com/tjorim/pyrail"
+keywords = ["irail", "nmbs"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
+requests = "^2.32.3"
 
 
 [build-system]
