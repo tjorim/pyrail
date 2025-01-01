@@ -1,7 +1,8 @@
 import logging
-import requests
-import time
 from threading import Lock
+import time
+
+import requests
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -20,9 +21,27 @@ methods = {
 
 headers = {'user-agent': 'pyRail (tielemans.jorim@gmail.com)'}
 
+"""
+This module provides the iRail class for interacting with the iRail API.
+"""
+
 class iRail:
+    """A Python wrapper for the iRail API.
+
+    Attributes:
+        format (str): The data format for API responses ('json', 'xml', 'jsonp').
+        lang (str): The language for API responses ('nl', 'fr', 'en', 'de').
+
+    """
 
     def __init__(self, format='json', lang='en'):
+        """Initialize the iRail API client.
+
+        Args:
+            format (str): The format of the API responses. Default is 'json'.
+            lang (str): The language for API responses. Default is 'en'.
+
+        """
         self.format = format
         self.lang = lang
         self.tokens = 3
@@ -71,7 +90,7 @@ class iRail:
             self.burst_tokens = 5
 
     def do_request(self, method, args=None):
-        logger.info(f"Starting request to endpoint: {method}")
+        logger.info("Starting request to endpoint: %s", method)
         with self.lock:
             self._refill_tokens()
 
@@ -95,7 +114,7 @@ class iRail:
 
             # Add If-None-Match header if we have a cached ETag
             if method in self.etag_cache:
-                logger.debug(f"Adding If-None-Match header with value: {self.etag_cache[method]}")
+                logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
                 headers['If-None-Match'] = self.etag_cache[method]
 
             try:
@@ -118,10 +137,10 @@ class iRail:
                     logger.info("Data not modified, using cached data")
                     return None
                 else:
-                    logger.error(f"Request failed with status code: {response.status_code}")
+                    logger.error("Request failed with status code: %s", response.status_code)
                     return None
             except requests.exceptions.RequestException as e:
-                logger.error(f"Request failed: {e}")
+                logger.error("Request failed: %s", e)
                 try:
                     session.get('https://1.1.1.1/', timeout=1)
                 except requests.exceptions.ConnectionError:

@@ -1,9 +1,14 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from pyrail.irail import iRail
+
+"""
+Unit tests for the iRail API wrapper.
+"""
 
 @patch('requests.Session.get')
 def test_successful_request(mock_get):
+    """Test a successful API request by mocking the iRail response."""
     # Mock the response to simulate a successful request
     mock_response = MagicMock()
     mock_response.status_code = 200
