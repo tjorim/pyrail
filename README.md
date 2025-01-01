@@ -1,16 +1,21 @@
 # pyRail
 
-A Python wrapper for the iRail API.
+A Python wrapper for the iRail API, designed to make interacting with iRail simple and efficient.
 
 ## Overview
+pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, vehicle, connections, and disturbances. The library includes features like caching and rate limiting to optimize API usage.
 
-pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, vehicle, connections, and disturbances. The library also includes features like caching and rate limiting to optimize API usage.
+## Features
+- Retrieve real-time train information, including liveboards and vehicle details.
+- Access train station data, connections, and disturbances.
+- Supports API endpoints: stations, liveboard, vehicle, connections, and disturbances.
+- Caching and conditional GET requests using ETags.
+- Rate limiting to handle API request limits efficiently.
 
 ## Installation
-
 To install pyRail, use pip:
 
-```sh
+```bash
 pip install pyrail
 ```
 
@@ -24,35 +29,42 @@ from pyrail.irail import iRail
 api = iRail(format='json', lang='en')
 
 # Make a request to the 'stations' endpoint
-response = api.do_request('stations')
+stations = api.get_stations()
 
 # Print the response
-print(response)
+print(stations)
 ```
 
-## Features
-
-- Supports multiple endpoints: stations, liveboard, vehicle, connections, disturbances
-- Caching and conditional GET requests using ETag
-- Rate limiting to handle API rate limits
-
 ## Configuration
-
 You can configure the format and language for the API requests:
 
 ```python
 api = iRail(format='json', lang='en')
 ```
 
-Supported formats: json, xml, jsonp
+- Supported formats: json, xml, jsonp
+- Supported languages: nl, fr, en, de
 
-Supported languages: nl, fr, en, de
+## Development
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/tjorim/pyrail.git
+    ```
+2. Install dependencies using Poetry:
+    ```bash
+    poetry install
+    ```
+3. Run tests:
+    ```bash
+    poetry run pytest
+    ```
 
 ## Logging
-
 You can set the logging level at runtime to get detailed logs:
 
 ```python
+import logging
+
 api.set_logging_level(logging.DEBUG)
 ```
 
@@ -64,7 +76,4 @@ Contributions are welcome! Please open an issue or submit a pull request.
 - @jcoetsie
 
 ## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-
-
+This project is licensed under the Apache 2.0 License. See the LICENSE file for details.

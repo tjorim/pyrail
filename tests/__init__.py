@@ -1,1 +1,1 @@
-from pyrail.irail import irail
+from pyrail.irail import iRail
