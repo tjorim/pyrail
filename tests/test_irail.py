@@ -39,3 +39,21 @@ def test_get_stations():
     station_list = stations.get('station', [])
     assert isinstance(station_list, list), "Expected 'station' to be a list"
     assert len(station_list) > 0, "Expected at least one station in the response"
+
+def test_get_connections():
+    api = iRail()
+    connections = api.get_connections('Antwerpen-Centraal', 'Brussel-Centraal')
+
+    # Ensure the response is not None
+    assert connections is not None, "The response should not be None"
+
+    # Validate that the response is a dictionary
+    assert isinstance(connections, dict), "Expected response to be a dictionary"
+
+    # Validate the presence of key fields
+    assert 'connection' in connections, "Expected the response to contain a 'connection' key"
+
+    # Validate the structure of connection data
+    connection_list = connections.get('connection', [])
+    assert isinstance(connection_list, list), "Expected 'connection' to be a list"
+    assert len(connection_list) > 0, "Expected at least one connection in the response"
