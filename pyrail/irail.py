@@ -1,13 +1,11 @@
 import logging
-from threading import Lock
+from asyncio import Lock
+import asyncio
+from aiohttp import ClientSession, ClientError
 import time
-
-import requests
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-session = requests.Session()
 
 base_url = 'https://api.irail.be/{}/'
 
@@ -49,7 +47,15 @@ class iRail:
         self.last_request_time = time.time()
         self.lock = Lock()
         self.etag_cache = {}
+        self.session = None
         logger.info("iRail instance created")
+
+    async def __aenter__(self):
+        self.session = ClientSession(headers=headers)
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.session.close()
 
     @property
     def format(self):
@@ -89,9 +95,9 @@ class iRail:
         if self.burst_tokens > 5:
             self.burst_tokens = 5
 
-    def do_request(self, method, args=None):
+    async def do_request(self, method, args=None):
         logger.info("Starting request to endpoint: %s", method)
-        with self.lock:
+        async with self.lock:
             self._refill_tokens()
 
             if self.tokens < 1:
@@ -99,7 +105,7 @@ class iRail:
                     self.burst_tokens -= 1
                 else:
                     logger.warning("Rate limiting, waiting for tokens")
-                    time.sleep(1 - (time.time() - self.last_request_time))
+                    await asyncio.sleep(1 - (time.time() - self.last_request_time))
                     self._refill_tokens()
                     self.tokens -= 1
             else:
@@ -118,57 +124,57 @@ class iRail:
                 headers['If-None-Match'] = self.etag_cache[method]
 
             try:
-                response = session.get(url, params=params, headers=headers)
-                if response.status_code == 429:
-                    logger.warning("Rate limited, waiting for retry-after header")
-                    retry_after = int(response.headers.get("Retry-After", 1))
-                    time.sleep(retry_after)
-                    return self.do_request(method, args)
-                if response.status_code == 200:
-                    # Cache the ETag from the response
-                    if 'Etag' in response.headers:
-                        self.etag_cache[method] = response.headers['Etag']
-                    try:
-                        json_data = response.json()
-                        return json_data
-                    except ValueError:
-                        return -1
-                elif response.status_code == 304:
-                    logger.info("Data not modified, using cached data")
-                    return None
-                else:
-                    logger.error("Request failed with status code: %s", response.status_code)
-                    return None
-            except requests.exceptions.RequestException as e:
+                async with self.session.get(url, params=params, headers=headers) as response:
+                    if response.status == 429:
+                        logger.warning("Rate limited, waiting for retry-after header")
+                        retry_after = int(response.headers.get("Retry-After", 1))
+                        await asyncio.sleep(retry_after)
+                        return await self.do_request(method, args)
+                    if response.status == 200:
+                        # Cache the ETag from the response
+                        if 'Etag' in response.headers:
+                            self.etag_cache[method] = response.headers['Etag']
+                        try:
+                            json_data = await response.json()
+                            return json_data
+                        except ValueError:
+                            return -1
+                    elif response.status == 304:
+                        logger.info("Data not modified, using cached data")
+                        return None
+                    else:
+                        logger.error("Request failed with status code: %s", response.status)
+                        return None
+            except ClientError as e:
                 logger.error("Request failed: %s", e)
                 try:
-                    session.get('https://1.1.1.1/', timeout=1)
-                except requests.exceptions.ConnectionError:
+                    self.session.get('https://1.1.1.1/', timeout=1)
+                except ClientError:
                     logger.error("Internet connection failed")
                     return -1
                 else:
                     logger.error("iRail API failed")
                     return -1
 
-    def get_stations(self):
+    async def get_stations(self):
         """Retrieve a list of all stations."""
-        json_data = self.do_request('stations')
+        json_data = await self.do_request('stations')
         return json_data
 
-    def get_liveboard(self, station=None, id=None):
+    async def get_liveboard(self, station=None, id=None):
         if bool(station) ^ bool(id):
             extra_params = {'station': station, 'id': id}
-            json_data = self.do_request('liveboard', extra_params)
+            json_data = await self.do_request('liveboard', extra_params)
             return json_data
 
-    def get_connections(self, from_station=None, to_station=None):
+    async def get_connections(self, from_station=None, to_station=None):
         if from_station and to_station:
             extra_params = {'from': from_station, 'to': to_station}
-            json_data = self.do_request('connections', extra_params)
+            json_data = await self.do_request('connections', extra_params)
             return json_data
 
-    def get_vehicle(self, id=None):
+    async def get_vehicle(self, id=None):
         if id:
             extra_params = {'id': id}
-            json_data = self.do_request('vehicle', extra_params)
+            json_data = await self.do_request('vehicle', extra_params)
             return json_data
