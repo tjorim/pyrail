@@ -1,11 +1,12 @@
 # pyRail
 
-A Python wrapper for the iRail API, designed to make interacting with iRail simple and efficient.
+A async Python wrapper for the iRail API, designed to make interacting with iRail simple and efficient.
 
 ## Overview
 pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, vehicle, connections, and disturbances. The library includes features like caching and rate limiting to optimize API usage.
 
 ## Features
+- Async handling
 - Retrieve real-time train information, including liveboards and vehicle details.
 - Access train station data, connections, and disturbances.
 - Supports API endpoints: stations, liveboard, vehicle, connections, and disturbances.
@@ -20,19 +21,19 @@ pip install pyrail
 ```
 
 ## Usage
-Here is an example of how to use pyRail:
+Here is an example of how to use pyRail (async):
 
 ```python
 from pyrail.irail import iRail
 
 # Create an instance of the iRail class
-api = iRail(format='json', lang='en')
+async with iRail(format='json', lang='en') as api:
 
-# Make a request to the 'stations' endpoint
-stations = api.get_stations()
+    # Make a request to the 'stations' endpoint
+    stations = await api.get_stations()
 
-# Print the response
-print(stations)
+    # Print the response
+    print(stations)
 ```
 
 ## Configuration
