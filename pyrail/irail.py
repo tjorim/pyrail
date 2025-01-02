@@ -148,7 +148,7 @@ class iRail:
             except ClientError as e:
                 logger.error("Request failed: %s", e)
                 try:
-                    self.session.get('https://1.1.1.1/', timeout=1)
+                    await self.session.get('https://1.1.1.1/', timeout=1)
                 except ClientError:
                     logger.error("Internet connection failed")
                     return -1
