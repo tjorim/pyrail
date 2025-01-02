@@ -50,13 +50,9 @@ api = iRail(format='json', lang='en')
     ```bash
     git clone https://github.com/tjorim/pyrail.git
     ```
-2. Install dependencies using Poetry:
+2. Use docker compose
     ```bash
-    poetry install
-    ```
-3. Run tests:
-    ```bash
-    poetry run pytest
+    docker compose run --rm pydev
     ```
 
 ## Logging
@@ -74,6 +70,7 @@ Contributions are welcome! Please open an issue or submit a pull request.
 ## Contributors
 - @tjorim
 - @jcoetsie
+- @lgnap
 
 ## License
 This project is licensed under the Apache 2.0 License. See the LICENSE file for details.
