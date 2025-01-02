@@ -1,14 +1,12 @@
 import logging
-from threading import Lock
+from asyncio import Lock
 import time
+import asyncio
+from aiohttp import ClientSession, ClientError
 from typing import Any, Dict, Optional
-
-import requests
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-session = requests.Session()
 
 base_url: str = "https://api.irail.be/{}/"
 
@@ -61,10 +59,17 @@ class iRail:
         self.burst_tokens: int = 5
         self.last_request_time: float = time.time()
         self.lock: Lock = Lock()
-        session.headers.update({"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"})
+        self.session: ClientSession = None
         self.etag_cache: Dict[str, str] = {}
         logger.info("iRail instance created")
 
+    async def __aenter__(self):
+        self.session = ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.session.close()
+    
     @property
     def format(self) -> str:
         return self.__format
@@ -99,7 +104,7 @@ class iRail:
         # Refill burst tokens, 3 burst tokens per second, cap burst tokens at 5
         self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
 
-    def _handle_rate_limit(self) -> None:
+    async def _handle_rate_limit(self) -> None:
         """Handle rate limiting by refilling tokens or waiting."""
         logger.debug("Handling rate limit")
         self._refill_tokens()
@@ -108,7 +113,7 @@ class iRail:
                 self.burst_tokens -= 1
             else:
                 logger.warning("Rate limiting active, waiting for tokens")
-                time.sleep(1 - (time.time() - self.last_request_time))
+                await asyncio.time.sleep(1 - (time.time() - self.last_request_time))
                 self._refill_tokens()
                 self.tokens -= 1
         else:
@@ -116,7 +121,7 @@ class iRail:
 
     def _add_etag_header(self, method: str) -> Dict[str, str]:
         """Add ETag header if a cached ETag exists."""
-        headers: Dict[str, str] = {}
+        headers: Dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
         if method in self.etag_cache:
             logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
             headers["If-None-Match"] = self.etag_cache[method]
@@ -157,15 +162,15 @@ class iRail:
 
         return True
 
-    def do_request(self, method: str, args: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    async def do_request(self, method: str, args: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """Send a request to the specified iRail API endpoint."""
         logger.info("Starting request to endpoint: %s", method)
         if not self.validate_params(method, args or {}):
             logger.error("Validation failed for method: %s with args: %s", method, args)
             return None
 
-        with self.lock:
-            self._handle_rate_limit()
+        async with self.lock:
+            await self._handle_rate_limit()
 
         # Construct the request URL and parameters
         url: str = base_url.format(method)
@@ -176,37 +181,37 @@ class iRail:
         request_headers: Dict[str, str] = self._add_etag_header(method)
 
         try:
-            response = session.get(url, params=params, headers=request_headers)
-            if response.status_code == 429:
-                retry_after: int = int(response.headers.get("Retry-After", 1))
-                logger.warning("Rate limited, retrying after %d seconds", retry_after)
-                time.sleep(retry_after)
-                return self.do_request(method, args)
-            if response.status_code == 200:
-                # Cache the ETag from the response
-                if "Etag" in response.headers:
-                    self.etag_cache[method] = response.headers["Etag"]
-                try:
-                    json_data = response.json()
-                    return json_data
-                except ValueError:
-                    logger.error("Failed to parse JSON response")
+            async with self.session.get(url, params=params, headers=request_headers) as response:
+                if response.status == 429:
+                    retry_after: int = int(response.headers.get("Retry-After", 1))
+                    logger.warning("Rate limited, retrying after %d seconds", retry_after)
+                    await asyncio.time.sleep(retry_after)
+                    return await self.do_request(method, args)
+                if response.status == 200:
+                    # Cache the ETag from the response
+                    if "Etag" in response.headers:
+                        self.etag_cache[method] = response.headers["Etag"]
+                    try:
+                        json_data = await response.json()
+                        return json_data
+                    except ValueError:
+                        logger.error("Failed to parse JSON response")
+                        return None
+                elif response.status == 304:
+                    logger.info("Data not modified, using cached data")
                     return None
-            elif response.status_code == 304:
-                logger.info("Data not modified, using cached data")
-                return None
-            else:
-                logger.error("Request failed with status code: %s, response: %s", response.status_code, response.text)
-                return None
-        except requests.exceptions.RequestException as e:
+                else:
+                    logger.error("Request failed with status code: %s, response: %s", response.status, response.text)
+                    return None
+        except ClientError as e:
             logger.error("Request failed due to an exception: %s", e)
             return None
 
-    def get_stations(self) -> Optional[Dict[str, Any]]:
+    async def get_stations(self) -> Optional[Dict[str, Any]]:
         """Retrieve a list of all stations."""
-        return self.do_request("stations")
+        return await self.do_request("stations")
 
-    def get_liveboard(
+    async def get_liveboard(
         self,
         station: Optional[str] = None,
         id: Optional[str] = None,
@@ -224,9 +229,9 @@ class iRail:
             "arrdep": arrdep,
             "alerts": "true" if alerts else "false",
         }
-        return self.do_request("liveboard", {k: v for k, v in extra_params.items() if v is not None})
+        return await self.do_request("liveboard", {k: v for k, v in extra_params.items() if v is not None})
 
-    def get_connections(
+    async def get_connections(
         self,
         from_station: str,
         to_station: str,
@@ -248,19 +253,19 @@ class iRail:
             "alerts": "true" if alerts else "false",
             "results": results,
         }
-        return self.do_request("connections", {k: v for k, v in extra_params.items() if v is not None})
+        return await self.do_request("connections", {k: v for k, v in extra_params.items() if v is not None})
 
-    def get_vehicle(self, id: str, date: Optional[str] = None, alerts: bool = False) -> Optional[Dict[str, Any]]:
+    async def get_vehicle(self, id: str, date: Optional[str] = None, alerts: bool = False) -> Optional[Dict[str, Any]]:
         """Retrieve information about a vehicle (train)."""
         extra_params = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
-        return self.do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
+        return await self.do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
 
-    def get_composition(self, id: str, data: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    async def get_composition(self, id: str, data: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Retrieve the composition of a train."""
         extra_params = {"id": id, "data": data}
-        return self.do_request("composition", {k: v for k, v in extra_params.items() if v is not None})
+        return await self.do_request("composition", {k: v for k, v in extra_params.items() if v is not None})
 
-    def get_disturbances(self, line_break_character: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    async def get_disturbances(self, line_break_character: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Retrieve information about current disturbances on the rail network."""
         extra_params = {"lineBreakCharacter": line_break_character}
-        return self.do_request("disturbances", {k: v for k, v in extra_params.items() if v is not None})
+        return await self.do_request("disturbances", {k: v for k, v in extra_params.items() if v is not None})
