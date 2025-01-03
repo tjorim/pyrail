@@ -64,6 +64,7 @@ class iRail:
         logger.info("iRail instance created")
 
     async def __aenter__(self):
+    """Initialize and return the aiohttp client session when entering the async context."""
         self.session = ClientSession()
         return self
 
