@@ -113,7 +113,7 @@ class iRail:
                 self.burst_tokens -= 1
             else:
                 logger.warning("Rate limiting active, waiting for tokens")
-                await asyncio.time.sleep(1 - (time.time() - self.last_request_time))
+                await asyncio.sleep(1 - (time.time() - self.last_request_time))
                 self._refill_tokens()
                 self.tokens -= 1
         else:
