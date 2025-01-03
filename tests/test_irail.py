@@ -39,6 +39,14 @@ async def test_irail_context_manager():
 
 @pytest.mark.asyncio
 async def test_get_stations():
+    """Test the get_stations endpoint.
+
+    Verifies that:
+    - The response is not None
+    - The response is a dictionary
+    - The response contains a 'station' key
+    - The station list is non-empty
+    """
     async with iRail() as api:
         stations = await api.get_stations()
 
