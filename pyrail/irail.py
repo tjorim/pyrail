@@ -1,11 +1,12 @@
 """Module providing the iRail class for interacting with the iRail API."""
 
-import logging
-from asyncio import Lock
-import time
 import asyncio
-from aiohttp import ClientSession, ClientError
+from asyncio import Lock
+import logging
+import time
 from typing import Any, Dict, Optional
+
+from aiohttp import ClientError, ClientSession
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ class iRail:
     async def __aexit__(self, exc_type, exc, tb):
         """Close the aiohttp client session when exiting the async context."""
         await self.session.close()
+
     @property
     def format(self) -> str:
         return self.__format
@@ -211,7 +213,9 @@ class iRail:
                     logger.info("Data not modified, using cached data")
                     return None
                 else:
-                    logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
+                    logger.error(
+                        "Request failed with status code: %s, response: %s", response.status, await response.text()
+                    )
                     return None
         except ClientError as e:
             logger.error("Request failed due to an exception: %s", e)
