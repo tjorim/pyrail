@@ -28,12 +28,19 @@ from pyrail.irail import iRail
 
 # Create an instance of the iRail class
 async with iRail(format='json', lang='en') as api:
+    try:
+        # Get all stations
+        stations = await api.get_stations()
+        print("Stations:", stations)
 
-    # Make a request to the 'stations' endpoint
-    stations = await api.get_stations()
-
-    # Print the response
-    print(stations)
+        # Get connections between stations
+        connections = await api.get_connections(
+            from_station='Antwerpen-Centraal',
+            to_station='Brussel-Centraal'
+        )
+        print("Connections:", connections)
+    except Exception as e:
+        print(f"Error occurred: {e}")
 ```
 
 ## Configuration
