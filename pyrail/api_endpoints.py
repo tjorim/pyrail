@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 
 class Endpoint:
     def __init__(self, name: str, required_params: Optional[List[str]] = None, optional_params: Optional[List[str]] = None, xor_params: Optional[List[str]] = None):
@@ -9,7 +10,6 @@ class Endpoint:
 
     def validate(self, args: Dict[str, Any]) -> bool:
         """Validate required parameters and XOR conditions."""
-        
         # Check required parameters
         for param in self.required_params:
             if param not in args or args[param] is None:

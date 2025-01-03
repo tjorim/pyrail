@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
 from aiohttp import ClientSession
+import pytest
 
 from pyrail.irail import iRail
 
@@ -24,9 +25,7 @@ async def test_successful_request(mock_get):
 
 @pytest.mark.asyncio
 async def test_irail_context_manager():
-    """
-    Ensure that the async context manager sets up and tears down the session properly.
-    """
+    """Ensure that the async context manager sets up and tears down the session properly."""
     async with iRail() as irail:
         assert irail.session is not None
         assert isinstance(irail.session, ClientSession)
