@@ -69,10 +69,12 @@ api = iRail(format='json', lang='en')
     ```bash
     git clone https://github.com/tjorim/pyrail.git
     ```
-2. Use docker compose
+2. Open the project in a devcontainer:
     ```bash
-    docker compose run --rm pydev
+    cd pyrail
+    code .
     ```
+Make sure you have the Remote - Containers extension installed in VS Code. The devcontainer setup includes all necessary dependencies and tools for development.
 
 ## Logging
 You can set the logging level at runtime to get detailed logs:
