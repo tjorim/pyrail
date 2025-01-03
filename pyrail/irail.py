@@ -41,7 +41,7 @@ class iRail:
         "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
         "connections": {
             "required": ["from", "to"],
-            "optional": ["date", "time", "timesel", "typeOfTransport", "alerts", "results"],
+            "optional": ["date", "time", "timesel", "typeOfTransport"],
         },
         "vehicle": {"required": ["id"], "optional": ["date", "alerts"]},
         "composition": {"required": ["id"], "optional": ["data"]},
@@ -338,7 +338,7 @@ class iRail:
             return None
 
     async def get_stations(self) -> Optional[Dict[str, Any]]:
-        """Asynchronously retrieve a list of all train stations from the iRail API.
+        """Retrieve a list of all train stations from the iRail API.
 
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
@@ -346,15 +346,11 @@ class iRail:
             Optional[Dict[str, Any]]: A dictionary containing station information, or None if the request fails.
             The returned dictionary typically includes details about all train stations supported by the iRail API.
 
-        Raises:
-            aiohttp.ClientError: If there is a network-related error during the API request.
-            aiohttp.ContentTypeError: If the API response cannot be parsed correctly.
-
         Example:
-            client = iRail()
-            stations = await client.get_stations()
-            if stations:
-                print(f"Total stations: {len(stations)}")
+            async with iRail() as client:
+                stations = await client.get_stations()
+                if stations:
+                    print(f"Total stations: {len(stations)}")
 
         """
         return await self.do_request("stations")
@@ -371,10 +367,11 @@ class iRail:
         """Retrieve a liveboard for a specific train station.
 
         Asynchronously fetches live departure or arrival information for a given station.
+        Provide exactly one of 'station' or 'id'.
 
         Args:
-            station (str, optional): Name of the train station.
-            id (str, optional): Unique identifier of the train station.
+            station (str): Name of the train station.
+            id (str): Unique identifier of the train station.
             date (str, optional): Date for the liveboard in format 'DDMMYY'. Defaults to current date.
             time (str, optional): Time for the liveboard in format 'HHMM'. Defaults to current time.
             arrdep (str, optional): Type of board to retrieve. Either 'departure' (default) or 'arrival'.
@@ -383,13 +380,11 @@ class iRail:
         Returns:
             Dict[str, Any]: A dictionary containing liveboard information, or None if request fails.
 
-        Raises:
-            ValueError: If neither station name nor station ID is provided.
-            aiohttp.ClientError: If there's a network-related issue during the API request.
-
         Example:
-            client = iRail()
-            liveboard = await client.get_liveboard(station='Brussels-South', arrdep='departure')
+            async with iRail() as client:
+                liveboard = await client.get_liveboard(station='Brussels-South')
+                if liveboard:
+                    print(f"Liveboard for Brussels-South: {liveboard}")
 
         """
         extra_params: Dict[str, Optional[Any]] = {
@@ -410,8 +405,6 @@ class iRail:
         time: Optional[str] = None,
         timesel: str = "departure",
         type_of_transport: str = "automatic",
-        alerts: bool = False,
-        results: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """Retrieve train connections between two stations using the iRail API.
 
@@ -421,16 +414,16 @@ class iRail:
             date (str, optional): Date of travel in format 'DDMMYY' (default: current date)
             time (str, optional): Time of travel in format 'HH:MM' (default: current time)
             timesel (str, optional): Time selection type, either 'departure' or 'arrival' (default: 'departure')
-            type_of_transport (str, optional): Type of transport, options include 'automatic', 'train', 'bus', etc. (default: 'automatic')
-            alerts (bool, optional): Include service alerts in the response (default: False)
-            results (int, optional): Maximum number of connection results to return (default: None)
+            type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
 
         Returns:
             Dict[str, Any]: A dictionary containing connection details, or None if no connections found
 
-        Raises:
-            ValueError: If invalid parameters are provided
-            aiohttp.ClientError: If there's an issue with the API request
+        Example:
+            async with iRail() as client:
+                connections = await client.get_connections("Antwerpen-Centraal", "Brussel-Centraal")
+                if connections:
+                    print(f"Connections from Antwerpen-Centraal to Brussel-Centraal: {connections}")
 
         """
         extra_params: Dict[str, Optional[Any]] = {
@@ -440,13 +433,11 @@ class iRail:
             "time": time,
             "timesel": timesel,
             "typeOfTransport": type_of_transport,
-            "alerts": "true" if alerts else "false",
-            "results": results,
         }
         return await self.do_request("connections", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_vehicle(self, id: str, date: Optional[str] = None, alerts: bool = False) -> Optional[Dict[str, Any]]:
-        """Asynchronously retrieve detailed information about a specific train vehicle.
+        """Retrieve detailed information about a specific train vehicle.
 
         Args:
             id (str): Unique identifier of the train vehicle to retrieve information for.
@@ -456,54 +447,46 @@ class iRail:
         Returns:
             Dict[str, Any] or None: A dictionary containing vehicle details, or None if the request fails.
 
-        Raises:
-            aiohttp.ClientError: If there is a network-related issue during the API request.
-            ValueError: If invalid parameters are provided.
-
         Example:
             async with iRail() as client:
-                vehicle_info = await client.get_vehicle("IC2345", date="2024-01-15", alerts=True)
+                vehicle_info = await client.get_vehicle("BE.NMBS.IC1832", date="2024-01-15", alerts=True)
 
         """
         extra_params: Dict[str, Optional[Any]] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
         return await self.do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_composition(self, id: str, data: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Asynchronously retrieve the composition details of a specific train.
+        """Retrieve the composition details of a specific train.
 
         Args:
             id (str): The unique identifier of the train for which composition details are requested.
-            data (Optional[str], optional): Additional data parameter for the composition request. Defaults to None.
+            data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to '' (filtered data).
 
         Returns:
             Optional[Dict[str, Any]]: A dictionary containing the train composition details, or None if the request fails.
 
-        Raises:
-            aiohttp.ClientError: If there is a network-related error during the API request.
-            ValueError: If invalid parameters are provided.
-
         Example:
             async with iRail() as client:
-                composition = await client.get_composition('IC2345')
+                composition = await client.get_composition('S51507')
 
         """
         extra_params: Dict[str, Optional[str]] = {"id": id, "data": data}
         return await self.do_request("composition", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_disturbances(self, line_break_character: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Asynchronously retrieve information about current disturbances on the rail network.
+        """Retrieve information about current disturbances on the rail network.
 
         Args:
-            line_break_character (Optional[str], optional): A custom character to use for line breaks in the disturbance description. Defaults to None.
+            line_break_character (str, optional): A custom character to use for line breaks in the disturbance description. Defaults to ''.
 
         Returns:
             Optional[Dict[str, Any]]: A dictionary containing disturbance information from the iRail API, or None if no disturbances are found.
 
         Example:
-            client = iRail()
-            disturbances = await client.get_disturbances()
-            # Or with a custom line break
-            disturbances = await client.get_disturbances(line_break_character='<br>')
+            async with iRail() as client:
+                disturbances = await client.get_disturbances()
+                if disturbances:
+                    print(f"Current disturbances: {disturbances}")
 
         """
         extra_params = {"lineBreakCharacter": line_break_character}
