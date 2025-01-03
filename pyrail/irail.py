@@ -166,10 +166,12 @@ class iRail:
     async def do_request(self, method: str, args: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """Send a request to the specified iRail API endpoint."""
         logger.info("Starting request to endpoint: %s", method)
+        if self.session is None:
+            logger.error("Session not initialized. Use 'async with' context manager to initialize the client.")
+            return None
         if not self.validate_params(method, args or {}):
             logger.error("Validation failed for method: %s with args: %s", method, args)
             return None
-
         async with self.lock:
             await self._handle_rate_limit()
 
