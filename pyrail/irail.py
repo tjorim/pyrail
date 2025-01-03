@@ -31,7 +31,9 @@ class iRail:
 
     """
 
-    # Allowed endpoints and their expected parameters
+    # Available iRail API endpoints and their parameter requirements.
+    # Each endpoint is configured with required parameters, optional parameters, and XOR
+    # parameter groups (where exactly one parameter from the group must be provided).
     endpoints: Dict[str, Dict[str, Any]] = {
         "stations": {},
         "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
@@ -106,7 +108,12 @@ class iRail:
         self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
 
     async def _handle_rate_limit(self) -> None:
-        """Handle rate limiting by refilling tokens or waiting."""
+        """Handle rate limiting using a token bucket algorithm.
+
+        The implementation uses two buckets:
+        - Normal bucket: 3 tokens/second
+        - Burst bucket: 5 tokens/second
+        """
         logger.debug("Handling rate limit")
         self._refill_tokens()
         if self.tokens < 1:
@@ -114,7 +121,8 @@ class iRail:
                 self.burst_tokens -= 1
             else:
                 logger.warning("Rate limiting active, waiting for tokens")
-                await asyncio.sleep(1 - (time.time() - self.last_request_time))
+                wait_time = max(0, 1 - (time.time() - self.last_request_time))
+                await asyncio.sleep(wait_time)
                 self._refill_tokens()
                 self.tokens -= 1
         else:
