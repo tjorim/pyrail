@@ -6,13 +6,13 @@ import time
 from typing import Any, Dict, Optional
 
 import aiohttp
-import asyncio
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 base_url: str = "https://api.irail.be/{}/"
-headers = {'user-agent': 'pyRail (tielemans.jorim@gmail.com)'}
+headers = {"user-agent": "pyRail (tielemans.jorim@gmail.com)"}
+
 
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
@@ -171,7 +171,7 @@ class iRail:
             params.update(args)
 
         request_headers: Dict[str, str] = self._add_etag_header(method)
-          
+
         async with aiohttp.ClientSession(headers=request_headers) as session:
             try:
                 async with session.get(url, params=params) as response:
@@ -193,11 +193,13 @@ class iRail:
                         logger.info("Data not modified, using cached data")
                         return None
                     else:
-                        logger.error("Request failed with status code: %s, response: %s", response.status, response.text)
+                        logger.error(
+                            "Request failed with status code: %s, response: %s", response.status, response.text
+                        )
                         return None
-                except aiohttp.ClientError as e:
-                    logger.error("Request failed due to an exception: %s", e)
-                    return None
+            except aiohttp.ClientError as e:
+                logger.error("Request failed due to an exception: %s", e)
+                return None
 
     async def get_stations(self) -> Optional[Dict[str, Any]]:
         """Retrieve a list of all stations."""
