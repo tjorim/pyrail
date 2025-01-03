@@ -69,6 +69,7 @@ class iRail:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+    """Close the aiohttp client session when exiting the async context."""
         await self.session.close()
     @property
     def format(self) -> str:
