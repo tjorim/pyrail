@@ -22,36 +22,45 @@ pip install pyrail
 ```
 
 ## Usage
-Here is an example of how to use pyRail (async):
+Here is an example of how to use pyRail asynchronously:
 
 ```python
+import asyncio
 from pyrail.irail import iRail
 
-# Create an instance of the iRail class
-async with iRail(format='json', lang='en') as api:
-    try:
-        # Get all stations
-        stations = await api.get_stations()
-        print("Stations:", stations)
-
-        # Get connections between stations
-        connections = await api.get_connections(
-            from_station='Antwerpen-Centraal',
-            to_station='Brussel-Centraal'
+async def main():
+    # Sequential requests example
+    async with iRail() as api:
+        try:
+            async with iRail() as client:
+                # Get the total number of stations
+                stations = await api.get_stations()
+                if stations:
+                    print(f"Total stations: {len(stations)}")
+                # Get the liveboard for a specific station
+                liveboard = await client.get_liveboard(station='Brussels-South')
+                if liveboard:
+                    print(f"Liveboard for Brussels-South: {liveboard}")
+        except Exception as e:
+            print(f"Error occurred: {e}")
+    # Parallel requests example
+    async with iRail() as api:
+        connections, vehicle_info = await asyncio.gather(
+            # Get connections between stations
+            api.get_connections(
+                from_station='Antwerpen-Centraal',
+                to_station='Brussel-Centraal'
+            ),
+            # Get vehicle information
+            api.get_vehicle("BE.NMBS.IC1832")
         )
-        print("Connections:", connections)
-    except Exception as e:
-        print(f"Error occurred: {e}")
+        print("Parallel results:")
+        print(f"Connections from Antwerpen-Centraal to Brussel-Centraal: {connections}")
+        print(f"Vehicle information for BE.NMBS.IC1832: {vehicle_info}")
 
-# Example of concurrent requests with asyncio.gather
-async with iRail() as api:
-    stations, connections = await asyncio.gather(
-        api.get_stations(),
-        api.get_connections(
-            from_station='Antwerpen-Centraal',
-            to_station='Brussel-Centraal'
-        )
-    )
+# Run the async code
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ## Configuration

@@ -449,7 +449,7 @@ class iRail:
 
         Example:
             async with iRail() as client:
-                vehicle_info = await client.get_vehicle("BE.NMBS.IC1832", date="2024-01-15", alerts=True)
+                vehicle_info = await client.get_vehicle("BE.NMBS.IC1832")
 
         """
         extra_params: Dict[str, Optional[Any]] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
