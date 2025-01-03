@@ -69,7 +69,6 @@ class iRail:
 
     async def __aexit__(self, exc_type, exc, tb):
         await self.session.close()
-    
     @property
     def format(self) -> str:
         return self.__format
