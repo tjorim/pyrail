@@ -1,3 +1,5 @@
+"""Module providing the iRail class for interacting with the iRail API."""
+
 import logging
 from threading import Lock
 import time
@@ -11,10 +13,6 @@ logger = logging.getLogger(__name__)
 session = requests.Session()
 
 base_url: str = "https://api.irail.be/{}/"
-
-"""
-This module provides the iRail class for interacting with the iRail API.
-"""
 
 
 class iRail:
@@ -35,7 +33,7 @@ class iRail:
     """
 
     # Allowed endpoints and their expected parameters
-    endpoints = {
+    endpoints: Dict[str, Dict[str, Any]] = {
         "stations": {},
         "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
         "connections": {
