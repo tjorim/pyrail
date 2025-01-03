@@ -59,7 +59,7 @@ class iRail:
         self.burst_tokens: int = 5
         self.last_request_time: float = time.time()
         self.lock: Lock = Lock()
-        self.session: ClientSession = None
+        self.session: Optional[ClientSession] = None
         self.etag_cache: Dict[str, str] = {}
         logger.info("iRail instance created")
 
