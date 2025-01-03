@@ -1,6 +1,7 @@
 # pyRail
 
 An async Python wrapper for the iRail API, designed to make interacting with iRail simple and efficient.
+Built with aiohttp, it provides non-blocking I/O operations for optimal performance in async applications.
 
 ## Overview
 pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, vehicle, connections, and disturbances. The library includes features like caching and rate limiting to optimize API usage.
@@ -41,6 +42,16 @@ async with iRail(format='json', lang='en') as api:
         print("Connections:", connections)
     except Exception as e:
         print(f"Error occurred: {e}")
+
+# Example of concurrent requests with asyncio.gather
+async with iRail() as api:
+    stations, connections = await asyncio.gather(
+        api.get_stations(),
+        api.get_connections(
+            from_station='Antwerpen-Centraal',
+            to_station='Brussel-Centraal'
+        )
+    )
 ```
 
 ## Configuration

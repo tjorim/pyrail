@@ -2,6 +2,7 @@
 
 import asyncio
 from asyncio import Lock
+from datetime import datetime
 import logging
 import time
 from typing import Any, Dict, Optional
@@ -9,7 +10,7 @@ from typing import Any, Dict, Optional
 from aiohttp import ClientError, ClientSession
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 base_url: str = "https://api.irail.be/{}/"
 
@@ -71,7 +72,11 @@ class iRail:
 
     async def __aexit__(self, exc_type, exc, tb):
         """Close the aiohttp client session when exiting the async context."""
-        await self.session.close()
+        if self.session:
+            try:
+                await self.session.close()
+            except Exception as e:
+                logger.error("Error closing session: %s", e)
 
     @property
     def format(self) -> str:
@@ -136,6 +141,28 @@ class iRail:
             headers["If-None-Match"] = self.etag_cache[method]
         return headers
 
+    def _validate_date(self, date: Optional[str]) -> bool:
+        """Validate date format (DDMMYY)."""
+        if not date:
+            return True
+        try:
+            datetime.strptime(date, "%d%m%y")
+            return True
+        except ValueError:
+            logger.error("Invalid date format. Expected DDMMYY (e.g., 150923 for September 15, 2023), got: %s", date)
+            return False
+
+    def _validate_time(self, time: Optional[str]) -> bool:
+        """Validate time format (HHMM)."""
+        if not time:
+            return True
+        try:
+            datetime.strptime(time, "%H%M")
+            return True
+        except ValueError:
+            logger.error("Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
+            return False
+
     def validate_params(self, method: str, params: Optional[Dict[str, Any]] = None) -> bool:
         """Validate parameters and XOR conditions for a given endpoint."""
         if method not in self.endpoints:
@@ -148,6 +175,12 @@ class iRail:
         optional = endpoint.get("optional", [])
 
         params = params or {}
+
+        # Validate date and time formats if present
+        if "date" in params and not self._validate_date(params["date"]):
+            return False
+        if "time" in params and not self._validate_time(params["time"]):
+            return False
 
         # Ensure all required parameters are present
         for param in required:
@@ -243,7 +276,7 @@ class iRail:
         alerts: bool = False,
     ) -> Optional[Dict[str, Any]]:
         """Retrieve a liveboard for a station or station ID."""
-        extra_params = {
+        extra_params: Dict[str, Optional[Any]] = {
             "station": station,
             "id": id,
             "date": date,
@@ -265,7 +298,7 @@ class iRail:
         results: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """Retrieve connections between two stations."""
-        extra_params = {
+        extra_params: Dict[str, Optional[Any]] = {
             "from": from_station,
             "to": to_station,
             "date": date,
@@ -279,12 +312,12 @@ class iRail:
 
     async def get_vehicle(self, id: str, date: Optional[str] = None, alerts: bool = False) -> Optional[Dict[str, Any]]:
         """Retrieve information about a vehicle (train)."""
-        extra_params = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
+        extra_params: Dict[str, Optional[Any]] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
         return await self.do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_composition(self, id: str, data: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Retrieve the composition of a train."""
-        extra_params = {"id": id, "data": data}
+        extra_params: Dict[str, Optional[str]] = {"id": id, "data": data}
         return await self.do_request("composition", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_disturbances(self, line_break_character: Optional[str] = None) -> Optional[Dict[str, Any]]:

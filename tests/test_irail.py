@@ -99,3 +99,57 @@ async def test_get_connections_invalid_stations():
     async with iRail() as api:
         result = await api.get_connections("InvalidStation1", "InvalidStation2")
         assert result is None, "Expected None for invalid stations"
+
+s
+@pytest.mark.asyncio
+async def test_date_time_validation():
+    """Test date and time format validation."""
+    async with iRail() as api:
+        # Valid date examples
+        assert api._validate_date("150923")  # September 15, 2023
+        assert api._validate_date("010124")  # January 1, 2024
+        assert api._validate_date(None)      # None is valid (uses current date)
+        
+        # Invalid date examples
+        assert not api._validate_date("320923")  # Invalid day
+        assert not api._validate_date("151323")  # Invalid month
+        assert not api._validate_date("abcdef")  # Not numeric
+        assert not api._validate_date("15092023")  # Too long
+        
+        # Valid time examples
+        assert api._validate_time("1430")    # 2:30 PM
+        assert api._validate_time("0000")    # Midnight
+        assert api._validate_time("2359")    # 11:59 PM
+        assert api._validate_time(None)      # None is valid (uses current time)
+        
+        # Invalid time examples
+        assert not api._validate_time("2460")    # Invalid hour
+        assert not api._validate_time("2361")    # Invalid minute
+        assert not api._validate_time("abcd")    # Not numeric
+        assert not api._validate_time("143000")  # Too long
+
+@pytest.mark.asyncio
+async def test_liveboard_with_date_time():
+    """Test liveboard request with date and time parameters."""
+    async with iRail() as api:
+        # Valid date/time
+        result = await api.get_liveboard(
+            station="Brussels-Central",
+            date="150923",  # September 15, 2023
+            time="1430"     # 2:30 PM
+        )
+        assert result is not None
+
+        # Invalid date
+        result = await api.get_liveboard(
+            station="Brussels-Central",
+            date="320923"  # Invalid day 32
+        )
+        assert result is None
+
+        # Invalid time
+        result = await api.get_liveboard(
+            station="Brussels-Central",
+            time="2460"  # Invalid hour 24
+        )
+        assert result is None
