@@ -190,12 +190,21 @@ class iRail:
                     logger.warning("Rate limited, retrying after %d seconds", retry_after)
                     await asyncio.sleep(retry_after)
                     return await self.do_request(method, args)
+                elif response.status == 400:
+                    error_text = await response.text()
+                    logger.error("Bad request: %s", error_text)
+                    return None
+                elif response.status == 404:
+                    logger.error("Endpoint not found: %s", url)
+                    return None
                 if response.status == 200:
                     # Cache the ETag from the response
                     if "Etag" in response.headers:
                         self.etag_cache[method] = response.headers["Etag"]
                     try:
                         json_data = await response.json()
+                        if not json_data:
+                            logger.warning("Empty response received")
                         return json_data
                     except ValueError:
                         logger.error("Failed to parse JSON response")
