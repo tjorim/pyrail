@@ -83,10 +83,23 @@ class iRail:
 
     @property
     def format(self) -> str:
+        """Get the response format for API requests.
+
+        Returns:
+            str: The current format setting ('xml', 'json', or 'jsonp').
+
+        """
         return self.__format
 
     @format.setter
     def format(self, value: str) -> None:
+        """Set the response format for API requests.
+
+        Args:
+            value (str): The format to use. Must be one of: 'xml', 'json', or 'jsonp'.
+                        If an invalid value is provided, defaults to 'json'.
+
+        """
         if value in ["xml", "json", "jsonp"]:
             self.__format = value
         else:
@@ -94,10 +107,23 @@ class iRail:
 
     @property
     def lang(self) -> str:
+        """Get the language setting for API requests.
+
+        Returns:
+            str: The current language setting ('nl', 'fr', 'en', 'de').
+
+        """
         return self.__lang
 
     @lang.setter
     def lang(self, value: str) -> None:
+        """Set the language for API requests.
+
+        Args:
+            value (str): The language to use. Must be one of: 'nl', 'fr', 'en', 'de'.
+                        If an invalid value is provided, defaults to 'en'.
+
+        """
         if value in ["nl", "fr", "en", "de"]:
             self.__lang = value
         else:
@@ -167,7 +193,29 @@ class iRail:
             return False
 
     def validate_params(self, method: str, params: Optional[Dict[str, Any]] = None) -> bool:
-        """Validate parameters and XOR conditions for a given endpoint."""
+        """Validate parameters for a specific iRail API endpoint based on predefined requirements.
+
+        Args:
+            method (str): The API endpoint method to validate parameters for.
+            params (Optional[Dict[str, Any]], optional): Dictionary of parameters to validate. Defaults to None.
+
+        Returns:
+            bool: True if parameters are valid, False otherwise.
+
+        Raises:
+            No explicit exceptions raised. Uses logging to report validation errors.
+
+        Validates the following conditions:
+            1. Checks if the method is a known endpoint
+            2. Ensures all required parameters are present
+            3. Enforces XOR (exclusive OR) parameter logic where applicable
+            4. Prevents unexpected parameters from being included
+
+        Example:
+            # Validates parameters for a 'get_liveboard' method
+            is_valid = self.validate_params('get_liveboard', {'station': 'Brussels', 'date': '2025-01-15'})
+
+        """
         if method not in self.endpoints:
             logger.error("Unknown API endpoint: %s", method)
             return False
@@ -208,7 +256,31 @@ class iRail:
         return True
 
     async def do_request(self, method: str, args: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
-        """Send a request to the specified iRail API endpoint."""
+        """Send an asynchronous request to the specified iRail API endpoint.
+
+        This method handles API requests with rate limiting, parameter validation,
+        and ETag-based caching. It supports conditional requests and manages
+        various HTTP response scenarios.
+
+        Args:
+            method (str): The iRail API endpoint method to request.
+            args (dict, optional): Additional query parameters for the request.
+                Defaults to None.
+
+        Returns:
+            dict or None: Parsed JSON response from the API if successful,
+                None if the request fails or encounters an error.
+
+        Raises:
+            No explicit exceptions, but logs errors for various failure scenarios.
+
+        Notes:
+            - Implements rate limiting using a token-based mechanism
+            - Supports ETag-based conditional requests
+            - Handles rate limit (429) responses with automatic retry
+            - Logs detailed information about request processing
+
+        """
         logger.info("Starting request to endpoint: %s", method)
         if self.session is None:
             logger.error("Session not initialized. Use 'async with' context manager to initialize the client.")
@@ -266,7 +338,25 @@ class iRail:
             return None
 
     async def get_stations(self) -> Optional[Dict[str, Any]]:
-        """Retrieve a list of all stations."""
+        """Asynchronously retrieve a list of all train stations from the iRail API.
+
+        This method fetches the complete list of available train stations without any additional filtering parameters.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing station information, or None if the request fails.
+            The returned dictionary typically includes details about all train stations supported by the iRail API.
+
+        Raises:
+            aiohttp.ClientError: If there is a network-related error during the API request.
+            aiohttp.ContentTypeError: If the API response cannot be parsed correctly.
+
+        Example:
+            client = iRail()
+            stations = await client.get_stations()
+            if stations:
+                print(f"Total stations: {len(stations)}")
+
+        """
         return await self.do_request("stations")
 
     async def get_liveboard(
@@ -278,7 +368,30 @@ class iRail:
         arrdep: str = "departure",
         alerts: bool = False,
     ) -> Optional[Dict[str, Any]]:
-        """Retrieve a liveboard for a station or station ID."""
+        """Retrieve a liveboard for a specific train station.
+
+        Asynchronously fetches live departure or arrival information for a given station.
+
+        Args:
+            station (str, optional): Name of the train station.
+            id (str, optional): Unique identifier of the train station.
+            date (str, optional): Date for the liveboard in format 'DDMMYY'. Defaults to current date.
+            time (str, optional): Time for the liveboard in format 'HHMM'. Defaults to current time.
+            arrdep (str, optional): Type of board to retrieve. Either 'departure' (default) or 'arrival'.
+            alerts (bool, optional): Whether to include service alerts. Defaults to False.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing liveboard information, or None if request fails.
+
+        Raises:
+            ValueError: If neither station name nor station ID is provided.
+            aiohttp.ClientError: If there's a network-related issue during the API request.
+
+        Example:
+            client = iRail()
+            liveboard = await client.get_liveboard(station='Brussels-South', arrdep='departure')
+
+        """
         extra_params: Dict[str, Optional[Any]] = {
             "station": station,
             "id": id,
@@ -300,7 +413,26 @@ class iRail:
         alerts: bool = False,
         results: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Retrieve connections between two stations."""
+        """Retrieve train connections between two stations using the iRail API.
+
+        Args:
+            from_station (str): Name or ID of the departure station
+            to_station (str): Name or ID of the arrival station
+            date (str, optional): Date of travel in format 'DDMMYY' (default: current date)
+            time (str, optional): Time of travel in format 'HH:MM' (default: current time)
+            timesel (str, optional): Time selection type, either 'departure' or 'arrival' (default: 'departure')
+            type_of_transport (str, optional): Type of transport, options include 'automatic', 'train', 'bus', etc. (default: 'automatic')
+            alerts (bool, optional): Include service alerts in the response (default: False)
+            results (int, optional): Maximum number of connection results to return (default: None)
+
+        Returns:
+            Dict[str, Any]: A dictionary containing connection details, or None if no connections found
+
+        Raises:
+            ValueError: If invalid parameters are provided
+            aiohttp.ClientError: If there's an issue with the API request
+
+        """
         extra_params: Dict[str, Optional[Any]] = {
             "from": from_station,
             "to": to_station,
@@ -314,16 +446,65 @@ class iRail:
         return await self.do_request("connections", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_vehicle(self, id: str, date: Optional[str] = None, alerts: bool = False) -> Optional[Dict[str, Any]]:
-        """Retrieve information about a vehicle (train)."""
+        """Asynchronously retrieve detailed information about a specific train vehicle.
+
+        Args:
+            id (str): Unique identifier of the train vehicle to retrieve information for.
+            date (str, optional): Specific date for which vehicle information is requested. Defaults to None (current date).
+            alerts (bool, optional): Flag to include service alerts for the vehicle. Defaults to False.
+
+        Returns:
+            Dict[str, Any] or None: A dictionary containing vehicle details, or None if the request fails.
+
+        Raises:
+            aiohttp.ClientError: If there is a network-related issue during the API request.
+            ValueError: If invalid parameters are provided.
+
+        Example:
+            async with iRail() as client:
+                vehicle_info = await client.get_vehicle("IC2345", date="2024-01-15", alerts=True)
+
+        """
         extra_params: Dict[str, Optional[Any]] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
         return await self.do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_composition(self, id: str, data: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Retrieve the composition of a train."""
+        """Asynchronously retrieve the composition details of a specific train.
+
+        Args:
+            id (str): The unique identifier of the train for which composition details are requested.
+            data (Optional[str], optional): Additional data parameter for the composition request. Defaults to None.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing the train composition details, or None if the request fails.
+
+        Raises:
+            aiohttp.ClientError: If there is a network-related error during the API request.
+            ValueError: If invalid parameters are provided.
+
+        Example:
+            async with iRail() as client:
+                composition = await client.get_composition('IC2345')
+
+        """
         extra_params: Dict[str, Optional[str]] = {"id": id, "data": data}
         return await self.do_request("composition", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_disturbances(self, line_break_character: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Retrieve information about current disturbances on the rail network."""
+        """Asynchronously retrieve information about current disturbances on the rail network.
+
+        Args:
+            line_break_character (Optional[str], optional): A custom character to use for line breaks in the disturbance description. Defaults to None.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing disturbance information from the iRail API, or None if no disturbances are found.
+
+        Example:
+            client = iRail()
+            disturbances = await client.get_disturbances()
+            # Or with a custom line break
+            disturbances = await client.get_disturbances(line_break_character='<br>')
+
+        """
         extra_params = {"lineBreakCharacter": line_break_character}
         return await self.do_request("disturbances", {k: v for k, v in extra_params.items() if v is not None})
