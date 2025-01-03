@@ -1,3 +1,5 @@
+"""Module providing the iRail class for interacting with the iRail API."""
+
 import logging
 from asyncio import Lock
 import time
@@ -9,10 +11,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 base_url: str = "https://api.irail.be/{}/"
-
-"""
-This module provides the iRail class for interacting with the iRail API.
-"""
 
 
 class iRail:
@@ -33,7 +31,7 @@ class iRail:
     """
 
     # Allowed endpoints and their expected parameters
-    endpoints = {
+    endpoints: Dict[str, Dict[str, Any]] = {
         "stations": {},
         "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
         "connections": {
