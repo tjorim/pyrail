@@ -184,7 +184,7 @@ class iRail:
                 if response.status == 429:
                     retry_after: int = int(response.headers.get("Retry-After", 1))
                     logger.warning("Rate limited, retrying after %d seconds", retry_after)
-                    await asyncio.time.sleep(retry_after)
+                    await asyncio.sleep(retry_after)
                     return await self.do_request(method, args)
                 if response.status == 200:
                     # Cache the ETag from the response
