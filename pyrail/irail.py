@@ -5,7 +5,8 @@ from asyncio import Lock
 from datetime import datetime
 import logging
 import time
-from typing import Any, Dict, Optional
+from types import TracebackType
+from typing import Any, Dict, Optional, Type
 
 from aiohttp import ClientError, ClientSession
 
@@ -70,7 +71,9 @@ class iRail:
         self.session = ClientSession()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(
+        self, exc_type: Optional[Type[BaseException]], exc: Optional[BaseException], tb: Optional[TracebackType]
+    ) -> None:
         """Close the aiohttp client session when exiting the async context."""
         if self.session:
             try:

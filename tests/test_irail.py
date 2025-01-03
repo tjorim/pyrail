@@ -1,3 +1,5 @@
+"""Unit tests for the iRail API wrapper."""
+
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -5,10 +7,6 @@ from aiohttp import ClientSession
 import pytest
 
 from pyrail.irail import iRail
-
-"""
-Unit tests for the iRail API wrapper.
-"""
 
 
 @pytest.mark.asyncio
@@ -21,6 +19,7 @@ async def test_successful_request(mock_get):
     mock_get.return_value.__aenter__.return_value = mock_response
 
     async with iRail() as api:
+        assert api.session is not None
         response = await api.do_request("stations")
         mock_get.assert_called_once_with(
             "https://api.irail.be/stations/",
@@ -28,6 +27,7 @@ async def test_successful_request(mock_get):
             headers={"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"},
         )
         assert response == {"data": "some_data"}
+        assert mock_response.status == 200
 
 
 @pytest.mark.asyncio
@@ -110,24 +110,31 @@ async def test_date_time_validation():
         assert api._validate_date("150923")  # September 15, 2023
         assert api._validate_date("010124")  # January 1, 2024
         assert api._validate_date(None)  # None is valid (uses current date)
+        assert api._validate_date("290224")  # Leap year 2024
 
         # Invalid date examples
         assert not api._validate_date("320923")  # Invalid day
         assert not api._validate_date("151323")  # Invalid month
         assert not api._validate_date("abcdef")  # Not numeric
         assert not api._validate_date("15092023")  # Too long
+        assert not api._validate_date("")  # Empty string
+        assert not api._validate_date("0")  # Too short
+        assert not api._validate_date("290223")  # Invalid leap year 2023
 
         # Valid time examples
         assert api._validate_time("1430")  # 2:30 PM
         assert api._validate_time("0000")  # Midnight
         assert api._validate_time("2359")  # 11:59 PM
         assert api._validate_time(None)  # None is valid (uses current time)
+        assert api._validate_time("0001")  # 12:01 AM
 
         # Invalid time examples
         assert not api._validate_time("2460")  # Invalid hour
         assert not api._validate_time("2361")  # Invalid minute
         assert not api._validate_time("abcd")  # Not numeric
         assert not api._validate_time("143000")  # Too long
+        assert not api._validate_time("")  # Empty string
+        assert not api._validate_time("1")  # Too short
 
 
 @pytest.mark.asyncio
