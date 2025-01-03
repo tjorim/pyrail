@@ -1,5 +1,0 @@
-services:
-  pydev:
-    build: .
-    volumes:
-      - '.:/root/app'
