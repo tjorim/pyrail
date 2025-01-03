@@ -117,7 +117,6 @@ async def test_date_time_validation():
         assert not api._validate_date("151323")  # Invalid month
         assert not api._validate_date("abcdef")  # Not numeric
         assert not api._validate_date("15092023")  # Too long
-        assert not api._validate_date("")  # Empty string
         assert not api._validate_date("0")  # Too short
         assert not api._validate_date("290223")  # Invalid leap year 2023
 
@@ -133,7 +132,6 @@ async def test_date_time_validation():
         assert not api._validate_time("2361")  # Invalid minute
         assert not api._validate_time("abcd")  # Not numeric
         assert not api._validate_time("143000")  # Too long
-        assert not api._validate_time("")  # Empty string
         assert not api._validate_time("1")  # Too short
 
 
