@@ -64,12 +64,12 @@ class iRail:
         logger.info("iRail instance created")
 
     async def __aenter__(self):
-    """Initialize and return the aiohttp client session when entering the async context."""
+        """Initialize and return the aiohttp client session when entering the async context."""
         self.session = ClientSession()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-    """Close the aiohttp client session when exiting the async context."""
+        """Close the aiohttp client session when exiting the async context."""
         await self.session.close()
     @property
     def format(self) -> str:
