@@ -202,7 +202,7 @@ class iRail:
                     logger.info("Data not modified, using cached data")
                     return None
                 else:
-                    logger.error("Request failed with status code: %s, response: %s", response.status, response.text)
+                    logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
                     return None
         except ClientError as e:
             logger.error("Request failed due to an exception: %s", e)
