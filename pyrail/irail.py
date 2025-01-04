@@ -10,6 +10,8 @@ from typing import Any, Dict, Optional, Type
 
 from aiohttp import ClientError, ClientSession
 
+from pyrail.models import Station, StationAPIResponse
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -337,14 +339,14 @@ class iRail:
             logger.error("Request failed due to an exception: %s", e)
             return None
 
-    async def get_stations(self) -> Optional[Dict[str, Any]]:
+    async def get_stations(self) -> list[Station] | None:
         """Retrieve a list of all train stations from the iRail API.
 
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
         Returns:
-            Optional[Dict[str, Any]]: A dictionary containing station information, or None if the request fails.
-            The returned dictionary typically includes details about all train stations supported by the iRail API.
+            List[Station]: A list of stations containing station information.
+            This typically includes details about all train stations supported by the iRail API.
 
         Example:
             async with iRail() as client:
@@ -353,7 +355,11 @@ class iRail:
                     print(f"Total stations: {len(stations)}")
 
         """
-        return await self.do_request("stations")
+        stations_dict = await self.do_request("stations")
+        if stations_dict is None:
+            return None
+        stations_response: StationAPIResponse = StationAPIResponse.from_dict(stations_dict)
+        return stations_response.station
 
     async def get_liveboard(
         self,

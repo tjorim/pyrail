@@ -19,6 +19,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.12"
 aiohttp = "^3.11.11"
+mashumaro = {extras = ["orjson"], version = "^3.15"}
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
