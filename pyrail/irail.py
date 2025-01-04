@@ -345,7 +345,7 @@ class iRail:
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
         Returns:
-            List[Station]: A list of stations containing station information.
+            List[Station]: A list of stations containing station information, or None if the request fails.
             This typically includes details about all train stations supported by the iRail API.
 
         Example:
