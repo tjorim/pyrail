@@ -36,6 +36,7 @@ class StationsApiResponse(ApiResponse):
 
 @dataclass
 class Departures(DataClassORJSONMixin):
+    """Represents departures data for a railway station."""
     number: int  # Number of departures
     departure: List[dict] = field(default_factory=list)  # List of departure details
 
