@@ -21,8 +21,8 @@ class Station(DataClassORJSONMixin):
 
     id: str  # The (iRail) ID of the station
     at_id: str = field(metadata=field_options(alias="@id"))  # Corresponds to "@id" in the schema
-    location_x: float = field(metadata=field_options(alias="locationX"))  # Longitude of the station
-    location_y: float = field(metadata=field_options(alias="locationY"))  # Latitude of the station
+    longitude: float = field(metadata=field_options(alias="locationX"))  # Longitude of the station
+    latitude: float = field(metadata=field_options(alias="locationY"))  # Latitude of the station
     standard_name: str = field(metadata=field_options(alias="standardname"))  # Consistent name of the station
     name: str  # Default name of the station
 
@@ -37,70 +37,87 @@ class StationsApiResponse(ApiResponse):
 @dataclass
 class Departures(DataClassORJSONMixin):
     """Represents departures data for a railway station."""
+
     number: int  # Number of departures
     departure: List[dict] = field(default_factory=list)  # List of departure details
 
 
 @dataclass
-class LiveboardResponse(ApiResponse):
+class LiveboardApiResponse(ApiResponse):
     """Represents a liveboard response containing station details and departures."""
+
     station: str  # Name of the station
-    station_info: Station | None = field(
+    station_info: Station = field(
         metadata=field_options(alias="stationinfo")
     )  # Reusing the `Station` class for detailed station information
     departures: Departures  # Departures information
 
+
 @dataclass
 class VehicleInfo(DataClassORJSONMixin):
     """Represents information about a specific vehicle, including name and location."""
+
     name: str  # Name of the vehicle
-    location_x: float = field(metadata=field_options(alias="locationX"))  # Longitude of the vehicle
-    location_y: float = field(metadata=field_options(alias="locationY"))  # Latitude of the vehicle
+    longitude: float = field(metadata=field_options(alias="locationX"))  # Longitude of the vehicle
+    latitude: float = field(metadata=field_options(alias="locationY"))  # Latitude of the vehicle
     short_name: str = field(metadata=field_options(alias="shortname"))  # Shortened name of the vehicle
     at_id: str = field(metadata=field_options(alias="@id"))  # ID of the vehicle
+
 
 @dataclass
 class Stops(DataClassORJSONMixin):
     """Holds the number of stops and a list of detailed stop information."""
+
     number: int  # Number of stops
     stop: List[dict] = field(default_factory=list)  # List of stop details
 
+
 @dataclass
-class VehicleResponse(ApiResponse):
+class VehicleApiResponse(ApiResponse):
     """Provides detailed data about a particular vehicle, including its stops."""
+
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle information
     stops: Stops  # Stops information
 
+
 @dataclass
 class SegmentComposition(DataClassORJSONMixin):
     """Describes a collection of train units and related metadata."""
+
     source: str  # Source of the composition
     units: List[dict] = field(metadata=field_options(alias="unit"))  # List of units in the composition
+
 
 @dataclass
 class Segment(DataClassORJSONMixin):
     """Defines a single segment within a journey, including composition details."""
+
     id: str  # ID of the segment
     origin: Station  # Origin station information
     destination: Station  # Destination station information
     composition: SegmentComposition  # Composition details of the segment
 
+
 @dataclass
 class CompositionSegments(DataClassORJSONMixin):
     """Represents multiple journey segments, each having its own composition details."""
+
     number: int  # Number of segments
     segment: List[Segment] = field(metadata=field_options(alias="segment"))  # List of segments
 
+
 @dataclass
-class CompositionResponse(ApiResponse):
+class CompositionApiResponse(ApiResponse):
     """Encapsulates the response containing composition details for a specific journey."""
+
     composition: CompositionSegments  # Composition details
 
 
 @dataclass
 class Connection(DataClassORJSONMixin):
     """Represents a single train connection, including scheduling and delay details."""
+
     departure: Station  # Departure station information
     arrival: Station  # Arrival station information
     departure_time: str = field(metadata=field_options(alias="departureTime"))  # Departure time in ISO format
@@ -114,14 +131,18 @@ class Connection(DataClassORJSONMixin):
         metadata=field_options(alias="arrivalDelay"), default=None
     )  # Delay at arrival in seconds
 
+
 @dataclass
-class ConnectionsResponse(ApiResponse):
+class ConnectionsApiResponse(ApiResponse):
     """Holds a list of train connections returned by the connections endpoint."""
+
     connection: List[Connection] = field(default_factory=list)  # List of connections
+
 
 @dataclass
 class Disturbance(DataClassORJSONMixin):
     """Represents a railway system disturbance, including description and metadata."""
+
     id: str  # ID of the disturbance
     title: str  # Title of the disturbance
     description: str  # Description of the disturbance
@@ -130,7 +151,9 @@ class Disturbance(DataClassORJSONMixin):
     timestamp: int  # Timestamp of the disturbance
     attachment: str | None = None  # Optional attachment URL
 
+
 @dataclass
-class DisturbancesResponse(ApiResponse):
+class DisturbancesApiResponse(ApiResponse):
     """Encapsulates multiple disturbances returned by the disturbances endpoint."""
+
     disturbance: List[Disturbance]  # List of disturbances
