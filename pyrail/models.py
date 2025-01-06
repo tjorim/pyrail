@@ -100,6 +100,7 @@ class CompositionResponse(ApiResponse):
 
 @dataclass
 class Connection(DataClassORJSONMixin):
+    """Represents a single train connection, including scheduling and delay details."""
     departure: Station  # Departure station information
     arrival: Station  # Arrival station information
     departure_time: str = field(metadata=field_options(alias="departureTime"))  # Departure time in ISO format
@@ -112,7 +113,6 @@ class Connection(DataClassORJSONMixin):
     arrival_delay: int | None = field(
         metadata=field_options(alias="arrivalDelay"), default=None
     )  # Delay at arrival in seconds
-
 
 @dataclass
 class ConnectionsResponse(ApiResponse):
