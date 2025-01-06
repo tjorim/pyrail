@@ -20,7 +20,7 @@ async def test_successful_request(mock_get):
 
     async with iRail() as api:
         assert api.session is not None
-        response = await api.do_request("stations")
+        response = await api._do_request("stations")
         mock_get.assert_called_once_with(
             "https://api.irail.be/stations/",
             params={"format": "json", "lang": "en"},

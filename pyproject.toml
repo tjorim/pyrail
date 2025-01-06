@@ -58,8 +58,10 @@ select = [
     "W",  # pycodestyle warnings
 ]
 ignore = [
+    "D203", # vs D211 (no blank line before class)
+    "D213", # vs D212 (multi line summary first line)
     "E501", # line too long
-    "W191",  # indentation contains tabs
+    "W191", # indentation contains tabs
 ]
 
 [tool.ruff.lint.isort]
