@@ -131,4 +131,5 @@ class Disturbance(DataClassORJSONMixin):
 
 @dataclass
 class DisturbancesResponse(ApiResponse):
+    """Encapsulates multiple disturbances returned by the disturbances endpoint."""
     disturbance: List[Disturbance]  # List of disturbances
