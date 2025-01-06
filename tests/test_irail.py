@@ -55,11 +55,11 @@ async def test_get_stations():
         assert stations is not None, "The response should not be None"
 
         # Validate that the response is a list
-        assert isinstance(stations, list), "Expected response to be a list"
+        assert isinstance(stations, list), "Expected the response to be a list"
 
         # Validate the structure of a station
         assert isinstance(
-            stations[0], Station), "Expected 'station' to be a list"
+            stations[0], Station), "Expected the first item to be a Station object"
         assert len(stations) > 0, "Expected at least one station in the response"
 
 

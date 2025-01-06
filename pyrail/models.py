@@ -8,12 +8,16 @@ from mashumaro.mixins.orjson import DataClassORJSONMixin
 
 @dataclass
 class ApiResponse(DataClassORJSONMixin):
+    """Base class for API responses, including schema version and timestamp."""
+
     version: str  # Version of the response schema
     timestamp: int  # Timestamp of the response
 
 
 @dataclass
 class Station(DataClassORJSONMixin):
+    """Represents a single railway station with location and naming attributes."""
+
     id: str  # The (iRail) ID of the station
     # Corresponds to "@id" in the schema
     at_id: str = field(metadata=field_options(alias="@id"))
@@ -28,5 +32,7 @@ class Station(DataClassORJSONMixin):
 
 @dataclass
 class StationsApiResponse(ApiResponse):
+    """Holds a list of station objects returned by the 'stations' endpoint."""
+
     stations: List[Station] = field(metadata=field_options(
         alias="station"))  # List of stations information
