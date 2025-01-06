@@ -114,8 +114,8 @@ class Connection(DataClassORJSONMixin):
 
 @dataclass
 class ConnectionsResponse(ApiResponse):
+    """Holds a list of train connections returned by the connections endpoint."""
     connection: List[Connection] = field(default_factory=list)  # List of connections
-
 
 @dataclass
 class Disturbance(DataClassORJSONMixin):
