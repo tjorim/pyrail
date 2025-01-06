@@ -43,12 +43,12 @@ class Departures(DataClassORJSONMixin):
 
 @dataclass
 class LiveboardResponse(ApiResponse):
+    """Represents a liveboard response containing station details and departures."""
     station: str  # Name of the station
     station_info: Station | None = field(
         metadata=field_options(alias="stationinfo")
     )  # Reusing the `Station` class for detailed station information
     departures: Departures  # Departures information
-
 
 @dataclass
 class VehicleInfo(DataClassORJSONMixin):
