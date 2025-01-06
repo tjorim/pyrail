@@ -16,7 +16,6 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
 
-
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
 
