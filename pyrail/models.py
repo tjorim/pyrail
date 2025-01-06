@@ -94,6 +94,7 @@ class CompositionSegments(DataClassORJSONMixin):
 
 @dataclass
 class CompositionResponse(ApiResponse):
+    """Encapsulates the response containing composition details for a specific journey."""
     composition: CompositionSegments  # Composition details
 
 
