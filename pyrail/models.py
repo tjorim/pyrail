@@ -80,11 +80,11 @@ class SegmentComposition(DataClassORJSONMixin):
 
 @dataclass
 class Segment(DataClassORJSONMixin):
+    """Defines a single segment within a journey, including composition details."""
     id: str  # ID of the segment
     origin: Station  # Origin station information
     destination: Station  # Destination station information
     composition: SegmentComposition  # Composition details of the segment
-
 
 @dataclass
 class CompositionSegments(DataClassORJSONMixin):
