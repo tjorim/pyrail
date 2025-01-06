@@ -88,9 +88,9 @@ class Segment(DataClassORJSONMixin):
 
 @dataclass
 class CompositionSegments(DataClassORJSONMixin):
+    """Represents multiple journey segments, each having its own composition details."""
     number: int  # Number of segments
     segment: List[Segment] = field(metadata=field_options(alias="segment"))  # List of segments
-
 
 @dataclass
 class CompositionResponse(ApiResponse):
