@@ -233,7 +233,44 @@ class iRail:
 
         return True
 
-    async def do_request(self, method: str, args: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    async def _handle_success_response(self, response: ClientResponse, method: str) -> Dict[str, Any] | None:
+        """Handle a successful API response."""
+        if "Etag" in response.headers:
+            self.etag_cache[method] = response.headers["Etag"]
+        try:
+            json_data: Dict[str, Any] | None = await response.json()
+            if not json_data:
+                logger.warning("Empty response received")
+            return json_data
+        except ValueError:
+            logger.error("Failed to parse JSON response")
+            return None
+
+    async def _handle_response(self, response: ClientResponse, method: str, args: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
+        """Handle the API response based on status code."""
+        if response.status == 429:
+            retry_after: int = int(response.headers.get("Retry-After", 1))
+            logger.warning(
+                "Rate limited, retrying after %d seconds", retry_after)
+            await asyncio.sleep(retry_after)
+            return await self._do_request(method, args)
+        elif response.status == 400:
+            logger.error("Bad request: %s", await response.text())
+            return None
+        elif response.status == 404:
+            logger.error("Endpoint %s not found, response: %s", method, await response.text())
+            return None
+        elif response.status == 200:
+            return await self._handle_success_response(response, method)
+        elif response.status == 304:
+            logger.info(
+                "Data not modified, using cached data for method %s", method)
+            return None
+        else:
+            logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
+            return None
+
+    async def _do_request(self, method: str, args: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
 
         This method handles API requests with rate limiting, parameter validation,
@@ -281,38 +318,7 @@ class iRail:
 
         try:
             async with self.session.get(url, params=params, headers=request_headers) as response:
-                if response.status == 429:
-                    retry_after: int = int(response.headers.get("Retry-After", 1))
-                    logger.warning("Rate limited, retrying after %d seconds", retry_after)
-                    await asyncio.sleep(retry_after)
-                    return await self.do_request(method, args)
-                elif response.status == 400:
-                    error_text = await response.text()
-                    logger.error("Bad request: %s", error_text)
-                    return None
-                elif response.status == 404:
-                    logger.error("Endpoint not found: %s", url)
-                    return None
-                if response.status == 200:
-                    # Cache the ETag from the response
-                    if "Etag" in response.headers:
-                        self.etag_cache[method] = response.headers["Etag"]
-                    try:
-                        json_data = await response.json()
-                        if not json_data:
-                            logger.warning("Empty response received")
-                        return json_data
-                    except ValueError:
-                        logger.error("Failed to parse JSON response")
-                        return None
-                elif response.status == 304:
-                    logger.info("Data not modified, using cached data")
-                    return None
-                else:
-                    logger.error(
-                        "Request failed with status code: %s, response: %s", response.status, await response.text()
-                    )
-                    return None
+                return await self._handle_response(response, method, args)
         except ClientError as e:
             logger.error("Request failed due to an exception: %s", e)
             return None
@@ -333,7 +339,7 @@ class iRail:
                     print(f"Total stations: {len(stations)}")
 
         """
-        return await self.do_request("stations")
+        return await self._do_request("stations")
 
     async def get_liveboard(
         self,
@@ -375,7 +381,7 @@ class iRail:
             "arrdep": arrdep,
             "alerts": "true" if alerts else "false",
         }
-        return await self.do_request("liveboard", {k: v for k, v in extra_params.items() if v is not None})
+        return await self._do_request("liveboard", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_connections(
         self,
@@ -414,7 +420,7 @@ class iRail:
             "timesel": timesel,
             "typeOfTransport": type_of_transport,
         }
-        return await self.do_request("connections", {k: v for k, v in extra_params.items() if v is not None})
+        return await self._do_request("connections", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_vehicle(self, id: str, date: Optional[str] = None, alerts: bool = False) -> Optional[Dict[str, Any]]:
         """Retrieve detailed information about a specific train vehicle.
@@ -432,8 +438,7 @@ class iRail:
                 vehicle_info = await client.get_vehicle("BE.NMBS.IC1832")
 
         """
-        extra_params: Dict[str, Optional[Any]] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
-        return await self.do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
+        return await self._do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_composition(self, id: str, data: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Retrieve the composition details of a specific train.
@@ -451,7 +456,7 @@ class iRail:
 
         """
         extra_params: Dict[str, Optional[str]] = {"id": id, "data": data}
-        return await self.do_request("composition", {k: v for k, v in extra_params.items() if v is not None})
+        return await self._do_request("composition", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_disturbances(self, line_break_character: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Retrieve information about current disturbances on the rail network.
@@ -470,4 +475,4 @@ class iRail:
 
         """
         extra_params = {"lineBreakCharacter": line_break_character}
-        return await self.do_request("disturbances", {k: v for k, v in extra_params.items() if v is not None})
+        return await self._do_request("disturbances", {k: v for k, v in extra_params.items() if v is not None})
