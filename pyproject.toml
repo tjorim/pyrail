@@ -28,6 +28,22 @@ pytest-asyncio = "^0.25.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.4"
+mypy = "^1.14.1"
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+exclude = ["^tests/"]
+no_implicit_optional = true
+python_version = "3.12"
+show_error_codes = true
+strict = true
+strict_equality = true
+warn_return_any = true
+warn_unused_configs = true
 
 [tool.ruff]
 line-length = 120
