@@ -1,14 +1,15 @@
 """Module providing the iRail class for interacting with the iRail API."""
-
 import asyncio
 from asyncio import Lock
 from datetime import datetime
 import logging
 import time
 from types import TracebackType
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
+
+from pyrail.models import Station, StationsApiResponse
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -356,14 +357,14 @@ class iRail:
             logger.error("Request failed due to an exception: %s", e)
             return None
 
-    async def get_stations(self) -> Dict[str, Any] | None:
+    async def get_stations(self) -> List[Station] | None:
         """Retrieve a list of all train stations from the iRail API.
 
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
         Returns:
-            Dict[str, Any] or None: A dictionary containing station information, or None if the request fails.
-            The returned dictionary typically includes details about all train stations supported by the iRail API.
+            List[Station] or None: A list of stations containing station information, or None if the request fails.
+            This typically includes details about all train stations supported by the iRail API.
 
         Example:
             async with iRail() as client:
@@ -372,7 +373,12 @@ class iRail:
                     print(f"Total stations: {len(stations)}")
 
         """
-        return await self._do_request("stations")
+        stations_dict = await self._do_request("stations")
+        if stations_dict is None:
+            return None
+        stations_response: StationsApiResponse = StationsApiResponse.from_dict(
+            stations_dict)
+        return stations_response.stations
 
     async def get_liveboard(
         self,
