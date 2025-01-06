@@ -8,19 +8,17 @@ import time
 from types import TracebackType
 from typing import Any, Dict, Optional, Type
 
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientResponse, ClientSession
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
-
-base_url: str = "https://api.irail.be/{}/"
 
 
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
 
     Attributes:
-        format (str): The data format for API responses ('json', 'xml', 'jsonp').
         lang (str): The language for API responses ('nl', 'fr', 'en', 'de').
 
     Endpoints:
@@ -48,15 +46,13 @@ class iRail:
         "disturbances": {"optional": ["lineBreakCharacter"]},
     }
 
-    def __init__(self, format: str = "json", lang: str = "en") -> None:
+    def __init__(self, lang: str = "en") -> None:
         """Initialize the iRail API client.
 
         Args:
-            format (str): The format of the API responses. Default is 'json'.
             lang (str): The language for API responses. Default is 'en'.
 
         """
-        self.format: str = format
         self.lang: str = lang
         self.tokens: int = 3
         self.burst_tokens: int = 5
@@ -80,30 +76,6 @@ class iRail:
                 await self.session.close()
             except Exception as e:
                 logger.error("Error closing session: %s", e)
-
-    @property
-    def format(self) -> str:
-        """Get the response format for API requests.
-
-        Returns:
-            str: The current format setting ('xml', 'json', or 'jsonp').
-
-        """
-        return self.__format
-
-    @format.setter
-    def format(self, value: str) -> None:
-        """Set the response format for API requests.
-
-        Args:
-            value (str): The format to use. Must be one of: 'xml', 'json', or 'jsonp'.
-                        If an invalid value is provided, defaults to 'json'.
-
-        """
-        if value in ["xml", "json", "jsonp"]:
-            self.__format = value
-        else:
-            self.__format = "json"
 
     @property
     def lang(self) -> str:
@@ -163,10 +135,11 @@ class iRail:
             self.tokens -= 1
 
     def _add_etag_header(self, method: str) -> Dict[str, str]:
-        """Add ETag header if a cached ETag exists."""
-        headers: Dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
+        headers: Dict[str, str] = {
+            "User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
         if method in self.etag_cache:
-            logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
+            logger.debug("Adding If-None-Match header with value: %s",
+                         self.etag_cache[method])
             headers["If-None-Match"] = self.etag_cache[method]
         return headers
 
@@ -178,7 +151,8 @@ class iRail:
             datetime.strptime(date, "%d%m%y")
             return True
         except ValueError:
-            logger.error("Invalid date format. Expected DDMMYY (e.g., 150923 for September 15, 2023), got: %s", date)
+            logger.error(
+                "Invalid date format. Expected DDMMYY (e.g., 150923 for September 15, 2023), got: %s", date)
             return False
 
     def _validate_time(self, time: Optional[str]) -> bool:
@@ -189,15 +163,16 @@ class iRail:
             datetime.strptime(time, "%H%M")
             return True
         except ValueError:
-            logger.error("Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
+            logger.error(
+                "Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
             return False
 
-    def validate_params(self, method: str, params: Optional[Dict[str, Any]] = None) -> bool:
+    def _validate_params(self, method: str, params: Dict[str, Any] | None = None) -> bool:
         """Validate parameters for a specific iRail API endpoint based on predefined requirements.
 
         Args:
             method (str): The API endpoint method to validate parameters for.
-            params (Optional[Dict[str, Any]], optional): Dictionary of parameters to validate. Defaults to None.
+            params (Dict[str, Any], optional): Dictionary of parameters to validate. Defaults to None.
 
         Returns:
             bool: True if parameters are valid, False otherwise.
@@ -236,21 +211,24 @@ class iRail:
         # Ensure all required parameters are present
         for param in required:
             if param not in params or params[param] is None:
-                logger.error("Missing required parameter: %s for endpoint: %s", param, method)
+                logger.error(
+                    "Missing required parameter: %s for endpoint: %s", param, method)
                 return False
 
         # Check XOR logic (only one of XOR parameters can be set)
         if xor:
             xor_values = [params.get(param) is not None for param in xor]
             if sum(xor_values) != 1:
-                logger.error("Exactly one of the XOR parameters %s must be provided for endpoint: %s", xor, method)
+                logger.error(
+                    "Exactly one of the XOR parameters %s must be provided for endpoint: %s", xor, method)
                 return False
 
         # Ensure no unexpected parameters are included
         all_params = required + xor + optional
         for param in params.keys():
             if param not in all_params:
-                logger.error("Unexpected parameter: %s for endpoint: %s", param, method)
+                logger.error(
+                    "Unexpected parameter: %s for endpoint: %s", param, method)
                 return False
 
         return True
@@ -283,17 +261,19 @@ class iRail:
         """
         logger.info("Starting request to endpoint: %s", method)
         if self.session is None:
-            logger.error("Session not initialized. Use 'async with' context manager to initialize the client.")
+            logger.error(
+                "Session not initialized. Use 'async with' context manager to initialize the client.")
             return None
-        if not self.validate_params(method, args or {}):
-            logger.error("Validation failed for method: %s with args: %s", method, args)
+        if not self._validate_params(method, args or {}):
+            logger.error(
+                "Validation failed for method: %s with args: %s", method, args)
             return None
         async with self.lock:
             await self._handle_rate_limit()
 
         # Construct the request URL and parameters
-        url: str = base_url.format(method)
-        params = {"format": self.format, "lang": self.lang}
+        url: str = "https://api.irail.be/{}/".format(method)
+        params = {"format": "json", "lang": self.lang}
         if args:
             params.update(args)
 
