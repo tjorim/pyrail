@@ -67,10 +67,10 @@ class Stops(DataClassORJSONMixin):
 
 @dataclass
 class VehicleResponse(ApiResponse):
+    """Provides detailed data about a particular vehicle, including its stops."""
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle information
     stops: Stops  # Stops information
-
 
 @dataclass
 class SegmentComposition(DataClassORJSONMixin):
