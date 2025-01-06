@@ -61,9 +61,9 @@ class VehicleInfo(DataClassORJSONMixin):
 
 @dataclass
 class Stops(DataClassORJSONMixin):
+    """Holds the number of stops and a list of detailed stop information."""
     number: int  # Number of stops
     stop: List[dict] = field(default_factory=list)  # List of stop details
-
 
 @dataclass
 class VehicleResponse(ApiResponse):
