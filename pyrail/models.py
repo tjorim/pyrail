@@ -121,6 +121,7 @@ class ConnectionsResponse(ApiResponse):
 
 @dataclass
 class Disturbance(DataClassORJSONMixin):
+    """Represents a railway system disturbance, including description and metadata."""
     id: str  # ID of the disturbance
     title: str  # Title of the disturbance
     description: str  # Description of the disturbance
@@ -128,7 +129,6 @@ class Disturbance(DataClassORJSONMixin):
     type: str  # Type of disturbance (e.g., "disturbance", "planned")
     timestamp: int  # Timestamp of the disturbance
     attachment: str | None = None  # Optional attachment URL
-
 
 @dataclass
 class DisturbancesResponse(ApiResponse):
