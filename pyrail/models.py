@@ -35,11 +35,60 @@ class StationsApiResponse(ApiResponse):
 
 
 @dataclass
+class VehicleInfo(DataClassORJSONMixin):
+    """Represents information about a specific vehicle, including name and location."""
+
+    name: str  # Name of the vehicle
+    longitude: float = field(metadata=field_options(alias="locationX"))  # Longitude of the vehicle
+    latitude: float = field(metadata=field_options(alias="locationY"))  # Latitude of the vehicle
+    short_name: str = field(metadata=field_options(alias="shortname"))  # Shortened name of the vehicle
+    at_id: str = field(metadata=field_options(alias="@id"))  # ID of the vehicle
+    number: str  # Number of the vehicle
+    type: str  # Type of vehicle (e.g., IC, EC)
+
+
+@dataclass
+class PlatformInfo(DataClassORJSONMixin):
+    """Details about the platform, such as name and whether it is the normal one."""
+
+    name: str  # Platform name
+    normal: bool  # Whether it is the normal platform
+
+
+@dataclass
+class Occupancy(DataClassORJSONMixin):
+    """Represents occupancy details for a specific departure."""
+
+    at_id: str = field(metadata=field_options(alias="@id"))  # Identifier for the occupancy level
+    name: str  # Occupancy level (e.g., low, high)
+
+
+@dataclass
+class Departure(DataClassORJSONMixin):
+    """Details of a single departure, including timing, delay, and vehicle information."""
+
+    id: str  # ID of the departure
+    station: str  # Station name
+    station_info: Station = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    time: int  # Departure time (timestamp)
+    delay: int  # Delay in seconds
+    canceled: bool  # Whether the departure is canceled
+    left: bool  # Whether the train has left
+    is_extra: bool = field(metadata=field_options(alias="isExtra"))  # Whether the train is extra
+    vehicle: str  # Vehicle identifier
+    vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
+    platform: str  # Platform name
+    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
+    occupancy: Occupancy  # Occupancy level
+    departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
+
+
+@dataclass
 class Departures(DataClassORJSONMixin):
     """Represents departures data for a railway station."""
 
     number: int  # Number of departures
-    departure: List[dict] = field(default_factory=list)  # List of departure details
+    departure: List[Departure] = field(default_factory=list)  # List of departure details
 
 
 @dataclass
@@ -51,17 +100,6 @@ class LiveboardApiResponse(ApiResponse):
         metadata=field_options(alias="stationinfo")
     )  # Reusing the `Station` class for detailed station information
     departures: Departures  # Departures information
-
-
-@dataclass
-class VehicleInfo(DataClassORJSONMixin):
-    """Represents information about a specific vehicle, including name and location."""
-
-    name: str  # Name of the vehicle
-    longitude: float = field(metadata=field_options(alias="locationX"))  # Longitude of the vehicle
-    latitude: float = field(metadata=field_options(alias="locationY"))  # Latitude of the vehicle
-    short_name: str = field(metadata=field_options(alias="shortname"))  # Shortened name of the vehicle
-    at_id: str = field(metadata=field_options(alias="@id"))  # ID of the vehicle
 
 
 @dataclass
