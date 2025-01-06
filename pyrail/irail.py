@@ -1,12 +1,11 @@
 """Module providing the iRail class for interacting with the iRail API."""
-
 import asyncio
 from asyncio import Lock
 from datetime import datetime
 import logging
 import time
 from types import TracebackType
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -358,7 +357,7 @@ class iRail:
             logger.error("Request failed due to an exception: %s", e)
             return None
 
-    async def get_stations(self) -> list[Station] | None:
+    async def get_stations(self) -> List[Station] | None:
         """Retrieve a list of all train stations from the iRail API.
 
         This method fetches the complete list of available train stations without any additional filtering parameters.
@@ -377,7 +376,8 @@ class iRail:
         stations_dict = await self._do_request("stations")
         if stations_dict is None:
             return None
-        stations_response: StationsApiResponse = StationsApiResponse.from_dict(stations_dict)
+        stations_response: StationsApiResponse = StationsApiResponse.from_dict(
+            stations_dict)
         return stations_response.stations
 
     async def get_liveboard(

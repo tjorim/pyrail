@@ -1,3 +1,4 @@
+"""Module defining data models for the pyrail application."""
 from dataclasses import dataclass, field
 from typing import List
 
@@ -14,13 +15,18 @@ class ApiResponse(DataClassORJSONMixin):
 @dataclass
 class Station(DataClassORJSONMixin):
     id: str  # The (iRail) ID of the station
-    at_id: str = field(metadata=field_options(alias="@id"))  # Corresponds to "@id" in the schema
-    location_x: float = field(metadata=field_options(alias="locationX"))  # Longitude of the station
-    location_y: float = field(metadata=field_options(alias="locationY"))  # Latitude of the station
-    standard_name: str = field(metadata=field_options(alias="standardname"))  # Consistent name of the station
+    # Corresponds to "@id" in the schema
+    at_id: str = field(metadata=field_options(alias="@id"))
+    location_x: float = field(metadata=field_options(
+        alias="locationX"))  # Longitude of the station
+    location_y: float = field(metadata=field_options(
+        alias="locationY"))  # Latitude of the station
+    standard_name: str = field(metadata=field_options(
+        alias="standardname"))  # Consistent name of the station
     name: str  # Default name of the station
 
 
 @dataclass
 class StationsApiResponse(ApiResponse):
-    stations: List[Station] = field(metadata=field_options(alias="station"))  # List of stations information
+    stations: List[Station] = field(metadata=field_options(
+        alias="station"))  # List of stations information
