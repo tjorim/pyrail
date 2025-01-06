@@ -74,9 +74,9 @@ class VehicleResponse(ApiResponse):
 
 @dataclass
 class SegmentComposition(DataClassORJSONMixin):
+    """Describes a collection of train units and related metadata."""
     source: str  # Source of the composition
     units: List[dict] = field(metadata=field_options(alias="unit"))  # List of units in the composition
-
 
 @dataclass
 class Segment(DataClassORJSONMixin):
