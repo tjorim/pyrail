@@ -10,11 +10,12 @@ from typing import Any, Dict, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
-from pyrail.models import Station, StationAPIResponse
+from pyrail.models import Station, StationsApiResponse
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
+
 
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
@@ -376,8 +377,8 @@ class iRail:
         stations_dict = await self._do_request("stations")
         if stations_dict is None:
             return None
-        stations_response: StationAPIResponse = StationAPIResponse.from_dict(stations_dict)
-        return stations_response.station
+        stations_response: StationsApiResponse = StationsApiResponse.from_dict(stations_dict)
+        return stations_response.stations
 
     async def get_liveboard(
         self,

@@ -6,20 +6,21 @@ from mashumaro.mixins.orjson import DataClassORJSONMixin
 
 
 @dataclass
+class ApiResponse(DataClassORJSONMixin):
+    version: str  # Version of the response schema
+    timestamp: int  # Timestamp of the response
+
+
+@dataclass
 class Station(DataClassORJSONMixin):
-    id: str = field(metadata=field_options(alias="id"))
-    name: str = field(metadata=field_options(alias="name"))
-    location_x: str = field(metadata=field_options(alias="locationX"))
-    location_y: str = field(metadata=field_options(alias="locationY"))
-    standardname: str = field(metadata=field_options(alias="standardname"))
+    id: str  # The (iRail) ID of the station
+    at_id: str = field(metadata=field_options(alias="@id"))  # Corresponds to "@id" in the schema
+    location_x: float = field(metadata=field_options(alias="locationX"))  # Longitude of the station
+    location_y: float = field(metadata=field_options(alias="locationY"))  # Latitude of the station
+    standard_name: str = field(metadata=field_options(alias="standardname"))  # Consistent name of the station
+    name: str  # Default name of the station
 
 
 @dataclass
-class APIResponse(DataClassORJSONMixin):
-    version: str
-    timestamp: str
-
-
-@dataclass
-class StationAPIResponse(APIResponse):
-    station: List[Station]
+class StationsApiResponse(ApiResponse):
+    stations: List[Station] = field(metadata=field_options(alias="station"))  # List of stations information
