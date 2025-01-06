@@ -52,12 +52,12 @@ class LiveboardResponse(ApiResponse):
 
 @dataclass
 class VehicleInfo(DataClassORJSONMixin):
+    """Represents information about a specific vehicle, including name and location."""
     name: str  # Name of the vehicle
     location_x: float = field(metadata=field_options(alias="locationX"))  # Longitude of the vehicle
     location_y: float = field(metadata=field_options(alias="locationY"))  # Latitude of the vehicle
     short_name: str = field(metadata=field_options(alias="shortname"))  # Shortened name of the vehicle
     at_id: str = field(metadata=field_options(alias="@id"))  # ID of the vehicle
-
 
 @dataclass
 class Stops(DataClassORJSONMixin):
