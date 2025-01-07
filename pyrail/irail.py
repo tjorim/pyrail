@@ -1,4 +1,5 @@
 """Module providing the iRail class for interacting with the iRail API."""
+
 import asyncio
 from asyncio import Lock
 from datetime import datetime
@@ -9,10 +10,9 @@ from typing import Any, Dict, List, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
-from pyrail.models import Station, StationsApiResponse
+from pyrail.models import StationDetails, StationsApiResponse
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
 
 
@@ -151,11 +151,9 @@ class iRail:
             if a cached value exists.
 
         """
-        headers: Dict[str, str] = {
-            "User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
+        headers: Dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
         if method in self.etag_cache:
-            logger.debug("Adding If-None-Match header with value: %s",
-                         self.etag_cache[method])
+            logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
             headers["If-None-Match"] = self.etag_cache[method]
         return headers
 
@@ -176,8 +174,7 @@ class iRail:
             datetime.strptime(date, "%d%m%y")
             return True
         except ValueError:
-            logger.error(
-                "Invalid date format. Expected DDMMYY (e.g., 150923 for September 15, 2023), got: %s", date)
+            logger.error("Invalid date format. Expected DDMMYY (e.g., 150923 for September 15, 2023), got: %s", date)
             return False
 
     def _validate_time(self, time: str | None) -> bool:
@@ -197,8 +194,7 @@ class iRail:
             datetime.strptime(time, "%H%M")
             return True
         except ValueError:
-            logger.error(
-                "Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
+            logger.error("Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
             return False
 
     def _validate_params(self, method: str, params: Dict[str, Any] | None = None) -> bool:
@@ -245,24 +241,21 @@ class iRail:
         # Ensure all required parameters are present
         for param in required:
             if param not in params or params[param] is None:
-                logger.error(
-                    "Missing required parameter: %s for endpoint: %s", param, method)
+                logger.error("Missing required parameter: %s for endpoint: %s", param, method)
                 return False
 
         # Check XOR logic (only one of XOR parameters can be set)
         if xor:
             xor_values = [params.get(param) is not None for param in xor]
             if sum(xor_values) != 1:
-                logger.error(
-                    "Exactly one of the XOR parameters %s must be provided for endpoint: %s", xor, method)
+                logger.error("Exactly one of the XOR parameters %s must be provided for endpoint: %s", xor, method)
                 return False
 
         # Ensure no unexpected parameters are included
         all_params = required + xor + optional
         for param in params.keys():
             if param not in all_params:
-                logger.error(
-                    "Unexpected parameter: %s for endpoint: %s", param, method)
+                logger.error("Unexpected parameter: %s for endpoint: %s", param, method)
                 return False
 
         return True
@@ -280,12 +273,13 @@ class iRail:
             logger.error("Failed to parse JSON response")
             return None
 
-    async def _handle_response(self, response: ClientResponse, method: str, args: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
+    async def _handle_response(
+        self, response: ClientResponse, method: str, args: Dict[str, Any] | None = None
+    ) -> Dict[str, Any] | None:
         """Handle the API response based on status code."""
         if response.status == 429:
             retry_after: int = int(response.headers.get("Retry-After", 1))
-            logger.warning(
-                "Rate limited, retrying after %d seconds", retry_after)
+            logger.warning("Rate limited, retrying after %d seconds", retry_after)
             await asyncio.sleep(retry_after)
             return await self._do_request(method, args)
         elif response.status == 400:
@@ -297,8 +291,7 @@ class iRail:
         elif response.status == 200:
             return await self._handle_success_response(response, method)
         elif response.status == 304:
-            logger.info(
-                "Data not modified, using cached data for method %s", method)
+            logger.info("Data not modified, using cached data for method %s", method)
             return None
         else:
             logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
@@ -332,12 +325,10 @@ class iRail:
         """
         logger.info("Starting request to endpoint: %s", method)
         if self.session is None:
-            logger.error(
-                "Session not initialized. Use 'async with' context manager to initialize the client.")
+            logger.error("Session not initialized. Use 'async with' context manager to initialize the client.")
             return None
         if not self._validate_params(method, args or {}):
-            logger.error(
-                "Validation failed for method: %s with args: %s", method, args)
+            logger.error("Validation failed for method: %s with args: %s", method, args)
             return None
         async with self.lock:
             await self._handle_rate_limit()
@@ -357,7 +348,7 @@ class iRail:
             logger.error("Request failed due to an exception: %s", e)
             return None
 
-    async def get_stations(self) -> List[Station] | None:
+    async def get_stations(self) -> List[StationDetails] | None:
         """Retrieve a list of all train stations from the iRail API.
 
         This method fetches the complete list of available train stations without any additional filtering parameters.
@@ -376,8 +367,7 @@ class iRail:
         stations_dict = await self._do_request("stations")
         if stations_dict is None:
             return None
-        stations_response: StationsApiResponse = StationsApiResponse.from_dict(
-            stations_dict)
+        stations_response: StationsApiResponse = StationsApiResponse.from_dict(stations_dict)
         return stations_response.stations
 
     async def get_liveboard(
@@ -477,8 +467,7 @@ class iRail:
                 vehicle_info = await client.get_vehicle("BE.NMBS.IC1832")
 
         """
-        extra_params: Dict[str, Any] = {
-            "id": id, "date": date, "alerts": "true" if alerts else "false"}
+        extra_params: Dict[str, Any] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
         return await self._do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
 
     async def get_composition(self, id: str, data: str | None = None) -> Dict[str, Any] | None:

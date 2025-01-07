@@ -1,11 +1,12 @@
 """Unit tests for the iRail API wrapper."""
+
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 from aiohttp import ClientSession
 import pytest
 
-from pyrail.irail import Station, iRail
+from pyrail.irail import StationDetails, iRail
 
 
 @pytest.mark.asyncio
@@ -23,8 +24,7 @@ async def test_successful_request(mock_get):
         mock_get.assert_called_once_with(
             "https://api.irail.be/stations/",
             params={"format": "json", "lang": "en"},
-            headers={
-                "User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"},
+            headers={"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"},
         )
         assert response == {"data": "some_data"}
         assert mock_response.status == 200
@@ -58,8 +58,7 @@ async def test_get_stations():
         assert isinstance(stations, list), "Expected the response to be a list"
 
         # Validate the structure of a station
-        assert isinstance(
-            stations[0], Station), "Expected the first item to be a Station object"
+        assert isinstance(stations[0], StationDetails), "Expected the first item to be a Station object"
         assert len(stations) > 0, "Expected at least one station in the response"
 
 
@@ -80,18 +79,15 @@ async def test_get_connections():
         assert connections is not None, "The response should not be None"
 
         # Validate that the response is a dictionary
-        assert isinstance(
-            connections, dict), "Expected response to be a dictionary"
+        assert isinstance(connections, dict), "Expected response to be a dictionary"
 
         # Validate the presence of key fields
         assert "connection" in connections, "Expected the response to contain a 'connection' key"
 
         # Validate the structure of connection data
         connection_list = connections.get("connection", [])
-        assert isinstance(
-            connection_list, list), "Expected 'connection' to be a list"
-        assert len(
-            connection_list) > 0, "Expected at least one connection in the response"
+        assert isinstance(connection_list, list), "Expected 'connection' to be a list"
+        assert len(connection_list) > 0, "Expected at least one connection in the response"
 
 
 @pytest.mark.asyncio
