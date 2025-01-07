@@ -1,7 +1,7 @@
 """Module defining data models for the pyrail application."""
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -81,7 +81,7 @@ class LiveboardDeparture(DataClassORJSONMixin):
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
     platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
-    occupancy: Occupancy  # Occupancy level
+    occupancy: Optional[Occupancy]  # Occupancy level
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
 
 
@@ -262,8 +262,12 @@ class VehicleStop(DataClassORJSONMixin):
     left: bool  # Whether the train has left
     arrived: bool  # Whether the train has arrived
     is_extra_stop: bool = field(metadata=field_options(alias="isExtraStop"))  # Whether this is an extra stop
-    occupancy: Occupancy  # Occupancy level
-    departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
+    occupancy: Optional[Occupancy] = field(
+        default_factory=lambda: None, metadata=field_options(alias="occupancy")
+    )  # Occupancy level
+    departure_connection: Optional[str] = field(
+        default_factory=lambda: None, metadata=field_options(alias="departureConnection")
+    )  # Departure connection link
 
 
 @dataclass
@@ -299,7 +303,6 @@ class Unit(DataClassORJSONMixin):
     id: str  # Unit ID
     material_type: MaterialType = field(metadata=field_options(alias="materialType"))  # Material type of the unit
     has_toilets: bool = field(metadata=field_options(alias="hasToilets"))  # Whether the unit has toilets
-    has_tables: bool = field(metadata=field_options(alias="hasTables"))  # Whether the unit has tables
     has_second_class_outlets: bool = field(
         metadata=field_options(alias="hasSecondClassOutlets")
     )  # Whether the unit has power outlets in second class
@@ -331,9 +334,6 @@ class Unit(DataClassORJSONMixin):
     has_semi_automatic_interior_doors: bool = field(
         metadata=field_options(alias="hasSemiAutomaticInteriorDoors")
     )  # Whether the unit has semi-automatic interior doors
-    has_luggage_section: bool = field(
-        metadata=field_options(alias="hasLuggageSection")
-    )  # Whether the unit has a luggage section
     material_sub_type_name: str = field(metadata=field_options(alias="materialSubTypeName"))  # Material sub type name
     traction_position: int = field(metadata=field_options(alias="tractionPosition"))  # Traction position of the unit
     has_prm_section: bool = field(metadata=field_options(alias="hasPrmSection"))  # Whether the unit has a PRM section
@@ -343,6 +343,12 @@ class Unit(DataClassORJSONMixin):
     has_bike_section: bool = field(
         metadata=field_options(alias="hasBikeSection")
     )  # Whether the unit has a bike section
+    has_tables: Optional[bool] = field(
+        default_factory=lambda: None, metadata=field_options(alias="hasTables")
+    )  # Whether the unit has tables
+    has_luggage_section: Optional[bool] = field(
+        default_factory=lambda: None, metadata=field_options(alias="hasLuggageSection")
+    )  # Whether the unit has a luggage section
 
 
 @dataclass
