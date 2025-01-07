@@ -16,22 +16,24 @@ class ApiResponse(DataClassORJSONMixin):
 
 
 @dataclass
-class Station(DataClassORJSONMixin):
+class StationDetails(DataClassORJSONMixin):
     """Represents a single railway station with location and naming attributes."""
 
-    id: str  # The (iRail) ID of the station
     at_id: str = field(metadata=field_options(alias="@id"))  # Corresponds to "@id" in the schema
+    id: str  # The (iRail) ID of the station
+    name: str  # Default name of the station
     longitude: float = field(metadata=field_options(alias="locationX"))  # Longitude of the station
     latitude: float = field(metadata=field_options(alias="locationY"))  # Latitude of the station
     standard_name: str = field(metadata=field_options(alias="standardname"))  # Consistent name of the station
-    name: str  # Default name of the station
 
 
 @dataclass
 class StationsApiResponse(ApiResponse):
     """Holds a list of station objects returned by the 'stations' endpoint."""
 
-    stations: List[Station] = field(metadata=field_options(alias="station"))  # List of stations information
+    stations: List[StationDetails] = field(
+        metadata=field_options(alias="station"), default_factory=list
+    )  # List of stations information
 
 
 @dataclass
@@ -39,12 +41,12 @@ class VehicleInfo(DataClassORJSONMixin):
     """Represents information about a specific vehicle, including name and location."""
 
     name: str  # Name of the vehicle
-    longitude: float = field(metadata=field_options(alias="locationX"))  # Longitude of the vehicle
-    latitude: float = field(metadata=field_options(alias="locationY"))  # Latitude of the vehicle
     short_name: str = field(metadata=field_options(alias="shortname"))  # Shortened name of the vehicle
-    at_id: str = field(metadata=field_options(alias="@id"))  # ID of the vehicle
     number: str  # Number of the vehicle
     type: str  # Type of vehicle (e.g., IC, EC)
+    longitude: float = field(metadata=field_options(alias="locationX"))  # Longitude of the vehicle
+    latitude: float = field(metadata=field_options(alias="locationY"))  # Latitude of the vehicle
+    at_id: str = field(metadata=field_options(alias="@id"))  # ID of the vehicle
 
 
 @dataclass
@@ -64,12 +66,12 @@ class Occupancy(DataClassORJSONMixin):
 
 
 @dataclass
-class Departure(DataClassORJSONMixin):
-    """Details of a single departure, including timing, delay, and vehicle information."""
+class LiveboardDeparture(DataClassORJSONMixin):
+    """Details of a single departure in the liveboard response."""
 
     id: str  # ID of the departure
     station: str  # Station name
-    station_info: Station = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
     time: int  # Departure time (timestamp)
     delay: int  # Delay in seconds
     canceled: bool  # Whether the departure is canceled
@@ -84,11 +86,11 @@ class Departure(DataClassORJSONMixin):
 
 
 @dataclass
-class Departures(DataClassORJSONMixin):
-    """Represents departures data for a railway station."""
+class LiveboardDepartures(DataClassORJSONMixin):
+    """Holds the number of departures and a list of detailed departure information."""
 
     number: int  # Number of departures
-    departure: List[Departure] = field(default_factory=list)  # List of departure details
+    departure: List[LiveboardDeparture] = field(default_factory=list)  # List of departure details
 
 
 @dataclass
@@ -96,18 +98,180 @@ class LiveboardApiResponse(ApiResponse):
     """Represents a liveboard response containing station details and departures."""
 
     station: str  # Name of the station
-    station_info: Station = field(
+    station_info: StationDetails = field(
         metadata=field_options(alias="stationinfo")
     )  # Reusing the `Station` class for detailed station information
-    departures: Departures  # Departures information
+    departures: LiveboardDepartures  # Departures information
 
 
 @dataclass
-class Stops(DataClassORJSONMixin):
-    """Holds the number of stops and a list of detailed stop information."""
+class ConnectionStop(DataClassORJSONMixin):
+    """Represents a single stop in a journey for connections."""
+
+    id: str  # Stop ID
+    station: str  # Station name
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    scheduled_arrival_time: int = field(metadata=field_options(alias="scheduledArrivalTime"))  # Scheduled arrival time
+    arrival_canceled: bool = field(metadata=field_options(alias="arrivalCanceled"))  # Arrival cancellation status
+    arrived: bool  # Arrival status
+    scheduled_departure_time: int = field(
+        metadata=field_options(alias="scheduledDepartureTime")
+    )  # Scheduled departure time
+    arrival_delay: int = field(metadata=field_options(alias="arrivalDelay"))  # Arrival delay
+    departure_delay: int = field(metadata=field_options(alias="departureDelay"))  # Departure delay
+    departure_canceled: bool = field(metadata=field_options(alias="departureCanceled"))  # Departure cancellation status
+    left: bool  # Departure status
+    is_extra_stop: bool = field(metadata=field_options(alias="isExtraStop"))  # Whether the stop is an extra one
+    platform: str  # Platform name
+    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
+
+
+@dataclass
+class ConnectionStops(DataClassORJSONMixin):
+    """Holds the number of stops and a list of detailed stop information for connections."""
 
     number: int  # Number of stops
-    stop: List[dict] = field(default_factory=list)  # List of stop details
+    stop: List[ConnectionStop] = field(default_factory=list)  # List of stop details
+
+
+@dataclass
+class Direction(DataClassORJSONMixin):
+    """Represents the direction of a train connection."""
+
+    name: str  # Direction name
+
+
+@dataclass
+class ConnectionDeparture(DataClassORJSONMixin):
+    """Details of a single departure in the connections response."""
+
+    delay: int  # Delay in seconds
+    station: str  # Station name
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    time: int  # Departure time (timestamp)
+    vehicle: str  # Vehicle identifier
+    vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
+    platform: str  # Platform name
+    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
+    canceled: bool  # Whether the departure is canceled
+    stops: ConnectionStops  # Stops along the journey
+    departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
+    direction: Direction  # Direction of the connection
+    left: bool  # Whether the train has left
+    walking: bool  # Indicates if the connection requires walking
+    occupancy: Occupancy  # Occupancy level
+
+
+@dataclass
+class ConnectionArrival(DataClassORJSONMixin):
+    """Details of a single arrival, including timing, delay, and vehicle information."""
+
+    delay: int  # Delay in seconds
+    station: str  # Station name
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    time: int  # Arrival time (timestamp)
+    vehicle: str  # Vehicle identifier
+    vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
+    platform: str  # Platform name
+    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
+    canceled: bool  # Whether the arrival is canceled
+    direction: Direction  # Direction of the connection
+    arrived: bool  # Whether the train has arrived
+    walking: bool  # Indicates if the connection requires walking
+    departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
+
+
+@dataclass
+class Remark(DataClassORJSONMixin):
+    """Represents a single remark for a train connection, including type and content."""
+
+    id: str  # Remark ID
+    # Unsure about the content of a remark, so using a generic type for now
+    content: str  # Remark content
+
+
+@dataclass
+class Remarks(DataClassORJSONMixin):
+    """Represents remarks for a train connection, including the type and content."""
+
+    number: int  # Number of remarks
+    remark: List[Remark] = field(default_factory=list)  # List of remarks
+
+
+@dataclass
+class Alert(DataClassORJSONMixin):
+    """Represents a single alert for a train connection, including type and content."""
+
+    id: str  # Alert ID
+    header: str  # Alert header
+    lead: str  # Alert lead
+    link: str  # Link to more information
+    start_time: int = field(metadata=field_options(alias="startTime"))  # Start time of the alert
+    end_time: int = field(metadata=field_options(alias="endTime"))  # End time of the alert
+
+
+@dataclass
+class Alerts(DataClassORJSONMixin):
+    """Represents alerts for a train connection, including the type and content."""
+
+    number: int  # Number of alerts
+    alert: List[Alert] = field(default_factory=list)  # List of alerts
+
+
+@dataclass
+class ConnectionDetails(DataClassORJSONMixin):
+    """Details of a single connection, including departure and arrival information."""
+
+    id: str  # Connection ID
+    departure: ConnectionDeparture  # Departure details
+    arrival: ConnectionArrival  # Arrival details
+    duration: int  # Duration of the connection in minutes
+    remarks: Remarks  # Remarks for the connection
+    alerts: Alerts  # Alerts for the connection
+
+
+@dataclass
+class ConnectionsApiResponse(ApiResponse):
+    """Holds a list of connections returned by the connections endpoint."""
+
+    connections: List[ConnectionDetails] = field(
+        metadata=field_options(alias="connection"), default_factory=list
+    )  # List of connections
+
+
+@dataclass
+class VehicleStop(DataClassORJSONMixin):
+    """Represents a single stop in a journey for vehicles."""
+
+    id: str  # Stop ID
+    station: str  # Station name
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    time: int  # Scheduled stop time (timestamp)
+    platform: str  # Platform name
+    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
+    scheduled_departure_time: int = field(
+        metadata=field_options(alias="scheduledDepartureTime")
+    )  # Scheduled departure time
+    scheduled_arrival_time: int = field(metadata=field_options(alias="scheduledArrivalTime"))  # Scheduled arrival time
+    delay: int  # Delay in minutes
+    canceled: bool  # Whether the stop is canceled
+    departure_delay: int = field(metadata=field_options(alias="departureDelay"))  # Departure delay
+    departure_canceled: bool = field(metadata=field_options(alias="departureCanceled"))  # Departure cancellation status
+    arrival_delay: int = field(metadata=field_options(alias="arrivalDelay"))  # Arrival delay
+    arrival_canceled: bool = field(metadata=field_options(alias="arrivalCanceled"))  # Arrival cancellation status
+    left: bool  # Whether the train has left
+    arrived: bool  # Whether the train has arrived
+    is_extra_stop: bool = field(metadata=field_options(alias="isExtraStop"))  # Whether this is an extra stop
+    occupancy: Occupancy  # Occupancy level
+    departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
+
+
+@dataclass
+class VehicleStops(DataClassORJSONMixin):
+    """Holds the number of stops and a list of detailed stop information for vehicles."""
+
+    number: int  # Number of stops
+    stop: List[VehicleStop] = field(default_factory=list)  # List of stop details
 
 
 @dataclass
@@ -116,7 +280,77 @@ class VehicleApiResponse(ApiResponse):
 
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle information
-    stops: Stops  # Stops information
+    stops: VehicleStops  # Stops information
+
+
+@dataclass
+class MaterialType(DataClassORJSONMixin):
+    """Represents the material type of a train unit."""
+
+    parent_type: str  # Parent material type
+    sub_type: str  # Sub material type
+    orientation: str  # Orientation of the material type
+
+
+@dataclass
+class Unit(DataClassORJSONMixin):
+    """Represents a single train unit, including its type and location."""
+
+    id: str  # Unit ID
+    material_type: MaterialType = field(metadata=field_options(alias="materialType"))  # Material type of the unit
+    has_toilets: bool = field(metadata=field_options(alias="hasToilets"))  # Whether the unit has toilets
+    has_tables: bool = field(metadata=field_options(alias="hasTables"))  # Whether the unit has tables
+    has_second_class_outlets: bool = field(
+        metadata=field_options(alias="hasSecondClassOutlets")
+    )  # Whether the unit has power outlets in second class
+    has_first_class_outlets: bool = field(
+        metadata=field_options(alias="hasFirstClassOutlets")
+    )  # Whether the unit has power outlets in first class
+    has_heating: bool = field(metadata=field_options(alias="hasHeating"))  # Whether the unit has heating
+    has_airco: bool = field(metadata=field_options(alias="hasAirco"))  # Whether the unit has air conditioning
+    material_number: str = field(metadata=field_options(alias="materialNumber"))  # Material number of the unit
+    traction_type: str = field(metadata=field_options(alias="tractionType"))  # Traction type of the unit
+    can_pass_to_next_unit: bool = field(
+        metadata=field_options(alias="canPassToNextUnit")
+    )  # Whether the unit can pass to the next
+    standing_places_second_class: int = field(
+        metadata=field_options(alias="standingPlacesSecondClass")
+    )  # Number of standing places in second class
+    standing_places_first_class: int = field(
+        metadata=field_options(alias="standingPlacesFirstClass")
+    )  # Number of standing places in first class
+    seats_coupe_second_class: int = field(
+        metadata=field_options(alias="seatsCoupeSecondClass")
+    )  # Number of seats in coupe in second class
+    seats_coupe_first_class: int = field(
+        metadata=field_options(alias="seatsCoupeFirstClass")
+    )  # Number of seats in coupe in first class
+    seats_second_class: int = field(metadata=field_options(alias="seatsSecondClass"))  # Number of seats in second class
+    seats_first_class: int = field(metadata=field_options(alias="seatsFirstClass"))  # Number of seats in first class
+    length_in_meter: int = field(metadata=field_options(alias="lengthInMeter"))  # Length of the unit in meters
+    has_semi_automatic_interior_doors: bool = field(
+        metadata=field_options(alias="hasSemiAutomaticInteriorDoors")
+    )  # Whether the unit has semi-automatic interior doors
+    has_luggage_section: bool = field(
+        metadata=field_options(alias="hasLuggageSection")
+    )  # Whether the unit has a luggage section
+    material_sub_type_name: str = field(metadata=field_options(alias="materialSubTypeName"))  # Material sub type name
+    traction_position: int = field(metadata=field_options(alias="tractionPosition"))  # Traction position of the unit
+    has_prm_section: bool = field(metadata=field_options(alias="hasPrmSection"))  # Whether the unit has a PRM section
+    has_priority_places: bool = field(
+        metadata=field_options(alias="hasPriorityPlaces")
+    )  # Whether the unit has priority places
+    has_bike_section: bool = field(
+        metadata=field_options(alias="hasBikeSection")
+    )  # Whether the unit has a bike section
+
+
+@dataclass
+class CompositionUnits(DataClassORJSONMixin):
+    """Holds the number of units and a list of detailed unit information."""
+
+    number: int  # Number of units
+    unit: List[Unit] = field(default_factory=list)  # List of units
 
 
 @dataclass
@@ -124,7 +358,7 @@ class SegmentComposition(DataClassORJSONMixin):
     """Describes a collection of train units and related metadata."""
 
     source: str  # Source of the composition
-    units: List[dict] = field(metadata=field_options(alias="unit"))  # List of units in the composition
+    units: CompositionUnits  # Units information
 
 
 @dataclass
@@ -132,49 +366,31 @@ class Segment(DataClassORJSONMixin):
     """Defines a single segment within a journey, including composition details."""
 
     id: str  # ID of the segment
-    origin: Station  # Origin station information
-    destination: Station  # Destination station information
+    origin: StationDetails  # Origin station information
+    destination: StationDetails  # Destination station information
     composition: SegmentComposition  # Composition details of the segment
 
 
 @dataclass
-class CompositionSegments(DataClassORJSONMixin):
-    """Represents multiple journey segments, each having its own composition details."""
+class Segments(DataClassORJSONMixin):
+    """Holds the number of segments and a list of detailed segment information."""
 
     number: int  # Number of segments
-    segment: List[Segment] = field(metadata=field_options(alias="segment"))  # List of segments
+    segment: List[Segment] = field(default_factory=list)  # List of segments
+
+
+@dataclass
+class CompositionSegments(DataClassORJSONMixin):
+    """Encapsulated the composition segments of a specific train."""
+
+    segments: Segments  # Segments information
 
 
 @dataclass
 class CompositionApiResponse(ApiResponse):
-    """Encapsulates the response containing composition details for a specific journey."""
+    """Encapsulates the response containing composition details of a specific train."""
 
     composition: CompositionSegments  # Composition details
-
-
-@dataclass
-class Connection(DataClassORJSONMixin):
-    """Represents a single train connection, including scheduling and delay details."""
-
-    departure: Station  # Departure station information
-    arrival: Station  # Arrival station information
-    departure_time: str = field(metadata=field_options(alias="departureTime"))  # Departure time in ISO format
-    arrival_time: str = field(metadata=field_options(alias="arrivalTime"))  # Arrival time in ISO format
-    duration: str  # Duration of the connection
-    vehicles: List[str] = field(default_factory=list)  # List of vehicle identifiers
-    departure_delay: int | None = field(
-        metadata=field_options(alias="departureDelay"), default=None
-    )  # Delay at departure in seconds
-    arrival_delay: int | None = field(
-        metadata=field_options(alias="arrivalDelay"), default=None
-    )  # Delay at arrival in seconds
-
-
-@dataclass
-class ConnectionsApiResponse(ApiResponse):
-    """Holds a list of train connections returned by the connections endpoint."""
-
-    connection: List[Connection] = field(default_factory=list)  # List of connections
 
 
 @dataclass
@@ -187,11 +403,13 @@ class Disturbance(DataClassORJSONMixin):
     link: str  # Link to more information
     type: str  # Type of disturbance (e.g., "disturbance", "planned")
     timestamp: int  # Timestamp of the disturbance
-    attachment: str | None = None  # Optional attachment URL
+    attachment: str | None = None  # Optional attachment link
 
 
 @dataclass
 class DisturbancesApiResponse(ApiResponse):
     """Encapsulates multiple disturbances returned by the disturbances endpoint."""
 
-    disturbance: List[Disturbance]  # List of disturbances
+    disturbances: List[Disturbance] = field(
+        metadata=field_options(alias="disturbance"), default_factory=list
+    )  # List of disturbances
