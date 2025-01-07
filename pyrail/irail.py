@@ -361,8 +361,7 @@ class iRail:
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
         Returns:
-            StationsApiResponse or None: A list of stations containing station information, or None if the request fails.
-            This typically includes details about all train stations supported by the iRail API.
+            StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the request fails.
 
         Example:
             async with iRail() as client:
@@ -371,11 +370,10 @@ class iRail:
                     print(f"Total stations: {len(stations)}")
 
         """
-        stations_dict = await self._do_request("stations")
-        if stations_dict is None:
+        stations_response_dict = await self._do_request("stations")
+        if stations_response_dict is None:
             return None
-        stations_response: StationsApiResponse = StationsApiResponse.from_dict(stations_dict)
-        return stations_response
+        return StationsApiResponse.from_dict(stations_response_dict)
 
     async def get_liveboard(
         self,
@@ -400,7 +398,7 @@ class iRail:
             alerts (bool, optional): Whether to include service alerts. Defaults to False.
 
         Returns:
-            LiveboardApiResponse or None: A list of liveboard entries containing train information, or None if the request fails.
+            LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the request fails.
 
         Example:
             async with iRail() as client:
@@ -417,11 +415,12 @@ class iRail:
             "arrdep": arrdep,
             "alerts": "true" if alerts else "false",
         }
-        liveboard_dict = await self._do_request("liveboard", {k: v for k, v in extra_params.items() if v is not None})
-        if liveboard_dict is None:
+        liveboard_response_dict = await self._do_request(
+            "liveboard", {k: v for k, v in extra_params.items() if v is not None}
+        )
+        if liveboard_response_dict is None:
             return None
-        liveboard_response: LiveboardApiResponse = LiveboardApiResponse.from_dict(liveboard_dict)
-        return liveboard_response
+        return LiveboardApiResponse.from_dict(liveboard_response_dict)
 
     async def get_connections(
         self,
@@ -443,7 +442,7 @@ class iRail:
             type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
 
         Returns:
-            ConnectionsApiResponse or None: A list of connections containing train information, or None if the request fails.
+            ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the request fails or no connections are found.
 
         Example:
             async with iRail() as client:
@@ -460,13 +459,12 @@ class iRail:
             "timesel": timesel,
             "typeOfTransport": type_of_transport,
         }
-        connections_dict = await self._do_request(
+        connections_response_dict = await self._do_request(
             "connections", {k: v for k, v in extra_params.items() if v is not None}
         )
-        if connections_dict is None:
+        if connections_response_dict is None:
             return None
-        connections_response: ConnectionsApiResponse = ConnectionsApiResponse.from_dict(connections_dict)
-        return connections_response
+        return ConnectionsApiResponse.from_dict(connections_response_dict)
 
     async def get_vehicle(self, id: str, date: str | None = None, alerts: bool = False) -> VehicleApiResponse | None:
         """Retrieve detailed information about a specific train vehicle.
@@ -477,7 +475,7 @@ class iRail:
             alerts (bool, optional): Flag to include service alerts for the vehicle. Defaults to False.
 
         Returns:
-            VehicleApiResponse or None: A dictionary containing vehicle details, or None if the request fails.
+            VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the request fails.
 
         Example:
             async with iRail() as client:
@@ -485,11 +483,12 @@ class iRail:
 
         """
         extra_params: Dict[str, Any] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
-        vehicle_dict = await self._do_request("vehicle", {k: v for k, v in extra_params.items() if v is not None})
-        if vehicle_dict is None:
+        vehicle_response_dict = await self._do_request(
+            "vehicle", {k: v for k, v in extra_params.items() if v is not None}
+        )
+        if vehicle_response_dict is None:
             return None
-        vehicle_response: VehicleApiResponse = VehicleApiResponse.from_dict(vehicle_dict)
-        return vehicle_response
+        return VehicleApiResponse.from_dict(vehicle_response_dict)
 
     async def get_composition(self, id: str, data: str | None = None) -> CompositionApiResponse | None:
         """Retrieve the composition details of a specific train.
@@ -499,7 +498,7 @@ class iRail:
             data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to '' (filtered data).
 
         Returns:
-            CompositionApiResponse or None: A dictionary containing composition details, or None if the request fails.
+            CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the request fails.
 
         Example:
             async with iRail() as client:
@@ -507,13 +506,12 @@ class iRail:
 
         """
         extra_params: Dict[str, str | None] = {"id": id, "data": data}
-        composition_dict = await self._do_request(
+        composition_response_dict = await self._do_request(
             "composition", {k: v for k, v in extra_params.items() if v is not None}
         )
-        if composition_dict is None:
+        if composition_response_dict is None:
             return None
-        composition_response: CompositionApiResponse = CompositionApiResponse.from_dict(composition_dict)
-        return composition_response
+        return CompositionApiResponse.from_dict(composition_response_dict)
 
     async def get_disturbances(self, line_break_character: str | None = None) -> DisturbancesApiResponse | None:
         """Retrieve information about current disturbances on the rail network.
@@ -522,7 +520,7 @@ class iRail:
             line_break_character (str, optional): A custom character to use for line breaks in the disturbance description. Defaults to ''.
 
         Returns:
-            Dict[str, Any] or None: A dictionary containing disturbance information from the iRail API, or None if no disturbances are found.
+            DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the request fails or no disturbances are found.
 
         Example:
             async with iRail() as client:
@@ -532,10 +530,9 @@ class iRail:
 
         """
         extra_params = {"lineBreakCharacter": line_break_character}
-        disturbances_dict = await self._do_request(
+        disturbances_response_dict = await self._do_request(
             "disturbances", {k: v for k, v in extra_params.items() if v is not None}
         )
-        if disturbances_dict is None:
+        if disturbances_response_dict is None:
             return None
-        disturbances_response: DisturbancesApiResponse = DisturbancesApiResponse.from_dict(disturbances_dict)
-        return disturbances_response
+        return DisturbancesApiResponse.from_dict(disturbances_response_dict)
