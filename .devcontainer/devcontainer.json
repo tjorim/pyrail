@@ -8,8 +8,7 @@
 		"ghcr.io/devcontainers-extra/features/poetry:2": {},
 		"ghcr.io/devcontainers-extra/features/ruff:1": {},
 		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers/features/python:1": {}
+		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
@@ -20,23 +19,23 @@
 		"vscode": {
 			"extensions": [
 				"charliermarsh.ruff",
-                "github.vscode-pull-request-github",
+				"github.vscode-pull-request-github",
 				"ms-python.python"
 			],
-            "settings": {
-                "files.eol": "\n",
-                "editor.tabSize": 4,
-                "editor.formatOnPaste": true,
-                "editor.formatOnSave": true,
-                "editor.formatOnType": false,
-                "files.trimTrailingWhitespace": true,
-                "python.analysis.typeCheckingMode": "basic",
-                "python.analysis.autoImportCompletions": true,
-                "[python]": {
-                    "editor.defaultFormatter": "charliermarsh.ruff"
-                }
-            }
+			"settings": {
+				"files.eol": "\n",
+				"editor.tabSize": 4,
+				"editor.formatOnPaste": true,
+				"editor.formatOnSave": true,
+				"editor.formatOnType": false,
+				"files.trimTrailingWhitespace": true,
+				"python.analysis.typeCheckingMode": "basic",
+				"python.analysis.autoImportCompletions": true,
+				"[python]": {
+					"editor.defaultFormatter": "charliermarsh.ruff"
+				}
+			}
 		}
 	},
-    "remoteUser": "vscode"
+	"remoteUser": "vscode"
 }
