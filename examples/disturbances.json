@@ -1,0 +1,800 @@
+{
+    "version": "1.3",
+    "timestamp": "1736291958",
+    "disturbance": [
+        {
+            "id": "0",
+            "title": "Maastricht (NL): operational reasons",
+            "description": "The S43 trains Liège-Guillemins / Luik-Guillemins - Maastricht (NL) - Aachen-Hbf (d) only run between Liège-Guillemins / Luik-Guillemins and Maastricht (NL).Between Maastricht (NL) and Aachen-Hbf (d):You can use bus 350.Disruption for an undetermined amount of time.Listen to the announcements, consult the screens in the station or plan your journey through sncb.be, the SNCB app, ns.nl or arriva.nl.",
+            "type": "disturbance",
+            "link": "http: //www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=trouble&messageID=91380&channelFilter=rss_line_90,custom1&",
+            "timestamp": "1736289491",
+            "richtext": "The S43 trains Liège-Guillemins / Luik-Guillemins - Maastricht (NL) - Aachen-Hbf (d) only run between Liège-Guillemins / Luik-Guillemins and Maastricht (NL).Between Maastricht (NL) and Aachen-Hbf (d):You can use bus 350.Disruption for an undetermined amount of time.Listen to the announcements, consult the screens in the station or plan your journey through sncb.be, the SNCB app, ns.nl or arriva.nl.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=trouble&messageID=91380&channelFilter=rss_line_90,custom1&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "1",
+            "title": "Mouscron / Moeskroen - Lille Flandres (FR)",
+            "description": "On weekdays from 6 to 17/01 works will take place on the French rail network.An SNCB bus replaces some IC trains Courtrai / Kortrijk - Mouscron / Moeskroen - Lille Flandres (FR) between Mouscron / Moeskroen and Lille Flandres (FR).The travel planner takes these changes into account.Meer info over de NMBS-bussen (FAQ)En savoir plus sur les bus SNCB (FAQ)Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+            "timestamp": "1736172334",
+            "richtext": "On weekdays from 6 to 17/01 works will take place on the French rail network.An SNCB bus replaces some IC trains Courtrai / Kortrijk - Mouscron / Moeskroen - Lille Flandres (FR) between Mouscron / Moeskroen and Lille Flandres (FR).The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus'>Meer info over de NMBS-bussen (FAQ)</a><br><a href='https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus'>En savoir plus sur les bus SNCB (FAQ)</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1736172333792_FR_2501250_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1736172333804_NL_2501250_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "Meer info over de NMBS-bussen (FAQ)"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "En savoir plus sur les bus SNCB (FAQ)"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1736172333792_FR_2501250_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1736172333804_NL_2501250_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "2",
+            "title": "Landen - Liège-Guillemins / Luik-Guillemins",
+            "description": "During the weekend of 11-12/01 and on Saturday 18/01 Infrabel is working on the track.An SNCB bus replaces most trains between Landen and Liège-Guillemins / Luik-Guillemins.The travel planner takes these changes into account.Meer infoPlus d'infos",
+            "type": "planned",
+            "link": "https: //www.belgiantrain.be/nl/news/works-leuven-landen-liege",
+            "timestamp": "1735910597",
+            "richtext": "During the weekend of 11-12/01 and on Saturday 18/01 Infrabel is working on the track.An SNCB bus replaces most trains between Landen and Liège-Guillemins / Luik-Guillemins.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/news/works-leuven-landen-liege'>Meer info</a><br><a href='https://www.belgiantrain.be/fr/news/works-leuven-landen-liege'>Plus d\"infos</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/news/works-leuven-landen-liege",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/news/works-leuven-landen-liege",
+                        "text": "Plus d'infos"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "3",
+            "title": "Welkenraedt - Aachen Hbf (DE)",
+            "description": "On Thursday 9/01 works will take place on the German rail network.Some S41 trains Liège-Saint-Lambert / Luik-Sint-Lambertus - Verviers-Central / Verviers-Centraal - Aachen Hbf (DE) only run between Liège-Saint-Lambert / Luik-Sint-Lambertus and Welkenraedt.The travel planner takes these changes into account.",
+            "type": "planned",
+            "link": "http: //www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90799&channelFilter=rss_line_90&",
+            "timestamp": "1735814004",
+            "richtext": "On Thursday 9/01 works will take place on the German rail network.Some S41 trains Liège-Saint-Lambert / Luik-Sint-Lambertus - Verviers-Central / Verviers-Centraal - Aachen Hbf (DE) only run between Liège-Saint-Lambert / Luik-Sint-Lambertus and Welkenraedt.The travel planner takes these changes into account.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90799&channelFilter=rss_line_90&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "4",
+            "title": "Brussels - Nivelles / Nijvel",
+            "description": "During the weekend of 25-26/01 Infrabel is working on the track.An SNCB bus replaces all trains between Brux.-Midi/Brus.-Zuid, Braine-l'Alleud and Nivelles / Nijvel.Due to heavy road traffic, the SNCB bus departure times may differ from the theoretical departure times listed. Please allow for longer travel time.The S19 trains Landen - Brux./Brus.-Luxemb. - Nivelles / Nijvel only run between Louvain / Leuven and Brux./Brus.-Luxemb..You can use some busses of STIB with your train ticket.The departure times of the trains running between Nivelles / Nijvel and Charleroi-Central change.The travel planner takes these changes into account.Meer infoPlus d'infos",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/news/works-bruxelles-nivelles",
+            "timestamp": "1735037256",
+            "richtext": "During the weekend of 25-26/01 Infrabel is working on the track.An SNCB bus replaces all trains between Brux.-Midi/Brus.-Zuid, Braine-l\"Alleud and Nivelles / Nijvel.Due to heavy road traffic, the SNCB bus departure times may differ from the theoretical departure times listed. Please allow for longer travel time.The S19 trains Landen - Brux./Brus.-Luxemb. - Nivelles / Nijvel only run between Louvain / Leuven and Brux./Brus.-Luxemb..You can use some busses of STIB with your train ticket.The departure times of the trains running between Nivelles / Nijvel and Charleroi-Central change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/news/works-bruxelles-nivelles'>Meer info</a><br><a href='https://www.belgiantrain.be/fr/news/works-bruxelles-nivelles'>Plus d\"infos</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/news/works-bruxelles-nivelles",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/news/works-bruxelles-nivelles",
+                        "text": "Plus d'infos"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "5",
+            "title": "Blankenberge - Bruges / Brugge",
+            "description": "During the weekends of 18-19 and 25-26/01 Infrabel is working on the track.An SNCB bus replaces all trains between Blankenberge and Bruges / Brugge.The departure times of some IC trains Blankenberge - Bruges / Brugge - Genk change.The travel planner takes these changes into account.Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https: //www.belgianrail.be/jp/download/brail_him/1735037160508_FR_2501193_S.pdf",
+            "timestamp": "1735037201",
+            "richtext": "During the weekends of 18-19 and 25-26/01 Infrabel is working on the track.An SNCB bus replaces all trains between Blankenberge and Bruges / Brugge.The departure times of some IC trains Blankenberge - Bruges / Brugge - Genk change.The travel planner takes these changes into account.<br><a href='https://www.belgianrail.be/jp/download/brail_him/1735037160508_FR_2501193_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1735037160562_NL_2501193_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1735037160508_FR_2501193_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1735037160562_NL_2501193_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "6",
+            "title": "Arlon / Aarlen - Athus",
+            "description": "On Tuesday 14/01 Infrabel is working on the track.An SNCB bus replaces some trains between Arlon / Aarlen and Athus.The travel planner takes these changes into account.Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgianrail.be/jp/download/brail_him/1735036660510_FR_2501157_S.pdf",
+            "timestamp": "1735036660",
+            "richtext": "On Tuesday 14/01 Infrabel is working on the track.An SNCB bus replaces some trains between Arlon / Aarlen and Athus.The travel planner takes these changes into account.<br><a href='https://www.belgianrail.be/jp/download/brail_him/1735036660510_FR_2501157_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1735036660528_NL_2501157_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1735036660510_FR_2501157_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1735036660528_NL_2501157_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "7",
+            "title": "Brussels Airport-Zaventem",
+            "description": "From 1 to 21/2 Infrabel is working on the track.Fewer trains stop in Brussels Airport-Zaventem. With your train ticket, you can also take bus R26 and 82 of De Lijn between the stations of Zaventem and Brussels Airport-Zaventem. Don\"t forget to also select 'bus' as a mode of transport via 'personalize my journey'. The travel planner takes these changes into account.Plus d\"infos",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/fr/news/works-brussels-airport-zaventem",
+            "timestamp": "1735032365",
+            "richtext": "From 1 to 21/2 Infrabel is working on the track.Fewer trains stop in Brussels Airport-Zaventem. With your train ticket, you can also take bus R26 and 82 of De Lijn between the stations of Zaventem and Brussels Airport-Zaventem. Don\"t forget to also select 'bus' as a mode of transport via 'personalize my journey'. The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/fr/news/works-brussels-airport-zaventem'>Plus d\"infos</a>",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/fr/news/works-brussels-airport-zaventem",
+                        "text": "Plus d'infos"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "8",
+            "title": "Mons / Bergen - La Louvière-Sud / La Louvière-Zuid - Marchienne-au-Pont",
+            "description": "On weekdays from 13 to 17/01 Infrabel is working on the track.An SNCB bus replaces some trains between La Louvière-Centre and La Louvière-Sud / La Louvière-Zuid.The route of some IC trains Herstal - Liège-Guillemins / Luik-Guillemins - Mons / Bergen change.The travel planner takes these changes into account.Meer info over de NMBS-bussen (FAQ)En savoir plus sur les bus SNCB (FAQ)Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+            "timestamp": "1735030191",
+            "richtext": "On weekdays from 13 to 17/01 Infrabel is working on the track.An SNCB bus replaces some trains between La Louvière-Centre and La Louvière-Sud / La Louvière-Zuid.The route of some IC trains Herstal - Liège-Guillemins / Luik-Guillemins - Mons / Bergen change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus'>Meer info over de NMBS-bussen (FAQ)</a><br><a href='https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus'>En savoir plus sur les bus SNCB (FAQ)</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1735030191232_FR_2501180_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1735030191280_NL_2501180_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "Meer info over de NMBS-bussen (FAQ)"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "En savoir plus sur les bus SNCB (FAQ)"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1735030191232_FR_2501180_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1735030191280_NL_2501180_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "9",
+            "title": "Aarschot - Louvain / Leuven / Hasselt",
+            "description": "During the weekends, from 11 to 26/01 Infrabel is working on the track.An SNCB bus replaces most trains between Aarschot and Louvain / Leuven/Hasselt.The route of most IC trains Anvers-Central / Antwerpen-Centraal - Lierre / Lier - Hasselt change.The route and departure times of most L trains Anvers-Central / Antwerpen-Centraal - Lierre / Lier - Louvain / Leuven change.The travel planner takes these changes into account.Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgianrail.be/jp/download/brail_him/1734962134622_FR_2501016_S.pdf",
+            "timestamp": "1734962135",
+            "richtext": "During the weekends, from 11 to 26/01 Infrabel is working on the track.An SNCB bus replaces most trains between Aarschot and Louvain / Leuven/Hasselt.The route of most IC trains Anvers-Central / Antwerpen-Centraal - Lierre / Lier - Hasselt change.The route and departure times of most L trains Anvers-Central / Antwerpen-Centraal - Lierre / Lier - Louvain / Leuven change.The travel planner takes these changes into account.<br><a href='https://www.belgianrail.be/jp/download/brail_him/1734962134622_FR_2501016_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734962134637_NL_2501016_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734962134622_FR_2501016_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734962134637_NL_2501016_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "10",
+            "title": "Brussels Airport-Zaventem",
+            "description": "During the weekends, from 1 to 16/2 Infrabel is working on the track.The IC trains Knokke - Brux.-/ Brus-Centr. - Louvain / Leuven do not stop in Brussels Airport-Zaventem.The departure times of this train change.With your train ticket, you can also take bus R26 and 82 of De Lijn between the stations of Zaventem and Brussels Airport-Zaventem. Don't forget to also select ?bus? as a mode of transport via ?personalize my journey?. The travel planner takes these changes into account.Plus d'infos",
+            "type": "planned",
+            "link": "https: //www.belgiantrain.be/fr/news/works-brussels-airport-zaventem",
+            "timestamp": "1734794255",
+            "richtext": "During the weekends, from 1 to 16/2 Infrabel is working on the track.The IC trains Knokke - Brux.-/ Brus-Centr. - Louvain / Leuven do not stop in Brussels Airport-Zaventem.The departure times of this train change.With your train ticket, you can also take bus R26 and 82 of De Lijn between the stations of Zaventem and Brussels Airport-Zaventem. Don\"t forget to also select ?bus? as a mode of transport via ?personalize my journey?. The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/fr/news/works-brussels-airport-zaventem'>Plus d\"infos</a>",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/fr/news/works-brussels-airport-zaventem",
+                        "text": "Plus d'infos"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "11",
+            "title": "Gouvy - Ettelbruck (LU)",
+            "description": "During the weekends, from 11-12/01 and 18-19/01 works will take place on the Luxembourg rail network.A CLF bus replaces all trains between Gouvy and Ettelbruck (LU).More info on cfl.lu.Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgianrail.be/jp/download/brail_him/1734688608720_FR_2501230_S.pdf",
+            "timestamp": "1734688608",
+            "richtext": "During the weekends, from 11-12/01 and 18-19/01 works will take place on the Luxembourg rail network.A CLF bus replaces all trains between Gouvy and Ettelbruck (LU).More info on cfl.lu.<br><a href='https://www.belgianrail.be/jp/download/brail_him/1734688608720_FR_2501230_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734688608788_NL_2501230_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734688608720_FR_2501230_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734688608788_NL_2501230_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "12",
+            "title": "Bruges / Brugge - Gand-Saint-Pierre / Gent-Sint-Pieters",
+            "description": "During the weekend of 11-12/01 Infrabel is working on the track.An SNCB bus runs between Bruges / Brugge, Aalter and Gand-Saint-Pierre / Gent-Sint-Pieters.The route and/or departure times of the trains below change: IC Ostende / Oostende - Brux.-/ Brus-Centr. - EupenIC Blankenberge - Brux.-/ Brus-Centr. - GenkIC Ostende / Oostende - Gand-Saint-Pierre / Gent-Sint-Pieters - Anvers-Central / Antwerpen-CentraalIC Knokke - Brux.-/ Brus-Centr. - Louvain / LeuvenL Zeebrugge-Strand - Gand-Saint-Pierre / Gent-Sint-Pieters - Malines / MechelenThe travel planner takes these changes into account.Meer infoPlus d'infosOù prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/news/works-brugge-gent",
+            "timestamp": "1734686221",
+            "richtext": "During the weekend of 11-12/01 Infrabel is working on the track.An SNCB bus runs between Bruges / Brugge, Aalter and Gand-Saint-Pierre / Gent-Sint-Pieters.The route and/or departure times of the trains below change: IC Ostende / Oostende - Brux.-/ Brus-Centr. - EupenIC Blankenberge - Brux.-/ Brus-Centr. - GenkIC Ostende / Oostende - Gand-Saint-Pierre / Gent-Sint-Pieters - Anvers-Central / Antwerpen-CentraalIC Knokke - Brux.-/ Brus-Centr. - Louvain / LeuvenL Zeebrugge-Strand - Gand-Saint-Pierre / Gent-Sint-Pieters - Malines / MechelenThe travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/news/works-brugge-gent'>Meer info</a><br><a href='https://www.belgiantrain.be/fr/news/works-brugge-gent'>Plus d\"infos</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734686221568_FR_2501216_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734686221582_NL_2501216_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/news/works-brugge-gent",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/news/works-brugge-gent",
+                        "text": "Plus d'infos"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734686221568_FR_2501216_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734686221582_NL_2501216_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "13",
+            "title": "Louvain / Leuven - Liège-Guillemins / Luik-Guillemins",
+            "description": "On weekdays from 7 to 17/01 Infrabel is working on the track.SNCB buses run on different routes.The route and departure times of some trains running between Louvain / Leuven and Liège-Guillemins / Luik-Guillemins change.The travel planner takes these changes into account.Meer info over de NMBS-bussen (FAQ)En savoir plus sur les bus SNCB (FAQ)Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+            "timestamp": "1734683220",
+            "richtext": "On weekdays from 7 to 17/01 Infrabel is working on the track.SNCB buses run on different routes.The route and departure times of some trains running between Louvain / Leuven and Liège-Guillemins / Luik-Guillemins change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus'>Meer info over de NMBS-bussen (FAQ)</a><br><a href='https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus'>En savoir plus sur les bus SNCB (FAQ)</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734683219854_FR_2501163_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734683219872_NL_2501163_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "Meer info over de NMBS-bussen (FAQ)"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "En savoir plus sur les bus SNCB (FAQ)"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734683219854_FR_2501163_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734683219872_NL_2501163_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "14",
+            "title": "Tamines - Namur / Namen",
+            "description": "During the weekend of 11-12/01 Infrabel is working on the track.On Sunday 12/01, an SNCB bus replaces some trains between Tamines and Namur / Namen.The route and departure times of some trains IC and S running between Tamines and Namur / Namen change.The travel planner takes these changes into account.Meer info over de NMBS-bussen (FAQ)En savoir plus sur les bus SNCB (FAQ)Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+            "timestamp": "1734682164",
+            "richtext": "During the weekend of 11-12/01 Infrabel is working on the track.On Sunday 12/01, an SNCB bus replaces some trains between Tamines and Namur / Namen.The route and departure times of some trains IC and S running between Tamines and Namur / Namen change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus'>Meer info over de NMBS-bussen (FAQ)</a><br><a href='https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus'>En savoir plus sur les bus SNCB (FAQ)</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734682129569_FR_2501149_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734682129583_NL_2501149_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "Meer info over de NMBS-bussen (FAQ)"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "En savoir plus sur les bus SNCB (FAQ)"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734682129569_FR_2501149_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734682129583_NL_2501149_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "15",
+            "title": "Liège-Guillemins / Luik-Guillemins - Verviers-Central / Verviers-Centraal",
+            "description": "From 13/01 to 17/01 Infrabel is working on the track.Train traffic is adapted between Liège-Guillemins / Luik-Guillemins and Verviers-Central / Verviers-Centraal.The departure times of some L trains Spa-Géronstère - Verviers-Central / Verviers-Centraal change.The travel planner takes these changes into account.",
+            "type": "planned",
+            "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=91232&channelFilter=rss_line_90&",
+            "timestamp": "1734611084",
+            "richtext": "From 13/01 to 17/01 Infrabel is working on the track.Train traffic is adapted between Liège-Guillemins / Luik-Guillemins and Verviers-Central / Verviers-Centraal.The departure times of some L trains Spa-Géronstère - Verviers-Central / Verviers-Centraal change.The travel planner takes these changes into account.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=91232&channelFilter=rss_line_90&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "16",
+            "title": "Brux./Brus.-Luxemb. - Ottignies",
+            "description": "During the weekend of 11-12 and 25-26/01: Infrabel is working on the track.During the weekend of 11-12/01 Only one S8 train out of two runs between Brux.-Midi/Brus.-Zuid and Ottignies.The departure times of the IC trains Brux.-Midi/Brus.-Zuid - Namur / Namen - Dinant change.The departure times of the IC trains Brux.-Midi/Brus.-Zuid - Namur / Namen - Arlon / Aarlen/Luxembourg (LU) change.During the weekend of 25-26/01: The S8 trains Zottegem - Brux.-Midi/Brus.-Zuid - Ottignies only run between Zottegem and Brux.-Midi/Brus.-Zuid.The route and departure times of the IC trains Brux.-Midi/Brus.-Zuid - Namur / Namen - Dinant change.The travel planner takes these changes into account.",
+            "type": "planned",
+            "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=91194&channelFilter=rss_line_90&",
+            "timestamp": "1734605999",
+            "richtext": "During the weekend of 11-12 and 25-26/01: Infrabel is working on the track.During the weekend of 11-12/01 Only one S8 train out of two runs between Brux.-Midi/Brus.-Zuid and Ottignies.The departure times of the IC trains Brux.-Midi/Brus.-Zuid - Namur / Namen - Dinant change.The departure times of the IC trains Brux.-Midi/Brus.-Zuid - Namur / Namen - Arlon / Aarlen/Luxembourg (LU) change.During the weekend of 25-26/01: The S8 trains Zottegem - Brux.-Midi/Brus.-Zuid - Ottignies only run between Zottegem and Brux.-Midi/Brus.-Zuid.The route and departure times of the IC trains Brux.-Midi/Brus.-Zuid - Namur / Namen - Dinant change.The travel planner takes these changes into account.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=91194&channelFilter=rss_line_90&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "17",
+            "title": "Mons / Bergen - Quevy",
+            "description": "On Thursday 9/01 Infrabel is working on the track.An SNCB bus replaces some L trains Quevy - Mons / Bergen - La Louvière-Sud / La Louvière-Zuid between Quévy and Mons / Bergen.The travel planner takes these changes into account.En savoir plus sur les bus SNCB (FAQ)Meer info over de NMBS-bussen (FAQ)Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+            "timestamp": "1734601741",
+            "richtext": "On Thursday 9/01 Infrabel is working on the track.An SNCB bus replaces some L trains Quevy - Mons / Bergen - La Louvière-Sud / La Louvière-Zuid between Quévy and Mons / Bergen.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus'>En savoir plus sur les bus SNCB (FAQ)</a><br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus'>Meer info over de NMBS-bussen (FAQ)</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734340270052_FR_2501144_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734340270072_NL_2501144_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "En savoir plus sur les bus SNCB (FAQ)"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "Meer info over de NMBS-bussen (FAQ)"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734340270052_FR_2501144_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734340270072_NL_2501144_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "18",
+            "title": "Brux./Brus.-Luxemb. - Hal / Halle",
+            "description": "During the weekends of 11-12/01 and 18-19/01 Infrabel is working on the track.The S5 trains Malines / Mechelen - Brux./Brus.-Luxemb. - Hal / Halle only run between Malines / Mechelen and Brux./Brus.-Luxemb..The S19 trains Landen - Brux./Brus.-Luxemb. - Nivelles / Nijvel only run between Landen and Brux./Brus.-Luxemb..You can use some busses and trams of De Lijn and STIB with your train ticket.Meer infoPlus d'infosAlternatives STIB & De LijnAlternatieven van MIVB & De Lijn",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/news/works-bruxelles-halle",
+            "timestamp": "1734591814",
+            "richtext": "During the weekends of 11-12/01 and 18-19/01 Infrabel is working on the track.The S5 trains Malines / Mechelen - Brux./Brus.-Luxemb. - Hal / Halle only run between Malines / Mechelen and Brux./Brus.-Luxemb..The S19 trains Landen - Brux./Brus.-Luxemb. - Nivelles / Nijvel only run between Landen and Brux./Brus.-Luxemb..You can use some busses and trams of De Lijn and STIB with your train ticket.<br><a href='https://www.belgiantrain.be/nl/news/works-bruxelles-halle'>Meer info</a><br><a href='https://www.belgiantrain.be/fr/news/works-bruxelles-halle'>Plus d\"infos</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734515237933_FR_2501033_S.pdf'>Alternatives STIB & De Lijn</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734515237991_NL_2501033_S.pdf'>Alternatieven van MIVB & De Lijn</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/news/works-bruxelles-halle",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/news/works-bruxelles-halle",
+                        "text": "Plus d'infos"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734515237933_FR_2501033_S.pdf",
+                        "text": "Alternatives STIB & De Lijn"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734515237991_NL_2501033_S.pdf",
+                        "text": "Alternatieven van MIVB & De Lijn"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "19",
+            "title": "Mons / Bergen - Saint-Ghislain",
+            "description": "On weekdays from 6 to 24/01 Infrabel is working on the track.An SNCB bus replaces the IC train Tongres / Tongeren 20:41 - Brux.-/ Brus-Centr. 22:18 - Saint-Ghislain 23:30 between Mons / Bergen and Saint-Ghislain.The travel planner takes these changes into account.Où prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgianrail.be/jp/download/brail_him/1734520879429_FR_2501204_aff1_S.pdf",
+            "timestamp": "1734520879",
+            "richtext": "On weekdays from 6 to 24/01 Infrabel is working on the track.An SNCB bus replaces the IC train Tongres / Tongeren 20:41 - Brux.-/ Brus-Centr. 22:18 - Saint-Ghislain 23:30 between Mons / Bergen and Saint-Ghislain.The travel planner takes these changes into account.<br><a href='https://www.belgianrail.be/jp/download/brail_him/1734520879429_FR_2501204_aff1_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734520879446_NL_2501204_aff1_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734520879429_FR_2501204_aff1_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734520879446_NL_2501204_aff1_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "20",
+            "title": "Melsele - Zwijndrecht",
+            "description": "During the weekends of 4-5 and 11-12/01 Infrabel is working on the track.An SNCB bus replaces all S34 trains Termonde / Dendermonde - Saint-Nicolas / Sint-Niklaas - Anvers-Central / Antwerpen-Centraal between Melsele and Zwijndrecht.These buses also stop at the tram station Zwijndrecht-Dorp, where you can take tram 3 to Antwerpen-Central with your train ticket.The route and departure times of all trains running between Gand-Saint-Pierre / Gent-Sint-Pieters / Saint-Nicolas / Sint-Niklaas and Anvers-Central / Antwerpen-Centraal change.The travel planner takes these changes into account.Plus d'infosMeer infoOù prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/fr/news/works-sint-niklaas-antwerpen",
+            "timestamp": "1734502904",
+            "richtext": "During the weekends of 4-5 and 11-12/01 Infrabel is working on the track.An SNCB bus replaces all S34 trains Termonde / Dendermonde - Saint-Nicolas / Sint-Niklaas - Anvers-Central / Antwerpen-Centraal between Melsele and Zwijndrecht.These buses also stop at the tram station Zwijndrecht-Dorp, where you can take tram 3 to Antwerpen-Central with your train ticket.The route and departure times of all trains running between Gand-Saint-Pierre / Gent-Sint-Pieters / Saint-Nicolas / Sint-Niklaas and Anvers-Central / Antwerpen-Centraal change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/fr/news/works-sint-niklaas-antwerpen'>Plus d\"infos</a><br><a href='https://www.belgiantrain.be/nl/news/works-sint-niklaas-antwerpen'>Meer info</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734502903594_FR_2501012_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734502903657_NL_2501012_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/fr/news/works-sint-niklaas-antwerpen",
+                        "text": "Plus d'infos"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/nl/news/works-sint-niklaas-antwerpen",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734502903594_FR_2501012_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734502903657_NL_2501012_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "21",
+            "title": "Courtrai / Kortrijk - Audenarde / Oudenaarde",
+            "description": "During the weekends of 11-12 and 18-19/01 Infrabel is working on the track.An SNCB bus replaces all trains between Courtrai / Kortrijk and Audenarde / Oudenaarde.The departure times of some IC trains Ostende / Oostende - Courtrai / Kortrijk - Brussels Airport-Zaventem change.The travel planner takes these changes into account.Meer infoPlus d'infosOù prendre mon bus ?Waar is mijn bushalte?",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/news/works-kortrijk-oudenaarde",
+            "timestamp": "1734440716",
+            "richtext": "During the weekends of 11-12 and 18-19/01 Infrabel is working on the track.An SNCB bus replaces all trains between Courtrai / Kortrijk and Audenarde / Oudenaarde.The departure times of some IC trains Ostende / Oostende - Courtrai / Kortrijk - Brussels Airport-Zaventem change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/news/works-kortrijk-oudenaarde'>Meer info</a><br><a href='https://www.belgiantrain.be/fr/news/works-kortrijk-oudenaarde'>Plus d\"infos</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734440715958_FR_2501190_aff_2_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734440716028_NL_2501190_aff_2_S.pdf'>Waar is mijn bushalte?</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/news/works-kortrijk-oudenaarde",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/news/works-kortrijk-oudenaarde",
+                        "text": "Plus d'infos"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734440715958_FR_2501190_aff_2_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734440716028_NL_2501190_aff_2_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "22",
+            "title": "Mons / Bergen - Quévy",
+            "description": "During the weekend of 11-12/01 Infrabel is working on the track.An SNCB bus replaces all L trains Grammont / Geraardsbergen - Mons / Bergen - Quévy between Mons / Bergen and Quévy.The travel planner takes these changes into account.Où prendre mon bus ?Waar is mijn bushalte?Meer info over de NMBS-bussen (FAQ)En savoir plus sur les bus SNCB (FAQ)",
+            "type": "planned",
+            "link": "https://www.belgianrail.be/jp/download/brail_him/1734346039945_FR_2501145_S.pdf",
+            "timestamp": "1734419212",
+            "richtext": "During the weekend of 11-12/01 Infrabel is working on the track.An SNCB bus replaces all L trains Grammont / Geraardsbergen - Mons / Bergen - Quévy between Mons / Bergen and Quévy.The travel planner takes these changes into account.<br><a href='https://www.belgianrail.be/jp/download/brail_him/1734346039945_FR_2501145_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1734346039964_NL_2501145_S.pdf'>Waar is mijn bushalte?</a><br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes'>Meer info over de NMBS-bussen (FAQ)</a><br><a href='https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus'>En savoir plus sur les bus SNCB (FAQ)</a>",
+            "descriptionLinks": {
+                "number": "4",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734346039945_FR_2501145_S.pdf",
+                        "text": "Où prendre mon bus ?"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgianrail.be/jp/download/brail_him/1734346039964_NL_2501145_S.pdf",
+                        "text": "Waar is mijn bushalte?"
+                    },
+                    {
+                        "id": "2",
+                        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes",
+                        "text": "Meer info over de NMBS-bussen (FAQ)"
+                    },
+                    {
+                        "id": "3",
+                        "link": "https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus",
+                        "text": "En savoir plus sur les bus SNCB (FAQ)"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "23",
+            "title": "Mons / Bergen - Saint-Ghislain",
+            "description": "Every day, from 6/01 to 5/02 Infrabel is working on the track.The route and departure times of all trains running between Mons / Bergen and Saint-Ghislain change.Some P trains do not run.On some weekends replaces an SNCB bus all trains between Mons / Bergen and Saint-Ghislain.The travel planner takes these changes into account up until 26.01.25 and will be updated at the latest on 23.12.24.Plan your journey through sncb.be or the SNCB app.Plus d'infosMeer info",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/fr/news/works-stghislain-mons",
+            "timestamp": "1734337470",
+            "richtext": "Every day, from 6/01 to 5/02 Infrabel is working on the track.The route and departure times of all trains running between Mons / Bergen and Saint-Ghislain change.Some P trains do not run.On some weekends replaces an SNCB bus all trains between Mons / Bergen and Saint-Ghislain.The travel planner takes these changes into account up until 26.01.25 and will be updated at the latest on 23.12.24.Plan your journey through sncb.be or the SNCB app.<br><a href='https://www.belgiantrain.be/fr/news/works-stghislain-mons'>Plus d\"infos</a><br><a href='https://www.belgiantrain.be/nl/news/works-stghislain-mons'>Meer info</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/fr/news/works-stghislain-mons",
+                        "text": "Plus d'infos"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/nl/news/works-stghislain-mons",
+                        "text": "Meer info"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "24",
+            "title": "Namur / Namen - Gendron-Celles",
+            "description": "On 13-14/01 Infrabel is working on the track.The departure times of most L trains Namur / Namen - Dinant - Libramont change.The travel planner takes these changes into account.",
+            "type": "planned",
+            "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=91047&channelFilter=rss_line_90&",
+            "timestamp": "1734101841",
+            "richtext": "On 13-14/01 Infrabel is working on the track.The departure times of most L trains Namur / Namen - Dinant - Libramont change.The travel planner takes these changes into account.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=91047&channelFilter=rss_line_90&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "25",
+            "title": "Anvers-Central / Antwerpen-Centraal - Anvers-Berchem / Antwerpen-Berchem",
+            "description": "During the weekends, from 4 to 19/01 Infrabel is working on the track.The route and departure times of most trains running between Anvers-Central / Antwerpen-Centraal and Anvers-Berchem / Antwerpen-Berchem change.The travel planner takes these changes into account.Meer infoPlus d'infos",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/news/works-antwerpen-centraal-antwerpen-berchem2",
+            "timestamp": "1733903961",
+            "richtext": "During the weekends, from 4 to 19/01 Infrabel is working on the track.The route and departure times of most trains running between Anvers-Central / Antwerpen-Centraal and Anvers-Berchem / Antwerpen-Berchem change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/news/works-antwerpen-centraal-antwerpen-berchem2'>Meer info</a><br><a href='https://www.belgiantrain.be/fr/news/works-antwerpen-centraal-antwerpen-berchem2'>Plus d\"infos</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/news/works-antwerpen-centraal-antwerpen-berchem2",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/news/works-antwerpen-centraal-antwerpen-berchem2",
+                        "text": "Plus d'infos"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "26",
+            "title": "Arlon / Aarlen - Libramont",
+            "description": "During the weekend of 11-12/01 Infrabel is working on the track.The departure times of some L trains Libramont - Bertrix - Arlon / Aarlen change.The travel planner takes these changes into account.",
+            "type": "planned",
+            "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90810&channelFilter=rss_line_90&",
+            "timestamp": "1733481219",
+            "richtext": "During the weekend of 11-12/01 Infrabel is working on the track.The departure times of some L trains Libramont - Bertrix - Arlon / Aarlen change.The travel planner takes these changes into account.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90810&channelFilter=rss_line_90&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "27",
+            "title": "Anvers-Berchem / Antwerpen-Berchem - Hoboken-Polder",
+            "description": "During the weekends of 4-5 and 11-12/01 Infrabel is working on the track.An SNCB bus replaces all S32 trains Puurs - Anvers-Central / Antwerpen-Centraal - Roosendaal (NL) between Hoboken-Polder and Anvers-Berchem / Antwerpen-Berchem.The departure times of all S32 trains change.The travel planner takes these changes into account.Plus d'infosMeer info",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/fr/news/works-antwerpen-hoboken-polder",
+            "timestamp": "1733404142",
+            "richtext": "During the weekends of 4-5 and 11-12/01 Infrabel is working on the track.An SNCB bus replaces all S32 trains Puurs - Anvers-Central / Antwerpen-Centraal - Roosendaal (NL) between Hoboken-Polder and Anvers-Berchem / Antwerpen-Berchem.The departure times of all S32 trains change.The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/fr/news/works-antwerpen-hoboken-polder'>Plus d\"infos</a><br><a href='https://www.belgiantrain.be/nl/news/works-antwerpen-hoboken-polder'>Meer info</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/fr/news/works-antwerpen-hoboken-polder",
+                        "text": "Plus d'infos"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/nl/news/works-antwerpen-hoboken-polder",
+                        "text": "Meer info"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "28",
+            "title": "Arlon / Aarlen - Libramont",
+            "description": "On 7 and 8/01 Infrabel is working on the track.The departure times of some trains running between Arlon / Aarlen and Libramont change.The travel planner takes these changes into account.",
+            "type": "planned",
+            "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90776&channelFilter=rss_line_90&",
+            "timestamp": "1733318792",
+            "richtext": "On 7 and 8/01 Infrabel is working on the track.The departure times of some trains running between Arlon / Aarlen and Libramont change.The travel planner takes these changes into account.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90776&channelFilter=rss_line_90&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "29",
+            "title": "Namur / Namen - Dinant",
+            "description": "From 7 to 10/01 Infrabel is working on the track.The departure times of the trains below change: IC Brussels Airport-Zaventem - Namur - Dinant L Namur - Dinant - Libramont S61 Charleroi-Central - Tamines - Jambes The travel planner takes these changes into account.",
+            "type": "planned",
+            "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90702&channelFilter=rss_line_90&",
+            "timestamp": "1733130884",
+            "richtext": "From 7 to 10/01 Infrabel is working on the track.The departure times of the trains below change: IC Brussels Airport-Zaventem - Namur - Dinant L Namur - Dinant - Libramont S61 Charleroi-Central - Tamines - Jambes The travel planner takes these changes into account.",
+            "descriptionLinks": {
+                "number": "1",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=works&messageID=90702&channelFilter=rss_line_90&",
+                        "text": "Read more"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "30",
+            "title": "Brux./Brus.-Luxemb. - Saint-Job / Sint-Job",
+            "description": "Every day, from 14/10 to 15/06 Infrabel is working on the track.The route and departure times of the trains below change: S5 Malines / Mechelen - Brux./Brus.-Luxemb. - Hal / Halle, Enghien / EdingenS7 Vilvorde / Vilvoorde - Mérode/Merode - Hal / HalleS9 Nivelles / Nijvel - Brux./Brus.-Luxemb. - LandenS19 Brussels Airport-Zaventem - Brux./Brus.-Luxemb. - Charleroi-CentralThe travel planner takes these changes into account.Meer infoPlus d'infos",
+            "type": "planned",
+            "link": "https://www.belgiantrain.be/nl/news/works-brussels-lux-saint-job",
+            "timestamp": "1732104381",
+            "richtext": "Every day, from 14/10 to 15/06 Infrabel is working on the track.The route and departure times of the trains below change: S5 Malines / Mechelen - Brux./Brus.-Luxemb. - Hal / Halle, Enghien / EdingenS7 Vilvorde / Vilvoorde - Mérode/Merode - Hal / HalleS9 Nivelles / Nijvel - Brux./Brus.-Luxemb. - LandenS19 Brussels Airport-Zaventem - Brux./Brus.-Luxemb. - Charleroi-CentralThe travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/news/works-brussels-lux-saint-job'>Meer info</a><br><a href='https://www.belgiantrain.be/fr/news/works-brussels-lux-saint-job'>Plus d\"infos</a>",
+            "descriptionLinks": {
+                "number": "2",
+                "descriptionLink": [
+                    {
+                        "id": "0",
+                        "link": "https://www.belgiantrain.be/nl/news/works-brussels-lux-saint-job",
+                        "text": "Meer info"
+                    },
+                    {
+                        "id": "1",
+                        "link": "https://www.belgiantrain.be/fr/news/works-brussels-lux-saint-job",
+                        "text": "Plus d'infos"
+                    }
+                ]
+            }
+        }
+    ]
+}
