@@ -163,3 +163,182 @@ async def test_liveboard_with_date_time():
             time="2460",  # Invalid hour 24
         )
         assert result is None
+"""Additional unit tests for the pyrail models and API endpoints."""
+
+import pytest
+from datetime import datetime
+
+from pyrail.models import (
+    LiveboardApiResponse,
+    VehicleApiResponse,
+    CompositionApiResponse,
+    DisturbancesApiResponse,
+    StationDetails,
+    VehicleInfo,
+    PlatformInfo,
+    Occupancy,
+)
+
+# Sample data for testing
+SAMPLE_STATION = {
+    "@id": "http://irail.be/stations/NMBS/008892007",
+    "id": "BE.NMBS.008892007",
+    "name": "Brussels-Central",
+    "locationX": 4.356802,
+    "locationY": 50.845658,
+    "standardname": "BRUXELLES-CENTRAL/BRUSSEL-CENTRAAL"
+}
+
+SAMPLE_VEHICLE = {
+    "name": "IC 538",
+    "shortname": "538",
+    "number": "538",
+    "type": "IC",
+    "locationX": 4.356802,
+    "locationY": 50.845658,
+    "@id": "http://irail.be/vehicle/IC538"
+}
+
+@pytest.mark.asyncio
+async def test_liveboard_response_model():
+    """Test LiveboardApiResponse model serialization and deserialization."""
+    sample_data = {
+        "version": "1.3",
+        "timestamp": int(datetime.now().timestamp()),
+        "station": "Brussels-Central",
+        "stationinfo": SAMPLE_STATION,
+        "departures": {
+            "number": 1,
+            "departure": [{
+                "id": "1",
+                "station": "Antwerp-Central",
+                "stationinfo": SAMPLE_STATION,
+                "time": int(datetime.now().timestamp()),
+                "delay": 0,
+                "canceled": False,
+                "left": False,
+                "isExtra": False,
+                "vehicle": "IC538",
+                "vehicleinfo": SAMPLE_VEHICLE,
+                "platform": "3",
+                "platforminfo": {"name": "3", "normal": True},
+                "occupancy": {"@id": "low", "name": "LOW"},
+                "departureConnection": "http://irail.be/connections/1"
+            }]
+        }
+    }
+
+    response = LiveboardApiResponse.from_dict(sample_data)
+    assert response.version == "1.3"
+    assert isinstance(response.station_info, StationDetails)
+    assert len(response.departures.departure) == 1
+    assert response.departures.departure[0].platform == "3"
+
+    # Test serialization
+    serialized = response.to_dict()
+    assert serialized["stationinfo"]["@id"] == SAMPLE_STATION["@id"]
+    assert serialized["departures"]["departure"][0]["isExtra"] is False
+
+@pytest.mark.asyncio
+async def test_vehicle_api_response():
+    """Test VehicleApiResponse model with sample data."""
+    async with iRail() as api:
+        vehicle = await api.get_vehicle("IC538")
+        
+        assert vehicle is not None
+        assert isinstance(vehicle, VehicleApiResponse)
+        assert isinstance(vehicle.vehicle_info, VehicleInfo)
+        assert vehicle.stops.number >= 0
+        
+        # Test that all stops have valid platform info
+        for stop in vehicle.stops.stop:
+            assert isinstance(stop.platform_info, PlatformInfo)
+            assert isinstance(stop.occupancy, Occupancy)
+
+@pytest.mark.asyncio
+async def test_composition_api_response():
+    """Test train composition endpoint and response model."""
+    async with iRail() as api:
+        composition = await api.get_composition("IC538")
+        
+        assert composition is not None
+        assert isinstance(composition, CompositionApiResponse)
+        
+        # Test segments structure
+        segments = composition.composition.segments
+        assert segments.number >= 0
+        
+        if segments.number > 0:
+            segment = segments.segment[0]
+            assert isinstance(segment.origin, StationDetails)
+            assert isinstance(segment.destination, StationDetails)
+            
+            # Test units in composition
+            units = segment.composition.units
+            assert units.number >= 0
+            
+            if units.number > 0:
+                unit = units.unit[0]
+                assert isinstance(unit.has_toilets, bool)
+                assert isinstance(unit.seats_first_class, int)
+                assert isinstance(unit.length_in_meter, int)
+
+@pytest.mark.asyncio
+async def test_disturbances_api_response():
+    """Test disturbances endpoint and response model."""
+    async with iRail() as api:
+        disturbances = await api.get_disturbances()
+        
+        assert disturbances is not None
+        assert isinstance(disturbances, DisturbancesApiResponse)
+        
+        # Test disturbance attributes
+        if len(disturbances.disturbances) > 0:
+            disturbance = disturbances.disturbances[0]
+            assert isinstance(disturbance.id, str)
+            assert isinstance(disturbance.title, str)
+            assert isinstance(disturbance.timestamp, int)
+            assert disturbance.type in ["disturbance", "planned"]
+
+@pytest.mark.asyncio
+async def test_error_handling():
+    """Test error handling for various API endpoints."""
+    async with iRail() as api:
+        # Test with invalid vehicle ID
+        vehicle = await api.get_vehicle("INVALID_ID")
+        assert vehicle is None
+        
+        # Test with invalid station for liveboard
+        liveboard = await api.get_liveboard("INVALID_STATION")
+        assert liveboard is None
+        
+        # Test with invalid train ID for composition
+        composition = await api.get_composition("INVALID_TRAIN")
+        assert composition is None
+
+@pytest.mark.asyncio
+async def test_field_aliases():
+    """Test that field aliases are correctly handled in serialization."""
+    station = StationDetails.from_dict({
+        "@id": "test_id",
+        "id": "BE.TEST.1",
+        "name": "Test Station",
+        "locationX": 4.0,
+        "locationY": 51.0,
+        "standardname": "TEST"
+    })
+    
+    assert station.at_id == "test_id"
+    assert station.longitude == 4.0
+    assert station.latitude == 51.0
+    assert station.standard_name == "TEST"
+    
+    # Test serialization maintains the original field names
+    serialized = station.to_dict()
+    assert "@id" in serialized
+    assert "locationX" in serialized
+    assert "locationY" in serialized
+    assert "standardname" in serialized
+"""Additional unit tests for the pyrail models and API endpoints."""
+
+# ... (same test content as before) ...
