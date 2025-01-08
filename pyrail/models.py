@@ -329,8 +329,10 @@ class VehicleStop(DataClassORJSONMixin):
     left: bool  # Whether the train has left
     arrived: bool  # Whether the train has arrived
     is_extra_stop: bool = field(metadata=field_options(alias="isExtraStop"))  # Whether this is an extra stop
-    occupancy: Occupancy  # Occupancy level
-    departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
+    occupancy: Occupancy | None = field(default=None)  # Occupancy level, not present in last stop
+    departure_connection: str | None = field(
+        default=None, metadata=field_options(alias="departureConnection")
+    )  # Departure connection link, not present in the last stop
 
 
 @dataclass
@@ -366,7 +368,6 @@ class Unit(DataClassORJSONMixin):
     id: str  # Unit ID
     material_type: MaterialType = field(metadata=field_options(alias="materialType"))  # Material type of the unit
     has_toilets: bool = field(metadata=field_options(alias="hasToilets"))  # Whether the unit has toilets
-    has_tables: bool = field(metadata=field_options(alias="hasTables"))  # Whether the unit has tables
     has_second_class_outlets: bool = field(
         metadata=field_options(alias="hasSecondClassOutlets")
     )  # Whether the unit has power outlets in second class
@@ -375,33 +376,28 @@ class Unit(DataClassORJSONMixin):
     )  # Whether the unit has power outlets in first class
     has_heating: bool = field(metadata=field_options(alias="hasHeating"))  # Whether the unit has heating
     has_airco: bool = field(metadata=field_options(alias="hasAirco"))  # Whether the unit has air conditioning
-    material_number: str = field(metadata=field_options(alias="materialNumber"))  # Material number of the unit
     traction_type: str = field(metadata=field_options(alias="tractionType"))  # Traction type of the unit
     can_pass_to_next_unit: bool = field(
         metadata=field_options(alias="canPassToNextUnit")
     )  # Whether the unit can pass to the next
-    standing_places_second_class: int = field(
-        metadata=field_options(alias="standingPlacesSecondClass")
-    )  # Number of standing places in second class
-    standing_places_first_class: int = field(
-        metadata=field_options(alias="standingPlacesFirstClass")
-    )  # Number of standing places in first class
-    seats_coupe_second_class: int = field(
-        metadata=field_options(alias="seatsCoupeSecondClass")
-    )  # Number of seats in coupe in second class
+    seats_first_class: int = field(metadata=field_options(alias="seatsFirstClass"))  # Number of seats in first class
     seats_coupe_first_class: int = field(
         metadata=field_options(alias="seatsCoupeFirstClass")
     )  # Number of seats in coupe in first class
+    standing_places_first_class: int = field(
+        metadata=field_options(alias="standingPlacesFirstClass")
+    )  # Number of standing places in first class
     seats_second_class: int = field(metadata=field_options(alias="seatsSecondClass"))  # Number of seats in second class
-    seats_first_class: int = field(metadata=field_options(alias="seatsFirstClass"))  # Number of seats in first class
+    seats_coupe_second_class: int = field(
+        metadata=field_options(alias="seatsCoupeSecondClass")
+    )  # Number of seats in coupe in second class
+    standing_places_second_class: int = field(
+        metadata=field_options(alias="standingPlacesSecondClass")
+    )  # Number of standing places in second class
     length_in_meter: int = field(metadata=field_options(alias="lengthInMeter"))  # Length of the unit in meters
     has_semi_automatic_interior_doors: bool = field(
         metadata=field_options(alias="hasSemiAutomaticInteriorDoors")
     )  # Whether the unit has semi-automatic interior doors
-    has_luggage_section: bool = field(
-        metadata=field_options(alias="hasLuggageSection")
-    )  # Whether the unit has a luggage section
-    material_sub_type_name: str = field(metadata=field_options(alias="materialSubTypeName"))  # Material sub type name
     traction_position: int = field(metadata=field_options(alias="tractionPosition"))  # Traction position of the unit
     has_prm_section: bool = field(metadata=field_options(alias="hasPrmSection"))  # Whether the unit has a PRM section
     has_priority_places: bool = field(
