@@ -1,11 +1,23 @@
 """Module defining data models for the pyrail application."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
+
+
+def timestamp_to_datetime(timestamp: str) -> datetime:
+    """Convert an epoch timestamp to a datetime object."""
+    return datetime.fromtimestamp(int(timestamp))
+
+
+def str_to_bool(strbool: str) -> bool:
+    """Convert a string ("0" or "1") to a boolean."""
+    return strbool == "1"
+
 
 class Orientation(Enum):
     """Enum for the orientation of the material type of a train unit, either 'LEFT' or 'RIGHT'."""
@@ -26,7 +38,9 @@ class ApiResponse(DataClassORJSONMixin):
     """Base class for API responses, including schema version and timestamp."""
 
     version: str  # Version of the response schema
-    timestamp: int  # Timestamp of the response
+    timestamp: datetime = field(
+        metadata=field_options(deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Timestamp of the response
 
 
 @dataclass
@@ -86,7 +100,9 @@ class LiveboardDeparture(DataClassORJSONMixin):
     id: str  # ID of the departure
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: int  # Departure time (timestamp)
+    time: datetime = field(
+        metadata=field_options(deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Departure time (timestamp)
     delay: int  # Delay in seconds
     canceled: bool  # Whether the departure is canceled
     left: bool  # Whether the train has left
@@ -125,11 +141,13 @@ class ConnectionStop(DataClassORJSONMixin):
     id: str  # Stop ID
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    scheduled_arrival_time: int = field(metadata=field_options(alias="scheduledArrivalTime"))  # Scheduled arrival time
+    scheduled_arrival_time: datetime = field(
+        metadata=field_options(alias="scheduledArrivalTime", deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Scheduled arrival time
     arrival_canceled: bool = field(metadata=field_options(alias="arrivalCanceled"))  # Arrival cancellation status
     arrived: bool  # Arrival status
-    scheduled_departure_time: int = field(
-        metadata=field_options(alias="scheduledDepartureTime")
+    scheduled_departure_time: datetime = field(
+        metadata=field_options(alias="scheduledDepartureTime", deserialize=lambda x: timestamp_to_datetime(x))
     )  # Scheduled departure time
     arrival_delay: int = field(metadata=field_options(alias="arrivalDelay"))  # Arrival delay
     departure_delay: int = field(metadata=field_options(alias="departureDelay"))  # Departure delay
@@ -162,7 +180,9 @@ class ConnectionDeparture(DataClassORJSONMixin):
     delay: int  # Delay in seconds
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: int  # Departure time (timestamp)
+    time: datetime = field(
+        metadata=field_options(deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Departure time (timestamp)
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
@@ -183,7 +203,9 @@ class ConnectionArrival(DataClassORJSONMixin):
     delay: int  # Delay in seconds
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: int  # Arrival time (timestamp)
+    time: datetime = field(
+        metadata=field_options(deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Arrival time (timestamp)
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
@@ -220,8 +242,12 @@ class Alert(DataClassORJSONMixin):
     header: str  # Alert header
     lead: str  # Alert lead
     link: str  # Link to more information
-    start_time: int = field(metadata=field_options(alias="startTime"))  # Start time of the alert
-    end_time: int = field(metadata=field_options(alias="endTime"))  # End time of the alert
+    start_time: datetime = field(
+        metadata=field_options(alias="startTime", deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Start time of the alert
+    end_time: datetime = field(
+        metadata=field_options(alias="endTime", deserialize=lambda x: timestamp_to_datetime(x))
+    )  # End time of the alert
 
 
 @dataclass
@@ -260,13 +286,17 @@ class VehicleStop(DataClassORJSONMixin):
     id: str  # Stop ID
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: int  # Scheduled stop time (timestamp)
+    time: datetime = field(
+        metadata=field_options(deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Scheduled stop time (timestamp)
     platform: str  # Platform name
     platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
-    scheduled_departure_time: int = field(
-        metadata=field_options(alias="scheduledDepartureTime")
+    scheduled_departure_time: datetime = field(
+        metadata=field_options(alias="scheduledDepartureTime", deserialize=lambda x: timestamp_to_datetime(x))
     )  # Scheduled departure time
-    scheduled_arrival_time: int = field(metadata=field_options(alias="scheduledArrivalTime"))  # Scheduled arrival time
+    scheduled_arrival_time: datetime = field(
+        metadata=field_options(alias="scheduledArrivalTime", deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Scheduled arrival time
     delay: int  # Delay in minutes
     canceled: bool  # Whether the stop is canceled
     departure_delay: int = field(metadata=field_options(alias="departureDelay"))  # Departure delay
@@ -435,7 +465,9 @@ class Disturbance(DataClassORJSONMixin):
     description: str  # Description of the disturbance
     type: DisturbanceType  # Type of disturbance (e.g., "disturbance", "planned")
     link: str  # Link to more information
-    timestamp: int  # Timestamp of the disturbance
+    timestamp: datetime = field(
+        metadata=field_options(deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Timestamp of the disturbance
     richtext: str  # Rich-text description (HTML-like)
     description_links: DescriptionLinks = field(metadata=field_options(alias="descriptionLinks"))  # Description links
 
