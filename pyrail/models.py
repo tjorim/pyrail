@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -218,6 +218,28 @@ class ConnectionArrival(DataClassORJSONMixin):
 
 
 @dataclass
+class Via(DataClassORJSONMixin):
+    """Represents a single via station in a train connection."""
+
+    id: str  # Via ID
+    arrival: ConnectionArrival
+    departure: ConnectionDeparture
+    timebetween: int  # Time between arrival and departure (assuming in seconds)
+    station: str  # Station name
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    vehicle: str  # Vehicle identifier
+    vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
+
+
+@dataclass
+class Vias(DataClassORJSONMixin):
+    """Holds the number of vias and a list of detailed via information for connections."""
+
+    number: int  # Number of vias
+    via: List[Via] = field(default_factory=list)  # List of via details
+
+
+@dataclass
 class Remark(DataClassORJSONMixin):
     """Represents a single remark for a train connection, including type and content."""
 
@@ -268,6 +290,7 @@ class ConnectionDetails(DataClassORJSONMixin):
     duration: int  # Duration of the connection in minutes
     remarks: Remarks  # Remarks for the connection
     alerts: Alerts  # Alerts for the connection
+    vias: Vias | None = field(default=None)  # Vias information
 
 
 @dataclass
