@@ -12,6 +12,7 @@ from pyrail.models import (
     ConnectionDetails,
     ConnectionsApiResponse,
     DisturbancesApiResponse,
+    DisturbanceType,
     LiveboardApiResponse,
     LiveboardDeparture,
     Occupancy,
@@ -228,7 +229,7 @@ async def test_get_disturbances():
             disturbance = disturbances.disturbances[0]
             assert isinstance(disturbance.title, str), "Expected 'title' to be a string"
             assert isinstance(disturbance.description, str), "Expected 'description' to be a string"
-            assert disturbance.type in ["disturbance", "planned"], "Expected 'type' to be 'disturbance' or 'planned'"
+            assert disturbance.type in DisturbanceType, "Expected 'type' to be 'disturbance' or 'planned'"
 
 
 @pytest.mark.asyncio

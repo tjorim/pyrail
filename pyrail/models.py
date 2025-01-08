@@ -1,10 +1,24 @@
 """Module defining data models for the pyrail application."""
 
 from dataclasses import dataclass, field
-from typing import List
+from enum import Enum
+from typing import List, Optional
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
+
+class Orientation(Enum):
+    """Enum for the orientation of the material type of a train unit, either 'LEFT' or 'RIGHT'."""
+
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+
+
+class DisturbanceType(Enum):
+    """Enum for the type of disturbance, either 'disturbance' or 'planned'."""
+
+    DISTURBANCE = "disturbance"
+    PLANNED = "planned"
 
 
 @dataclass
@@ -289,7 +303,7 @@ class MaterialType(DataClassORJSONMixin):
 
     parent_type: str  # Parent material type
     sub_type: str  # Sub material type
-    orientation: str  # Orientation of the material type
+    orientation: Orientation  # Orientation of the material type
 
 
 @dataclass
@@ -394,16 +408,36 @@ class CompositionApiResponse(ApiResponse):
 
 
 @dataclass
+class DescriptionLink(DataClassORJSONMixin):
+    """Represents a single link within a disturbance description."""
+
+    id: str  # Link ID
+    link: str  # URL of the link
+    text: str  # Text displayed for the link
+
+
+@dataclass
+class DescriptionLinks(DataClassORJSONMixin):
+    """Holds the number of description links and a list of detailed description link information."""
+
+    number: int  # Number of description links
+    description_link: List[DescriptionLink] = field(
+        metadata=field_options(alias="descriptionLink"), default_factory=list
+    )  # List of description links
+
+
+@dataclass
 class Disturbance(DataClassORJSONMixin):
     """Represents a railway system disturbance, including description and metadata."""
 
     id: str  # ID of the disturbance
     title: str  # Title of the disturbance
     description: str  # Description of the disturbance
+    type: DisturbanceType  # Type of disturbance (e.g., "disturbance", "planned")
     link: str  # Link to more information
-    type: str  # Type of disturbance (e.g., "disturbance", "planned")
     timestamp: int  # Timestamp of the disturbance
-    attachment: str | None = None  # Optional attachment link
+    richtext: str  # Rich-text description (HTML-like)
+    description_links: DescriptionLinks = field(metadata=field_options(alias="descriptionLinks"))  # Description links
 
 
 @dataclass
