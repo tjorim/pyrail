@@ -18,11 +18,10 @@ jobs:
       with:
         python-version: 3.12
 
-    - name: Install Poetry
-      run: pip install poetry
-
     - name: Install dependencies
-      run: poetry install --no-dev
+      run: |
+        pip install poetry
+        poetry install
 
     - name: Build and Publish
       env:
