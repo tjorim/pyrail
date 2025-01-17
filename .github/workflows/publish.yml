@@ -3,10 +3,10 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - "v*"
+      - "v*"  # Trigger on tags starting with 'v' (e.g., v1.0.0, v1.2.3)
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,12 +18,31 @@ jobs:
       with:
         python-version: 3.12
 
-    - name: Install dependencies
+    - name: Install Poetry and dependencies
       run: |
         pip install poetry
         poetry install
 
-    - name: Build and Publish
+    - name: Extract version from Git tag
+      id: version
+      run: |
+        VERSION=$(echo ${GITHUB_REF} | sed 's/refs\/tags\///')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Bump version in pyproject.toml
+      run: |
+        poetry version $VERSION
+        poetry lock
+
+    - name: Commit version bump to repository
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add pyproject.toml poetry.lock
+        git commit -m "Bump version to $VERSION"
+        git push
+
+    - name: Build the package and publish to PyPI
       env:
         POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
       run: poetry publish --build
