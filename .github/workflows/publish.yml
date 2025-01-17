@@ -26,7 +26,7 @@ jobs:
     - name: Extract version from Git tag
       id: version
       run: |
-        VERSION=$(echo ${GITHUB_REF} | sed 's/refs\/tags\///')
+        VERSION=$(echo ${GITHUB_REF} | sed 's/refs\/tags\/v//')  # Strip 'v' prefix
         echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: Bump version in pyproject.toml
@@ -34,13 +34,17 @@ jobs:
         poetry version $VERSION
         poetry lock
 
+    - name: Create and Checkout a New Branch
+      run: |
+        git checkout -b version-bump-${GITHUB_SHA}
+
     - name: Commit version bump to repository
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
         git add pyproject.toml poetry.lock
         git commit -m "Bump version to $VERSION"
-        git push
+        git push origin version-bump-${GITHUB_SHA}
 
     - name: Build the package and publish to PyPI
       env:
