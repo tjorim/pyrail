@@ -34,9 +34,9 @@ jobs:
         poetry version $VERSION
         poetry lock
 
-    - name: Create and Checkout a New Branch
+    - name: Checkout main branch
       run: |
-        git checkout -b version-bump-${GITHUB_SHA}
+        git checkout main
 
     - name: Commit version bump to repository
       run: |
@@ -44,7 +44,7 @@ jobs:
         git config user.email "actions@github.com"
         git add pyproject.toml poetry.lock
         git commit -m "Bump version to $VERSION"
-        git push origin version-bump-${GITHUB_SHA}
+        git push origin main
 
     - name: Build the package and publish to PyPI
       env:
