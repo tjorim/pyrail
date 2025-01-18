@@ -269,9 +269,7 @@ class Alert(DataClassORJSONMixin):
     end_time: datetime = field(
         metadata=field_options(alias="endTime", deserialize=lambda x: timestamp_to_datetime(x))
     )  # End time of the alert
-    link: Optional[str] = field(
-        default_factory=lambda: None
-    )  # Link to more information
+    link: str | None = field(default=None)  # Link to more information
 
 @dataclass
 class Alerts(DataClassORJSONMixin):
