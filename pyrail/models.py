@@ -107,7 +107,7 @@ class LiveboardDeparture(DataClassORJSONMixin):
     canceled: bool = field(metadata=field_options(deserialize=str_to_bool))  # Whether the departure is canceled
     left: bool = field(metadata=field_options(deserialize=str_to_bool))  # Whether the train has left
     is_extra: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="isExtra")
+        metadata=field_options(alias="isExtra", deserialize=str_to_bool)
     )  # Whether the train is extra
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
@@ -147,7 +147,7 @@ class ConnectionStop(DataClassORJSONMixin):
         metadata=field_options(alias="scheduledArrivalTime", deserialize=lambda x: timestamp_to_datetime(x))
     )  # Scheduled arrival time
     arrival_canceled: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="arrivalCanceled")
+        metadata=field_options(alias="arrivalCanceled", deserialize=str_to_bool)
     )  # Arrival cancellation status
     arrived: bool = field(metadata=field_options(deserialize=str_to_bool))  # Arrival status
     scheduled_departure_time: datetime = field(
@@ -156,11 +156,11 @@ class ConnectionStop(DataClassORJSONMixin):
     arrival_delay: int = field(metadata=field_options(alias="arrivalDelay"))  # Arrival delay
     departure_delay: int = field(metadata=field_options(alias="departureDelay"))  # Departure delay
     departure_canceled: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="departureCanceled")
+        metadata=field_options(alias="departureCanceled", deserialize=str_to_bool)
     )  # Departure cancellation status
     left: bool = field(metadata=field_options(deserialize=str_to_bool))  # Departure status
     is_extra_stop: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="isExtraStop")
+        metadata=field_options(alias="isExtraStop", deserialize=str_to_bool)
     )  # Whether the stop is an extra one
     platform: str  # Platform name
     platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
@@ -336,16 +336,16 @@ class VehicleStop(DataClassORJSONMixin):
     canceled: bool = field(metadata=field_options(deserialize=str_to_bool))  # Whether the stop is canceled
     departure_delay: int = field(metadata=field_options(alias="departureDelay"))  # Departure delay
     departure_canceled: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="departureCanceled")
+        metadata=field_options(alias="departureCanceled", deserialize=str_to_bool)
     )  # Departure cancellation status
     arrival_delay: int = field(metadata=field_options(alias="arrivalDelay"))  # Arrival delay
     arrival_canceled: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="arrivalCanceled")
+        metadata=field_options(alias="arrivalCanceled", deserialize=str_to_bool)
     )  # Arrival cancellation status
     left: bool = field(metadata=field_options(deserialize=str_to_bool))  # Whether the train has left
     arrived: bool = field(metadata=field_options(deserialize=str_to_bool))  # Whether the train has arrived
     is_extra_stop: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="isExtraStop")
+        metadata=field_options(alias="isExtraStop", deserialize=str_to_bool)
     )  # Whether this is an extra stop
     occupancy: Occupancy | None = field(default=None)  # Occupancy level, not present in last stop
     departure_connection: str | None = field(
@@ -386,23 +386,23 @@ class Unit(DataClassORJSONMixin):
     id: str  # Unit ID
     material_type: MaterialType = field(metadata=field_options(alias="materialType"))  # Material type of the unit
     has_toilets: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasToilets")
+        metadata=field_options(alias="hasToilets", deserialize=str_to_bool)
     )  # Whether the unit has toilets
     has_second_class_outlets: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasSecondClassOutlets")
+        metadata=field_options(alias="hasSecondClassOutlets", deserialize=str_to_bool)
     )  # Whether the unit has power outlets in second class
     has_first_class_outlets: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasFirstClassOutlets")
+        metadata=field_options(alias="hasFirstClassOutlets", deserialize=str_to_bool)
     )  # Whether the unit has power outlets in first class
     has_heating: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasHeating")
+        metadata=field_options(alias="hasHeating", deserialize=str_to_bool)
     )  # Whether the unit has heating
     has_airco: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasAirco")
+        metadata=field_options(alias="hasAirco", deserialize=str_to_bool)
     )  # Whether the unit has air conditioning
     traction_type: str = field(metadata=field_options(alias="tractionType"))  # Traction type of the unit
     can_pass_to_next_unit: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="canPassToNextUnit")
+        metadata=field_options(alias="canPassToNextUnit", deserialize=str_to_bool)
     )  # Whether the unit can pass to the next
     seats_first_class: int = field(metadata=field_options(alias="seatsFirstClass"))  # Number of seats in first class
     seats_coupe_first_class: int = field(
@@ -420,17 +420,17 @@ class Unit(DataClassORJSONMixin):
     )  # Number of standing places in second class
     length_in_meter: int = field(metadata=field_options(alias="lengthInMeter"))  # Length of the unit in meters
     has_semi_automatic_interior_doors: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasSemiAutomaticInteriorDoors")
+        metadata=field_options(alias="hasSemiAutomaticInteriorDoors", deserialize=str_to_bool)
     )  # Whether the unit has semi-automatic interior doors
     traction_position: int = field(metadata=field_options(alias="tractionPosition"))  # Traction position of the unit
     has_prm_section: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasPrmSection")
+        metadata=field_options(alias="hasPrmSection", deserialize=str_to_bool)
     )  # Whether the unit has a PRM section
     has_priority_places: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasPriorityPlaces")
+        metadata=field_options(alias="hasPriorityPlaces", deserialize=str_to_bool)
     )  # Whether the unit has priority places
     has_bike_section: bool = field(
-        metadata=field_options(deserialize=str_to_bool, alias="hasBikeSection")
+        metadata=field_options(alias="hasBikeSection", deserialize=str_to_bool)
     )  # Whether the unit has a bike section
 
 
