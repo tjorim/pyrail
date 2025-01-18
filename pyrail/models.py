@@ -262,6 +262,7 @@ class Alert(DataClassORJSONMixin):
 
     id: str  # Alert ID
     header: str  # Alert header
+    description: str  # Alert description
     lead: str  # Alert lead
     start_time: datetime = field(
         metadata=field_options(alias="startTime", deserialize=lambda x: timestamp_to_datetime(x))
