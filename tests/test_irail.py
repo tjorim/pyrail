@@ -8,9 +8,12 @@ import pytest
 
 from pyrail.irail import iRail
 from pyrail.models import (
+    Alert,
+    ApiResponse,
     CompositionApiResponse,
     ConnectionDetails,
     ConnectionsApiResponse,
+    Disturbance,
     DisturbancesApiResponse,
     DisturbanceType,
     LiveboardApiResponse,
@@ -19,6 +22,8 @@ from pyrail.models import (
     PlatformInfo,
     StationDetails,
     StationsApiResponse,
+    _str_to_bool,
+    _timestamp_to_datetime,
     VehicleApiResponse,
     VehicleInfo,
 )
@@ -322,3 +327,183 @@ async def test_error_handling():
         # Test with invalid station for connections
         connections = await api.get_connections("InvalidStation1", "InvalidStation2")
         assert connections is None, "Expected None for invalid stations"
+
+
+@pytest.mark.asyncio
+async def test_timestamp_to_datetime():
+    """Test the timestamp_to_datetime function."""
+    # Test valid timestamps
+    assert _timestamp_to_datetime("1705593600") == datetime(2024, 1, 18, 17, 0)  # 2024-01-18 16:00:00
+    assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 1, 0)  # Unix epoch
+
+
+@pytest.mark.asyncio
+async def test_timestamp_field_deserialization():
+    """Test timestamp field deserialization in various models."""
+    # Test ApiResponse timestamp
+    api_response = ApiResponse.from_dict({
+        "version": "1.0",
+        "timestamp": "1705593600"
+    })
+    assert api_response.timestamp == datetime(2024, 1, 18, 17, 0)
+
+    # Test LiveboardDeparture time
+    departure = LiveboardDeparture.from_dict({
+        "id": "0",
+        "station": "Brussels-South/Brussels-Midi",
+        "stationinfo": {
+            "@id": "http://irail.be/stations/NMBS/008814001",
+            "id": "BE.NMBS.008814001",
+            "name": "Brussels-South/Brussels-Midi",
+            "locationX": "4.336531",
+            "locationY": "50.835707",
+            "standardname": "Brussel-Zuid/Bruxelles-Midi"
+        },
+        "time": "1705593600",
+        "delay": "0",
+        "canceled": "0",
+        "left": "0",
+        "isExtra": "0",
+        "vehicle": "BE.NMBS.EC9272",
+        "vehicleinfo": {
+            "name": "BE.NMBS.EC9272",
+            "shortname": "EC 9272",
+            "number": "9272",
+            "type": "EC",
+            "locationX": "0",
+            "locationY": "0",
+            "@id": "http://irail.be/vehicle/EC9272"
+        },
+        "platform": "23",
+        "platforminfo": {
+            "name": "23",
+            "normal": "1"
+        },
+        "occupancy": {
+            "@id": "http://api.irail.be/terms/low",
+            "name": "low"
+        },
+        "departureConnection": "http://irail.be/connections/8821006/20250106/EC9272"
+    })
+    assert departure.time == datetime(2024, 1, 18, 17, 0)
+
+    # Test Alert start_time and end_time
+    alert = Alert.from_dict({
+        "id": "0",
+        "header": "Anvers-Central / Antwerpen-Centraal - Anvers-Berchem / Antwerpen-Berchem",
+        "description": "During the weekends, from 4 to 19/01 Infrabel is working on the track. The departure times of this train change. The travel planner takes these changes into account.",
+        "lead": "During the weekends, from 4 to 19/01 Infrabel is working on the track",
+        "startTime": "1705593600",
+        "endTime": "1705597200"
+    })
+    assert alert.start_time == datetime(2024, 1, 18, 17, 0)
+    assert alert.end_time == datetime(2024, 1, 18, 18, 0)
+
+    # Test Disturbance timestamp
+    disturbance = Disturbance.from_dict({
+        "id": "1",
+        "title": "Mouscron / Moeskroen - Lille Flandres (FR)",
+        "description": "On weekdays from 6 to 17/01 works will take place on the French rail network.An SNCB bus replaces some IC trains Courtrai / Kortrijk - Mouscron / Moeskroen - Lille Flandres (FR) between Mouscron / Moeskroen and Lille Flandres (FR).The travel planner takes these changes into account.Meer info over de NMBS-bussen (FAQ)En savoir plus sur les bus SNCB (FAQ)Où prendre mon bus ?Waar is mijn bushalte?",
+        "type": "planned",
+        "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+        "timestamp": "1705593600",
+        "richtext": "On weekdays from 6 to 17/01 works will take place on the French rail network.An SNCB bus replaces some IC trains Courtrai / Kortrijk - Mouscron / Moeskroen - Lille Flandres (FR) between Mouscron / Moeskroen and Lille Flandres (FR).The travel planner takes these changes into account.<br><a href='https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus'>Meer info over de NMBS-bussen (FAQ)</a><br><a href='https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus'>En savoir plus sur les bus SNCB (FAQ)</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1736172333792_FR_2501250_S.pdf'>Où prendre mon bus ?</a><br><a href='https://www.belgianrail.be/jp/download/brail_him/1736172333804_NL_2501250_S.pdf'>Waar is mijn bushalte?</a>",
+        "descriptionLinks": {
+            "number": "4",
+            "descriptionLink": [
+                {
+                    "id": "0",
+                    "link": "https://www.belgiantrain.be/nl/support/faq/faq-routes-schedules/faq-bus",
+                    "text": "Meer info over de NMBS-bussen (FAQ)"
+                },
+                {
+                    "id": "1",
+                    "link": "https://www.belgiantrain.be/fr/support/faq/faq-routes-schedules/faq-bus",
+                    "text": "En savoir plus sur les bus SNCB (FAQ)"
+                },
+                {
+                    "id": "2",
+                    "link": "https://www.belgianrail.be/jp/download/brail_him/1736172333792_FR_2501250_S.pdf",
+                    "text": "Où prendre mon bus ?"
+                },
+                {
+                    "id": "3",
+                    "link": "https://www.belgianrail.be/jp/download/brail_him/1736172333804_NL_2501250_S.pdf",
+                    "text": "Waar is mijn bushalte?"
+                }
+            ]
+        }
+    })
+    assert disturbance.timestamp == datetime(2024, 1, 18, 17, 0)
+
+
+@pytest.mark.asyncio
+async def test_str_to_bool():
+    """Test the str_to_bool function that converts string values to boolean."""
+
+    # Test valid inputs
+    assert _str_to_bool("1") is True, "String '1' should convert to True"
+    assert _str_to_bool("0") is False, "String '0' should convert to False"
+
+
+@pytest.mark.asyncio
+async def test_boolean_field_deserialization():
+    """Test the deserialization of boolean fields in models."""
+
+    # Test PlatformInfo boolean field
+    platform = PlatformInfo.from_dict({
+        "name": "1",
+        "normal": "1"
+    })
+    assert platform.normal is True, "Platform normal field should be True when '1'"
+
+    platform = PlatformInfo.from_dict({
+        "name": "1",
+        "normal": "0"
+    })
+    assert platform.normal is False, "Platform normal field should be False when '0'"
+
+    # Test LiveboardDeparture multiple boolean fields
+    departure = LiveboardDeparture.from_dict({
+        "id": "1",
+        "station": "Brussels",
+        "stationinfo": {
+            "@id": "1",
+            "id": "1",
+            "name": "Brussels",
+            "locationX": 4.3517,
+            "locationY": 50.8503,
+            "standardname": "Brussels-Central"
+        },
+        "time": "1705593600",  # Example timestamp
+        "delay": 0,
+        "canceled": "1",
+        "left": "0",
+        "isExtra": "1",
+        "vehicle": "BE.NMBS.IC1234",
+        "vehicleinfo": {
+            "name": "IC1234",
+            "shortname": "IC1234",
+            "number": "1234",
+            "type": "IC",
+            "locationX": 4.3517,
+            "locationY": 50.8503,
+            "@id": "1"
+        },
+        "platform": "1",
+        "platforminfo": {
+            "name": "1",
+            "normal": "1"
+        },
+        "occupancy": {
+            "@id": "1",
+            "name": "LOW"
+        },
+        "departureConnection": "1"
+    })
+
+    # Verify boolean fields are correctly deserialized
+    assert departure.canceled is True, "Departure canceled field should be True when '1'"
+    assert departure.left is False, "Departure left field should be False when '0'"
+    assert departure.is_extra is True, "Departure is_extra field should be True when '1'"
+    assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
