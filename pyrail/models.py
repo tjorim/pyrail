@@ -124,14 +124,44 @@ class LiveboardDepartures(DataClassORJSONMixin):
 
 
 @dataclass
+class LiveboardArrival(DataClassORJSONMixin):
+    """Details of a single arrival in the liveboard response."""
+
+    id: str  # ID of the arrival
+    station: str  # Station name
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    time: datetime = field(
+        metadata=field_options(deserialize=lambda x: timestamp_to_datetime(x))
+    )  # Arrival time (timestamp)
+    delay: int  # Delay in seconds
+    canceled: bool  # Whether the arrival is canceled
+    arrived: bool  # Whether the train has arrived
+    is_extra: bool = field(metadata=field_options(alias="isExtra"))  # Whether the train is extra
+    vehicle: str  # Vehicle identifier
+    vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
+    platform: str  # Platform name
+    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
+    departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
+
+
+@dataclass
+class LiveboardArrivals(DataClassORJSONMixin):
+    """Holds the number of arrivals and a list of detailed arrival information."""
+
+    number: int  # Number of arrivals
+    arrival: List[LiveboardArrival] = field(default_factory=list)  # List of arrival details
+
+
+@dataclass
 class LiveboardApiResponse(ApiResponse):
     """Represents a liveboard response containing station details and departures."""
 
     station: str  # Name of the station
     station_info: StationDetails = field(
         metadata=field_options(alias="stationinfo")
-    )  # Reusing the `Station` class for detailed station information
-    departures: LiveboardDepartures  # Departures information
+    )  # Detailed station info
+    departures: LiveboardDepartures | None = field(default=None)  # Departures information
+    arrivals: LiveboardArrivals | None = field(default=None)  # Arrivals information
 
 
 @dataclass
