@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
