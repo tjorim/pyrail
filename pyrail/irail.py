@@ -54,11 +54,12 @@ class iRail:
         "disturbances": {"optional": ["lineBreakCharacter"]},
     }
 
-    def __init__(self, lang: str = "en") -> None:
+    def __init__(self, lang: str = "en", session: ClientSession | None = None) -> None:
         """Initialize the iRail API client.
 
         Args:
             lang (str): The language for API responses. Default is 'en'.
+            session (ClientSession, optional): An existing aiohttp session. Defaults to None.
 
         """
         self.lang: str = lang
@@ -66,13 +67,18 @@ class iRail:
         self.burst_tokens: int = 5
         self.last_request_time: float = time.time()
         self.lock: Lock = Lock()
-        self.session: ClientSession | None = None
+        self.session: ClientSession | None = session
+        self._owns_session = session is None # Track ownership
         self.etag_cache: Dict[str, str] = {}
         logger.info("iRail instance created")
 
     async def __aenter__(self) -> "iRail":
-        """Initialize and return the aiohttp client session when entering the async context."""
-        self.session = ClientSession()
+        """Initialize the aiohttp client session when entering the async context."""
+        if self.session and not self.session.closed:
+            logger.debug("Using externally provided session")
+        elif not self.session:
+            logger.debug("Initializing new aiohttp session")
+            self.session = ClientSession()
         return self
 
     async def __aexit__(
@@ -80,10 +86,16 @@ class iRail:
     ) -> None:
         """Close the aiohttp client session when exiting the async context."""
         if self.session:
-            try:
-                await self.session.close()
-            except Exception as e:
-                logger.error("Error closing session: %s", e)
+            if self.session.closed:
+                logger.debug("Session is already closed, skipping closure")
+            elif not self._owns_session:
+                logger.debug("Session is externally provided; not closing it")
+            else:
+                logger.debug("Closing aiohttp session")
+                try:
+                    await self.session.close()
+                except Exception as e:
+                    logger.error("Error while closing aiohttp session: %s", e)
 
     @property
     def lang(self) -> str:
@@ -108,6 +120,11 @@ class iRail:
             self.__lang = value
         else:
             self.__lang = "en"
+
+    def clear_etag_cache(self):
+        """Clear the ETag cache."""
+        self.etag_cache.clear()
+        logger.debug("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
         """Refill tokens for rate limiting based on elapsed time.
