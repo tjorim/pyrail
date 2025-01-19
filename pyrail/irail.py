@@ -28,6 +28,9 @@ class iRail:
 
     Attributes:
         lang (str): The language for API responses ('nl', 'fr', 'en', 'de').
+        session (ClientSession, optional): The HTTP session used for API requests.
+            If not provided, a new session will be created and managed internally.
+            If provided, the session lifecycle must be managed externally.
 
     Endpoints:
         stations: Retrieve all stations.
@@ -77,7 +80,7 @@ class iRail:
         if self.session and not self.session.closed:
             logger.debug("Using externally provided session")
         elif not self.session:
-            logger.debug("Initializing new aiohttp session")
+            logger.debug("Creating new internal aiohttp session")
             self.session = ClientSession()
         return self
 
@@ -121,10 +124,10 @@ class iRail:
         else:
             self.__lang = "en"
 
-    def clear_etag_cache(self):
+    def clear_etag_cache(self) -> None:
         """Clear the ETag cache."""
         self.etag_cache.clear()
-        logger.debug("ETag cache cleared")
+        logger.info("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
         """Refill tokens for rate limiting based on elapsed time.
