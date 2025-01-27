@@ -130,11 +130,11 @@ class iRail:
         logger.info("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
-        """Refill tokens for rate limiting based on elapsed time.
+        """
+        Refill tokens for rate limiting using a token bucket algorithm.
 
-        This method refills both standard tokens (max 3) and burst tokens (max 5)
-        using a token bucket algorithm. The refill rate is 3 tokens per second.
-
+        - Standard tokens: Refill rate of 3 tokens/second, max 3 tokens.
+        - Burst tokens: Refilled only when standard tokens are full, max 5 tokens.
         """
         logger.debug("Refilling tokens")
         current_time: float = time.time()
@@ -149,11 +149,12 @@ class iRail:
             self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
 
     async def _handle_rate_limit(self) -> None:
-        """Handle rate limiting using a token bucket algorithm.
+        """
+        Handle rate limiting using a token bucket algorithm.
 
-        The implementation uses two buckets:
-        - Normal bucket: 3 tokens/second
-        - Burst bucket: 5 tokens/second
+        - Standard tokens: 3 requests/second.
+        - Burst tokens: Additional 5 requests/second for spikes.
+        - Waits and refills tokens if both are exhausted.
         """
         logger.debug("Handling rate limit")
         self._refill_tokens()
