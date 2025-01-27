@@ -130,11 +130,21 @@ class iRail:
         logger.info("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
-        """Refill tokens for rate limiting based on elapsed time.
-
-        This method refills both standard tokens (max 3) and burst tokens (max 5)
-        using a token bucket algorithm. The refill rate is 3 tokens per second.
-
+        """
+        Refill tokens for rate limiting based on elapsed time using a token bucket algorithm.
+        
+        This method manages two token pools for rate limiting: standard tokens and burst tokens.
+        Standard tokens are refilled at a rate of 3 tokens per second, with a maximum of 3 tokens.
+        Burst tokens are only refilled when standard tokens are at their maximum capacity, 
+        also at a rate of 3 tokens per second, with a maximum of 5 burst tokens.
+        
+        The method calculates the elapsed time since the last request and uses this to determine
+        the number of tokens to add, ensuring the token pools do not exceed their maximum limits.
+        
+        Notes:
+            - Tokens represent available request slots
+            - Burst tokens provide additional capacity for sudden request spikes
+            - Refill occurs only when standard tokens are at maximum capacity
         """
         logger.debug("Refilling tokens")
         current_time: float = time.time()
@@ -149,11 +159,26 @@ class iRail:
             self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
 
     async def _handle_rate_limit(self) -> None:
-        """Handle rate limiting using a token bucket algorithm.
-
-        The implementation uses two buckets:
-        - Normal bucket: 3 tokens/second
-        - Burst bucket: 5 tokens/second
+        """
+        Handle rate limiting for API requests using a token bucket algorithm.
+        
+        This method manages request rate by maintaining two token buckets:
+        - Standard tokens: Allows 3 requests per second
+        - Burst tokens: Provides additional 5 requests per second for handling temporary traffic spikes
+        
+        The method ensures smooth API request flow by:
+        - Refilling tokens based on elapsed time
+        - Using standard tokens for normal requests
+        - Falling back to burst tokens when standard tokens are depleted
+        - Waiting and refilling tokens if both standard and burst tokens are exhausted
+        
+        Raises:
+            None: Implicitly waits and retries if no tokens are available
+        
+        Side Effects:
+            - Decrements token counts
+            - May pause execution using asyncio.sleep()
+            - Logs debug and warning messages
         """
         logger.debug("Handling rate limit")
         self._refill_tokens()
