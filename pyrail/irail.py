@@ -6,7 +6,7 @@ from datetime import datetime
 import logging
 import time
 from types import TracebackType
-from typing import Any, Dict, Type
+from typing import Any, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -45,7 +45,7 @@ class iRail:
     # Available iRail API endpoints and their parameter requirements.
     # Each endpoint is configured with required parameters, optional parameters, and XOR
     # parameter groups (where exactly one parameter from the group must be provided).
-    endpoints: Dict[str, Dict[str, Any]] = {
+    endpoints: dict[str, dict[str, Any]] = {
         "stations": {},
         "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
         "connections": {
@@ -71,8 +71,8 @@ class iRail:
         self.last_request_time: float = time.time()
         self.lock: Lock = Lock()
         self.session: ClientSession | None = session
-        self._owns_session = session is None # Track ownership
-        self.etag_cache: Dict[str, str] = {}
+        self._owns_session = session is None  # Track ownership
+        self.etag_cache: dict[str, str] = {}
         logger.info("iRail instance created")
 
     async def __aenter__(self) -> "iRail":
@@ -130,8 +130,7 @@ class iRail:
         logger.info("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
-        """
-        Refill tokens for rate limiting using a token bucket algorithm.
+        """Refill tokens for rate limiting using a token bucket algorithm.
 
         - Standard tokens: Refill rate of 3 tokens/second, max 3 tokens.
         - Burst tokens: Refilled only when standard tokens are full, max 5 tokens.
@@ -149,8 +148,7 @@ class iRail:
             self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
 
     async def _handle_rate_limit(self) -> None:
-        """
-        Handle rate limiting using a token bucket algorithm.
+        """Handle rate limiting using a token bucket algorithm.
 
         - Standard tokens: 3 requests/second.
         - Burst tokens: Additional 5 requests/second for spikes.
@@ -170,18 +168,18 @@ class iRail:
         else:
             self.tokens -= 1
 
-    def _add_etag_header(self, method: str) -> Dict[str, str]:
+    def _add_etag_header(self, method: str) -> dict[str, str]:
         """Add ETag header for the given method if a cached ETag is available.
 
         Args:
             method (str): The API endpoint for which the header is being generated.
 
         Returns:
-            Dict[str, str]: A dictionary containing HTTP headers, including the ETag header
+            dict[str, str]: A dictionary containing HTTP headers, including the ETag header
             if a cached value exists.
 
         """
-        headers: Dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
+        headers: dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
         if method in self.etag_cache:
             logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
             headers["If-None-Match"] = self.etag_cache[method]
@@ -227,12 +225,12 @@ class iRail:
             logger.error("Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
             return False
 
-    def _validate_params(self, method: str, params: Dict[str, Any] | None = None) -> bool:
+    def _validate_params(self, method: str, params: dict[str, Any] | None = None) -> bool:
         """Validate parameters for a specific iRail API endpoint based on predefined requirements.
 
         Args:
             method (str): The API endpoint method to validate parameters for.
-            params (Dict[str, Any], optional): Dictionary of parameters to validate. Defaults to None.
+            params (dict[str, Any], optional): Dictionary of parameters to validate. Defaults to None.
 
         Returns:
             bool: True if parameters are valid, False otherwise.
@@ -290,12 +288,12 @@ class iRail:
 
         return True
 
-    async def _handle_success_response(self, response: ClientResponse, method: str) -> Dict[str, Any] | None:
+    async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
         """Handle a successful API response."""
         if "Etag" in response.headers:
             self.etag_cache[method] = response.headers["Etag"]
         try:
-            json_data: Dict[str, Any] | None = await response.json()
+            json_data: dict[str, Any] | None = await response.json()
             if not json_data:
                 logger.warning("Empty response received")
             return json_data
@@ -304,8 +302,8 @@ class iRail:
             return None
 
     async def _handle_response(
-        self, response: ClientResponse, method: str, args: Dict[str, Any] | None = None
-    ) -> Dict[str, Any] | None:
+        self, response: ClientResponse, method: str, args: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
         """Handle the API response based on status code."""
         if response.status == 429:
             retry_after: int = int(response.headers.get("Retry-After", 1))
@@ -327,7 +325,7 @@ class iRail:
             logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
             return None
 
-    async def _do_request(self, method: str, args: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
+    async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
 
         This method handles API requests with rate limiting, parameter validation,
@@ -369,7 +367,7 @@ class iRail:
         if args:
             params.update(args)
 
-        request_headers: Dict[str, str] = self._add_etag_header(method)
+        request_headers: dict[str, str] = self._add_etag_header(method)
 
         try:
             async with self.session.get(url, params=params, headers=request_headers) as response:
@@ -430,7 +428,7 @@ class iRail:
                     print(f"Liveboard for Brussels-South: {liveboard}")
 
         """
-        extra_params: Dict[str, Any] = {
+        extra_params: dict[str, Any] = {
             "station": station,
             "id": id,
             "date": date,
@@ -474,7 +472,7 @@ class iRail:
                     print(f"Connections from Antwerpen-Centraal to Brussel-Centraal: {connections}")
 
         """
-        extra_params: Dict[str, Any] = {
+        extra_params: dict[str, Any] = {
             "from": from_station,
             "to": to_station,
             "date": date,
@@ -505,7 +503,7 @@ class iRail:
                 vehicle_info = await client.get_vehicle("BE.NMBS.IC1832")
 
         """
-        extra_params: Dict[str, Any] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
+        extra_params: dict[str, Any] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
         vehicle_response_dict = await self._do_request(
             "vehicle", {k: v for k, v in extra_params.items() if v is not None}
         )
@@ -528,7 +526,7 @@ class iRail:
                 composition = await client.get_composition('S51507')
 
         """
-        extra_params: Dict[str, str | None] = {"id": id, "data": data}
+        extra_params: dict[str, str | None] = {"id": id, "data": data}
         composition_response_dict = await self._do_request(
             "composition", {k: v for k, v in extra_params.items() if v is not None}
         )

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import Any
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -38,9 +38,7 @@ class ApiResponse(DataClassORJSONMixin):
     """Base class for API responses, including schema version and timestamp."""
 
     version: str  # Version of the response schema
-    timestamp: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Timestamp of the response
+    timestamp: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Timestamp of the response
 
 
 @dataclass
@@ -59,7 +57,7 @@ class StationDetails(DataClassORJSONMixin):
 class StationsApiResponse(ApiResponse):
     """Holds a list of station objects returned by the 'stations' endpoint."""
 
-    stations: List[StationDetails] = field(
+    stations: list[StationDetails] = field(
         metadata=field_options(alias="station"), default_factory=list
     )  # List of stations information
 
@@ -100,9 +98,7 @@ class LiveboardDeparture(DataClassORJSONMixin):
     id: str  # ID of the departure
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Departure time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Departure time (timestamp)
     delay: int  # Delay in seconds
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the departure is canceled
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the train has left
@@ -132,9 +128,7 @@ class LiveboardArrival(DataClassORJSONMixin):
     id: str  # ID of the arrival
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Arrival time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Arrival time (timestamp)
     delay: int  # Delay in seconds
     canceled: bool  # Whether the arrival is canceled
     arrived: bool  # Whether the train has arrived
@@ -156,7 +150,7 @@ class LiveboardArrivals(DataClassORJSONMixin):
 
 @dataclass
 class LiveboardApiResponse(ApiResponse):
-    """Represents a liveboard response containing station details and departures."""
+    """Represents a liveboard response containing station details and departure/arrival information."""
 
     station: str  # Name of the station
     station_info: StationDetails = field(
@@ -218,9 +212,7 @@ class ConnectionDeparture(DataClassORJSONMixin):
     delay: int  # Delay in seconds
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Departure time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Departure time (timestamp)
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
@@ -243,9 +235,7 @@ class ConnectionArrival(DataClassORJSONMixin):
     delay: int  # Delay in seconds
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Arrival time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Arrival time (timestamp)
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
@@ -278,7 +268,7 @@ class Vias(DataClassORJSONMixin):
     """Holds the number of vias and a list of detailed via information for connections."""
 
     number: int  # Number of vias
-    via: List[Via] = field(default_factory=list)  # List of via details
+    via: list[Via] = field(default_factory=list)  # List of via details
 
 
 @dataclass
@@ -295,7 +285,7 @@ class Remarks(DataClassORJSONMixin):
     """Represents remarks for a train connection, including the type and content."""
 
     number: int  # Number of remarks
-    remark: List[Remark] = field(default_factory=list)  # List of remarks
+    remark: list[Remark] = field(default_factory=list)  # List of remarks
 
 
 @dataclass
@@ -314,12 +304,13 @@ class Alert(DataClassORJSONMixin):
     )  # End time of the alert
     link: str | None = field(default=None)  # Link to more information
 
+
 @dataclass
 class Alerts(DataClassORJSONMixin):
     """Represents alerts for a train connection, including the type and content."""
 
     number: int  # Number of alerts
-    alert: List[Alert] = field(default_factory=list)  # List of alerts
+    alert: list[Alert] = field(default_factory=list)  # List of alerts
 
 
 @dataclass
@@ -339,7 +330,7 @@ class ConnectionDetails(DataClassORJSONMixin):
 class ConnectionsApiResponse(ApiResponse):
     """Holds a list of connections returned by the connections endpoint."""
 
-    connections: List[ConnectionDetails] = field(
+    connections: list[ConnectionDetails] = field(
         metadata=field_options(alias="connection"), default_factory=list
     )  # List of connections
 
@@ -393,7 +384,7 @@ class VehicleStops(DataClassORJSONMixin):
 
 @dataclass
 class VehicleApiResponse(ApiResponse):
-    """Provides detailed data about a particular vehicle, including its stops."""
+    """Provides detailed data about a particular vehicle, including a list of its stops."""
 
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle information
@@ -551,6 +542,6 @@ class Disturbance(DataClassORJSONMixin):
 class DisturbancesApiResponse(ApiResponse):
     """Encapsulates multiple disturbances returned by the disturbances endpoint."""
 
-    disturbances: List[Disturbance] = field(
+    disturbances: list[Disturbance] = field(
         metadata=field_options(alias="disturbance"), default_factory=list
     )  # List of disturbances
