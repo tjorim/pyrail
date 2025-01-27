@@ -36,38 +36,40 @@ async def main():
     # Sequential requests example
     async with iRail() as api:
         try:
-            async with iRail() as client:
-                # Get the total number of stations
-                stations = await api.get_stations()
-                if stations:
-                    print(f"Total stations: {len(stations)}")
-                # Get the liveboard for a specific station
-                liveboard = await client.get_liveboard(station='Brussels-South')
-                if liveboard:
-                    print(f"Liveboard for Brussels-South: {liveboard}")
+            # Get the total number of stations
+            stations = await api.get_stations()
+            if stations:
+                print(f"Total stations: {len(stations)}")
+            # Get the liveboard for a specific station
+            liveboard = await api.get_liveboard(station='Brussels-South')
+            if liveboard:
+                print(f"Liveboard for Brussels-South: {liveboard}")
         except Exception as e:
             print(f"Error occurred: {e}")
     # Parallel requests example
     async with iRail() as api:
-        connections, vehicle_info = await asyncio.gather(
-            # Get connections between stations
-            api.get_connections(
-                from_station='Antwerpen-Centraal',
-                to_station='Brussel-Centraal'
-            ),
-            # Get vehicle information
-            api.get_vehicle("BE.NMBS.IC1832")
-        )
-        print("Parallel results:")
-        print(f"Connections from Antwerpen-Centraal to Brussel-Centraal: {connections}")
-        print(f"Vehicle information for BE.NMBS.IC1832: {vehicle_info}")
+        try:
+            connections, vehicle_info = await asyncio.gather(
+                # Get connections between stations
+                api.get_connections(
+                    from_station='Antwerpen-Centraal',
+                    to_station='Brussel-Centraal'
+                ),
+                # Get vehicle information
+                api.get_vehicle("BE.NMBS.IC1832")
+            )
+            print("Parallel results:")
+            print(f"Connections from Antwerpen-Centraal to Brussel-Centraal: {connections}")
+            print(f"Vehicle information for BE.NMBS.IC1832: {vehicle_info}")
+        except Exception as e:
+            print(f"Error occurred in parallel requests: {e}")
 
 # Run the async code
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-### Language selection
+### Language Selection
 
 You can configure the language for the API requests:
 
@@ -75,7 +77,13 @@ You can configure the language for the API requests:
 api = iRail(lang='nl')
 ```
 
-Supported languages are `de`, `en`, `fr`, and `nl`.
+Supported languages are:
+- `en` (English, default)
+- `fr` (French)
+- `de` (German)
+- `nl` (Dutch)
+
+If no language is specified, English (`en`) will be used as the default language.
 
 ### Session Management
 
@@ -106,6 +114,27 @@ async with iRail() as api:
     api.clear_etag_cache()
     # Subsequent requests will fetch fresh data
     stations = await api.get_stations()
+```
+
+### Rate Limiting
+
+pyRail implements rate limiting to comply with iRail API's guidelines:
+- Maximum of 3 requests per second per source IP address
+- 5 burst requests available, allowing up to 8 requests in 1 second
+
+The library automatically handles rate limiting:
+```python
+# Rate limiting is handled automatically
+async with iRail() as api:
+    # These requests will be rate-limited if needed
+    for station in ['Brussels-South', 'Antwerp-Central', 'Ghent-Sint-Pieters']:
+        liveboard = await api.get_liveboard(station=station)
+```
+
+Exceeding the request limit will cause the server to return 429 responses. You can monitor rate limiting through debug logs:
+```python
+import logging
+api.set_logging_level(logging.DEBUG)  # Will show rate limiting events
 ```
 
 ## Development

@@ -143,8 +143,10 @@ class iRail:
 
         # Refill tokens, 3 tokens per second, cap tokens at 3
         self.tokens = min(3, self.tokens + int(elapsed * 3))
-        # Refill burst tokens, 3 burst tokens per second, cap burst tokens at 5
-        self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
+        
+        # Refill burst tokens only if the request rate is below 3 requests per second
+        if self.tokens == 3:
+            self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
 
     async def _handle_rate_limit(self) -> None:
         """Handle rate limiting using a token bucket algorithm.
