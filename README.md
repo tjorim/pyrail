@@ -119,7 +119,8 @@ async with iRail() as api:
     cd pyrail
     code .
    ```
-   Make sure you have the Remote - Containers extension installed in VS Code. The devcontainer setup includes all necessary dependencies and tools for development.
+
+Make sure you have the Remote - Containers extension installed in VS Code. The devcontainer setup includes all necessary dependencies and tools for development.
 
 ## Logging
 
