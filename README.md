@@ -78,12 +78,13 @@ api = iRail(lang='nl')
 ```
 
 Supported languages are:
+
 - `en` (English, default)
 - `fr` (French)
 - `de` (German)
 - `nl` (Dutch)
 
-If no language is specified, English (`en`) will be used as the default language.
+If no language is specified or an invalid value is provided, English (`en`) will be used as the default language.
 
 ### Session Management
 
@@ -119,10 +120,12 @@ async with iRail() as api:
 ### Rate Limiting
 
 pyRail implements rate limiting to comply with iRail API's guidelines:
+
 - Maximum of 3 requests per second per source IP address
 - 5 burst requests available, allowing up to 8 requests in 1 second
 
 The library automatically handles rate limiting:
+
 ```python
 # Rate limiting is handled automatically
 async with iRail() as api:
@@ -131,13 +134,19 @@ async with iRail() as api:
         liveboard = await api.get_liveboard(station=station)
 ```
 
-Exceeding the request limit will cause the server to return 429 responses. You can monitor rate limiting through debug logs:
-```python
-import logging
-api.set_logging_level(logging.DEBUG)  # Will show rate limiting events
-```
+Exceeding the request limit will cause the server to return 429 responses. You can monitor rate limiting through debug logs.
 
 ## Development
+
+The devcontainer setup includes all necessary dependencies and tools for development.
+
+### Prerequisites
+
+- Docker
+- Visual Studio Code
+- Remote - Containers extension
+
+### Setup
 
 1. Clone the repository:
    ```bash
@@ -148,22 +157,58 @@ api.set_logging_level(logging.DEBUG)  # Will show rate limiting events
     cd pyrail
     code .
    ```
+3. Once VS Code opens, it will detect the devcontainer configuration and prompt you to reopen the project in a container. Click "Reopen in Container" to start the development environment.
 
-Make sure you have the Remote - Containers extension installed in VS Code. The devcontainer setup includes all necessary dependencies and tools for development.
+### Running Tests
+
+To run the tests, use the following command in the terminal within the devcontainer:
+
+```
+pytest
+```
+
+### Code Style
+
+We use ruff for code formatting and linting. To check your code style, run:
+
+```
+ruff check .
+```
+
+To automatically fix style issues, run:
+
+```
+ruff check . --fix
+```
 
 ## Logging
 
-You can set the logging level at runtime to get detailed logs:
+pyRail uses Python's built-in logging module. You can set the logging level at runtime to get detailed logs.
 
 ```python
 import logging
 
-api.set_logging_level(logging.DEBUG)
+# Set the logging level to DEBUG
+logging.basicConfig(level=logging.DEBUG)
 ```
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions are welcome! Here's how you can contribute to pyRail:
+
+### Issue Reporting
+
+- Use the GitHub issue tracker to report bugs or suggest features.
+- Check existing issues before opening a new one.
+- Provide as much detail as possible, including steps to reproduce for bugs.
+
+### Pull Requests
+
+1. Fork the repository and create your branch from `main`.
+2. Ensure your code adheres to the project's style guide (run `ruff check .`).
+3. Add or update tests as necessary.
+4. Update documentation to reflect your changes.
+5. Submit a pull request with a clear title and description.
 
 ## Contributors
 
