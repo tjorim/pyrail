@@ -40,6 +40,11 @@ async def main():
             stations = await api.get_stations()
             if stations:
                 print(f"Total stations: {len(stations)}")
+                # Example output: Total stations: 691
+                # stations = [
+                #     {"name": "Brussels-South", "id": "BE.NMBS.008814001", ...},
+                #     ...
+                # ]
             # Get the liveboard for a specific station
             liveboard = await api.get_liveboard(station='Brussels-South')
             if liveboard:
@@ -163,7 +168,7 @@ The devcontainer setup includes all necessary dependencies and tools for develop
 
 To run the tests, use the following command in the terminal within the devcontainer:
 
-```
+```bash
 pytest
 ```
 
@@ -171,13 +176,13 @@ pytest
 
 We use ruff for code formatting and linting. To check your code style, run:
 
-```
+```bash
 ruff check .
 ```
 
 To automatically fix style issues, run:
 
-```
+```bash
 ruff check . --fix
 ```
 
@@ -205,10 +210,11 @@ Contributions are welcome! Here's how you can contribute to pyRail:
 ### Pull Requests
 
 1. Fork the repository and create your branch from `main`.
-2. Ensure your code adheres to the project's style guide (run `ruff check .`).
+2. Ensure your code adheres to the project's style guidelines (run `ruff check .`).
 3. Add or update tests as necessary.
 4. Update documentation to reflect your changes.
 5. Submit a pull request with a clear title and description.
+6. Your pull request will be automatically reviewed by CodeRabbit for code quality and consistency.
 
 ## Contributors
 
