@@ -123,14 +123,6 @@ class LiveboardDeparture(DataClassORJSONMixin):
 
 
 @dataclass
-class LiveboardDepartures(DataClassORJSONMixin):
-    """Holds the number of departures and a list of detailed departure information."""
-
-    number: int  # Number of departures
-    departure: List[LiveboardDeparture] = field(default_factory=list)  # List of departure details
-
-
-@dataclass
 class LiveboardArrival(DataClassORJSONMixin):
     """Details of a single arrival in the liveboard response."""
 
@@ -150,23 +142,30 @@ class LiveboardArrival(DataClassORJSONMixin):
 
 
 @dataclass
-class LiveboardArrivals(DataClassORJSONMixin):
-    """Holds the number of arrivals and a list of detailed arrival information."""
-
-    number: int  # Number of arrivals
-    arrival: List[LiveboardArrival] = field(default_factory=list)  # List of arrival details
-
-
-@dataclass
 class LiveboardApiResponse(ApiResponse):
     """Represents a liveboard response containing station details and departure/arrival information."""
 
     station: str  # Name of the station
-    station_info: StationDetails = field(
-        metadata=field_options(alias="stationinfo")
-    )  # Detailed station info
-    departures: LiveboardDepartures | None = field(default=None)  # Departures information
-    arrivals: LiveboardArrivals | None = field(default=None)  # Arrivals information
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    departures: list[LiveboardDeparture] | None = field(default=None)  # Departures information
+    arrivals: list[LiveboardArrival] | None = field(default=None)  # Arrivals information
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Pre-deserialization hook to safely flatten departures and arrivals."""
+        # Safely flatten departures
+        if "departures" in d and d["departures"] is not None:
+            d["departures"] = d["departures"].get("departure", [])
+        else:
+            d["departures"] = None  # Set to None if missing or null
+
+        # Safely flatten arrivals
+        if "arrivals" in d and d["arrivals"] is not None:
+            d["arrivals"] = d["arrivals"].get("arrival", [])
+        else:
+            d["arrivals"] = None  # Set to None if missing or null
+
+        return d
 
 
 @dataclass
@@ -200,14 +199,6 @@ class ConnectionStop(DataClassORJSONMixin):
 
 
 @dataclass
-class ConnectionStops(DataClassORJSONMixin):
-    """Holds the number of stops and a list of detailed stop information for connections."""
-
-    number: int  # Number of stops
-    stop: List[ConnectionStop] = field(default_factory=list)  # List of stop details
-
-
-@dataclass
 class Direction(DataClassORJSONMixin):
     """Represents the direction of a train connection."""
 
@@ -227,7 +218,6 @@ class ConnectionDeparture(DataClassORJSONMixin):
     platform: str  # Platform name
     platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the departure is canceled
-    stops: ConnectionStops  # Stops along the journey
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
     direction: Direction  # Direction of the connection
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the train has left
@@ -235,6 +225,13 @@ class ConnectionDeparture(DataClassORJSONMixin):
         metadata=field_options(deserialize=_str_to_bool)
     )  # Indicates if the connection requires walking
     occupancy: Occupancy  # Occupancy level
+    stops: list[ConnectionStop] = field(default_factory=list)  # List of stop along the journey
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'stop' list from 'stops' before deserialization."""
+        d["stops"] = d["stops"]["stop"]
+        return d
 
 
 @dataclass
@@ -273,28 +270,12 @@ class Via(DataClassORJSONMixin):
 
 
 @dataclass
-class Vias(DataClassORJSONMixin):
-    """Holds the number of vias and a list of detailed via information for connections."""
-
-    number: int  # Number of vias
-    via: list[Via] = field(default_factory=list)  # List of via details
-
-
-@dataclass
 class Remark(DataClassORJSONMixin):
     """Represents a single remark for a train connection, including type and content."""
 
     id: str  # Remark ID
     # Unsure about the content of a remark, so using a generic type for now
     content: str  # Remark content
-
-
-@dataclass
-class Remarks(DataClassORJSONMixin):
-    """Represents remarks for a train connection, including the type and content."""
-
-    number: int  # Number of remarks
-    remark: list[Remark] = field(default_factory=list)  # List of remarks
 
 
 @dataclass
@@ -315,14 +296,6 @@ class Alert(DataClassORJSONMixin):
 
 
 @dataclass
-class Alerts(DataClassORJSONMixin):
-    """Represents alerts for a train connection, including the type and content."""
-
-    number: int  # Number of alerts
-    alert: list[Alert] = field(default_factory=list)  # List of alerts
-
-
-@dataclass
 class ConnectionDetails(DataClassORJSONMixin):
     """Details of a single connection, including departure and arrival information."""
 
@@ -330,9 +303,23 @@ class ConnectionDetails(DataClassORJSONMixin):
     departure: ConnectionDeparture  # Departure details
     arrival: ConnectionArrival  # Arrival details
     duration: int  # Duration of the connection in minutes
-    remarks: Remarks  # Remarks for the connection
-    alerts: Alerts  # Alerts for the connection
-    vias: Vias | None = field(default=None)  # Vias information
+    remarks: list[Remark] = field(default_factory=list)  # List of remarks for the connection
+    alerts: list[Alert] = field(default_factory=list)  # List of alerts for the connection
+    vias: list[Via] | None = field(default=None)  # List of via details
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        # Extract 'remark' and 'alert' list from 'remarks' and 'alerts' before deserialization.
+        d["remarks"] = d["remarks"]["remark"]
+        d["alerts"] = d["alerts"]["alert"]
+
+        # Safely flatten vias
+        if "vias" in d and d["vias"] is not None:
+            d["vias"] = d["vias"].get("via", [])
+        else:
+            d["vias"] = None  # Set to None if missing or null
+
+        return d
 
 
 @dataclass
@@ -384,20 +371,18 @@ class VehicleStop(DataClassORJSONMixin):
 
 
 @dataclass
-class VehicleStops(DataClassORJSONMixin):
-    """Holds the number of stops and a list of detailed stop information for vehicles."""
-
-    number: int  # Number of stops
-    stop: List[VehicleStop] = field(default_factory=list)  # List of stop details
-
-
-@dataclass
 class VehicleApiResponse(ApiResponse):
     """Provides detailed data about a particular vehicle, including a list of its stops."""
 
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle information
-    stops: VehicleStops  # Stops information
+    stops: list[VehicleStop] = field(default_factory=list)  # List of stop details
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'stop' list from 'stops' before deserialization."""
+        d["stops"] = d["stops"]["stop"]
+        return d
 
 
 @dataclass
@@ -465,19 +450,17 @@ class Unit(DataClassORJSONMixin):
 
 
 @dataclass
-class CompositionUnits(DataClassORJSONMixin):
-    """Holds the number of units and a list of detailed unit information."""
-
-    number: int  # Number of units
-    unit: List[Unit] = field(default_factory=list)  # List of units
-
-
-@dataclass
 class SegmentComposition(DataClassORJSONMixin):
     """Describes a collection of train units and related metadata."""
 
     source: str  # Source of the composition
-    units: CompositionUnits  # Units information
+    units: list[Unit] = field(default_factory=list)  # List of units
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'unit' list from 'units' before deserialization."""
+        d["units"] = d["units"]["unit"]
+        return d
 
 
 @dataclass
@@ -491,25 +474,16 @@ class Segment(DataClassORJSONMixin):
 
 
 @dataclass
-class Segments(DataClassORJSONMixin):
-    """Holds the number of segments and a list of detailed segment information."""
-
-    number: int  # Number of segments
-    segment: List[Segment] = field(default_factory=list)  # List of segments
-
-
-@dataclass
-class CompositionSegments(DataClassORJSONMixin):
-    """Encapsulated the composition segments of a specific train."""
-
-    segments: Segments  # Segments information
-
-
-@dataclass
 class CompositionApiResponse(ApiResponse):
     """Encapsulates the response containing composition details of a specific train."""
 
-    composition: CompositionSegments  # Composition details
+    composition: list[Segment] = field(default_factory=list)  # Composition details of the train
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Pre-deserialization hook to safely flatten composition segments."""
+        d["composition"] = d["composition"]["segments"]["segment"]
+        return d
 
 
 @dataclass
@@ -519,16 +493,6 @@ class DescriptionLink(DataClassORJSONMixin):
     id: str  # Link ID
     link: str  # URL of the link
     text: str  # Text displayed for the link
-
-
-@dataclass
-class DescriptionLinks(DataClassORJSONMixin):
-    """Holds the number of description links and a list of detailed description link information."""
-
-    number: int  # Number of description links
-    description_link: List[DescriptionLink] = field(
-        metadata=field_options(alias="descriptionLink"), default_factory=list
-    )  # List of description links
 
 
 @dataclass
@@ -544,7 +508,15 @@ class Disturbance(DataClassORJSONMixin):
         metadata=field_options(deserialize=_timestamp_to_datetime)
     )  # Timestamp of the disturbance
     richtext: str  # Rich-text description (HTML-like)
-    description_links: DescriptionLinks = field(metadata=field_options(alias="descriptionLinks"))  # Description links
+    description_links: list[DescriptionLink] = field(
+        metadata=field_options(alias="descriptionLinks"), default_factory=list
+    )  # List of description links
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'descriptionLink' list from 'descriptionLinks' before deserialization."""
+        d["descriptionLinks"] = d["descriptionLinks"]["descriptionLink"]
+        return d
 
 
 @dataclass
