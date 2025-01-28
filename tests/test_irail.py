@@ -161,10 +161,11 @@ async def test_get_vehicle():
         assert isinstance(vehicle, VehicleApiResponse), "Expected response to be a VehicleApiResponse object"
         assert isinstance(vehicle.vehicle_info, VehicleInfo), "Expected vehicle_info to be a VehicleInfo object"
         assert isinstance(vehicle.stops, list), "Expected 'stop' to be a list"
-        assert len(vehicle.stops) >= 0, "Expected 'number' to be a non-negative integer"
-        stop = vehicle.stops[0]
-        assert isinstance(stop.platform_info, PlatformInfo), "Expected platform_info to be a PlatformInfo object"
-        assert isinstance(stop.occupancy, Occupancy), "Expected occupancy to be an Occupancy object"
+        assert len(vehicle.stops) > 0, "Expected at least one stop"
+        if len(vehicle.stops) > 0:
+            stop = vehicle.stops[0]
+            assert isinstance(stop.platform_info, PlatformInfo), "Expected platform_info to be a PlatformInfo object"
+            assert isinstance(stop.occupancy, Occupancy), "Expected occupancy to be an Occupancy object"
 
 
 @pytest.mark.asyncio
@@ -191,7 +192,7 @@ async def test_get_composition():
         # Test segments structure
         segments = composition.composition
         assert isinstance(segments, list), "Expected 'segments' to be a list"
-        assert len(segments) >= 0, "Expected 'number' to be a non-negative integer"
+        assert len(segments) > 0, "Expected 'number' to be a non-negative integer"
 
         if len(segments) > 0:
             segment = segments[0]
@@ -200,7 +201,7 @@ async def test_get_composition():
 
             # Test units in composition
             units = segment.composition.units
-            assert len(units) >= 0, "Expected 'number' to be a non-negative integer"
+            assert len(units) > 0, "Expected 'number' to be a non-negative integer"
 
             if len(units) > 0:
                 unit = units[0]

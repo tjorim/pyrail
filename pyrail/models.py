@@ -309,6 +309,7 @@ class ConnectionDetails(DataClassORJSONMixin):
 
     @classmethod
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Flatten the structure of the 'connections' response by extracting lists of remarks, alerts, and optionally flatten vias before deserialization."""
         # Extract 'remark' and 'alert' list from 'remarks' and 'alerts' before deserialization.
         d["remarks"] = d["remarks"]["remark"]
         d["alerts"] = d["alerts"]["alert"]
