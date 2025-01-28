@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import Any
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -19,13 +19,6 @@ def _str_to_bool(strbool: str) -> bool:
     return strbool == "1"
 
 
-class Orientation(Enum):
-    """Enum for the orientation of the material type of a train unit, either 'LEFT' or 'RIGHT'."""
-
-    LEFT = "LEFT"
-    RIGHT = "RIGHT"
-
-
 class DisturbanceType(Enum):
     """Enum for the type of disturbance, either 'disturbance' or 'planned'."""
 
@@ -33,14 +26,28 @@ class DisturbanceType(Enum):
     PLANNED = "planned"
 
 
+class OccupancyName(Enum):
+    """Enum for the occupancy, either 'low', 'medium', 'high', or 'unknown'."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    UNKNOWN = "unknown"
+
+
+class Orientation(Enum):
+    """Enum for the orientation of the material type of a train unit, either 'LEFT' or 'RIGHT'."""
+
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+
+
 @dataclass
 class ApiResponse(DataClassORJSONMixin):
     """Base class for API responses, including schema version and timestamp."""
 
     version: str  # Version of the response schema
-    timestamp: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Timestamp of the response
+    timestamp: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Timestamp of the response
 
 
 @dataclass
@@ -59,7 +66,7 @@ class StationDetails(DataClassORJSONMixin):
 class StationsApiResponse(ApiResponse):
     """Holds a list of station objects returned by the 'stations' endpoint."""
 
-    stations: List[StationDetails] = field(
+    stations: list[StationDetails] = field(
         metadata=field_options(alias="station"), default_factory=list
     )  # List of stations information
 
@@ -90,7 +97,7 @@ class Occupancy(DataClassORJSONMixin):
     """Represents occupancy details for a specific departure."""
 
     at_id: str = field(metadata=field_options(alias="@id"))  # Identifier for the occupancy level
-    name: str  # Occupancy level (e.g., low, high)
+    name: OccupancyName  # Occupancy level (e.g., low, high)
 
 
 @dataclass
@@ -100,9 +107,7 @@ class LiveboardDeparture(DataClassORJSONMixin):
     id: str  # ID of the departure
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Departure time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Departure time (timestamp)
     delay: int  # Delay in seconds
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the departure is canceled
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the train has left
@@ -118,23 +123,13 @@ class LiveboardDeparture(DataClassORJSONMixin):
 
 
 @dataclass
-class LiveboardDepartures(DataClassORJSONMixin):
-    """Holds the number of departures and a list of detailed departure information."""
-
-    number: int  # Number of departures
-    departure: List[LiveboardDeparture] = field(default_factory=list)  # List of departure details
-
-
-@dataclass
 class LiveboardArrival(DataClassORJSONMixin):
     """Details of a single arrival in the liveboard response."""
 
     id: str  # ID of the arrival
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Arrival time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Arrival time (timestamp)
     delay: int  # Delay in seconds
     canceled: bool  # Whether the arrival is canceled
     arrived: bool  # Whether the train has arrived
@@ -147,23 +142,30 @@ class LiveboardArrival(DataClassORJSONMixin):
 
 
 @dataclass
-class LiveboardArrivals(DataClassORJSONMixin):
-    """Holds the number of arrivals and a list of detailed arrival information."""
-
-    number: int  # Number of arrivals
-    arrival: List[LiveboardArrival] = field(default_factory=list)  # List of arrival details
-
-
-@dataclass
 class LiveboardApiResponse(ApiResponse):
-    """Represents a liveboard response containing station details and departures."""
+    """Represents a liveboard response containing station details and departure/arrival information."""
 
     station: str  # Name of the station
-    station_info: StationDetails = field(
-        metadata=field_options(alias="stationinfo")
-    )  # Detailed station info
-    departures: LiveboardDepartures | None = field(default=None)  # Departures information
-    arrivals: LiveboardArrivals | None = field(default=None)  # Arrivals information
+    station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
+    departures: list[LiveboardDeparture] | None = field(default=None)  # Departures information
+    arrivals: list[LiveboardArrival] | None = field(default=None)  # Arrivals information
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Pre-deserialization hook to safely flatten departures and arrivals."""
+        # Safely flatten departures
+        if "departures" in d and d["departures"] is not None:
+            d["departures"] = d["departures"].get("departure", [])
+        else:
+            d["departures"] = None  # Set to None if missing or null
+
+        # Safely flatten arrivals
+        if "arrivals" in d and d["arrivals"] is not None:
+            d["arrivals"] = d["arrivals"].get("arrival", [])
+        else:
+            d["arrivals"] = None  # Set to None if missing or null
+
+        return d
 
 
 @dataclass
@@ -197,14 +199,6 @@ class ConnectionStop(DataClassORJSONMixin):
 
 
 @dataclass
-class ConnectionStops(DataClassORJSONMixin):
-    """Holds the number of stops and a list of detailed stop information for connections."""
-
-    number: int  # Number of stops
-    stop: List[ConnectionStop] = field(default_factory=list)  # List of stop details
-
-
-@dataclass
 class Direction(DataClassORJSONMixin):
     """Represents the direction of a train connection."""
 
@@ -218,15 +212,12 @@ class ConnectionDeparture(DataClassORJSONMixin):
     delay: int  # Delay in seconds
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Departure time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Departure time (timestamp)
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
     platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))  # Detailed platform info
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the departure is canceled
-    stops: ConnectionStops  # Stops along the journey
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))  # Departure connection link
     direction: Direction  # Direction of the connection
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the train has left
@@ -234,6 +225,13 @@ class ConnectionDeparture(DataClassORJSONMixin):
         metadata=field_options(deserialize=_str_to_bool)
     )  # Indicates if the connection requires walking
     occupancy: Occupancy  # Occupancy level
+    stops: list[ConnectionStop] = field(default_factory=list)  # List of stop along the journey
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'stop' list from 'stops' before deserialization."""
+        d["stops"] = d["stops"]["stop"]
+        return d
 
 
 @dataclass
@@ -243,9 +241,7 @@ class ConnectionArrival(DataClassORJSONMixin):
     delay: int  # Delay in seconds
     station: str  # Station name
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
-    time: datetime = field(
-        metadata=field_options(deserialize=_timestamp_to_datetime)
-    )  # Arrival time (timestamp)
+    time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Arrival time (timestamp)
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
@@ -274,28 +270,12 @@ class Via(DataClassORJSONMixin):
 
 
 @dataclass
-class Vias(DataClassORJSONMixin):
-    """Holds the number of vias and a list of detailed via information for connections."""
-
-    number: int  # Number of vias
-    via: List[Via] = field(default_factory=list)  # List of via details
-
-
-@dataclass
 class Remark(DataClassORJSONMixin):
     """Represents a single remark for a train connection, including type and content."""
 
     id: str  # Remark ID
     # Unsure about the content of a remark, so using a generic type for now
     content: str  # Remark content
-
-
-@dataclass
-class Remarks(DataClassORJSONMixin):
-    """Represents remarks for a train connection, including the type and content."""
-
-    number: int  # Number of remarks
-    remark: List[Remark] = field(default_factory=list)  # List of remarks
 
 
 @dataclass
@@ -314,13 +294,6 @@ class Alert(DataClassORJSONMixin):
     )  # End time of the alert
     link: str | None = field(default=None)  # Link to more information
 
-@dataclass
-class Alerts(DataClassORJSONMixin):
-    """Represents alerts for a train connection, including the type and content."""
-
-    number: int  # Number of alerts
-    alert: List[Alert] = field(default_factory=list)  # List of alerts
-
 
 @dataclass
 class ConnectionDetails(DataClassORJSONMixin):
@@ -330,16 +303,31 @@ class ConnectionDetails(DataClassORJSONMixin):
     departure: ConnectionDeparture  # Departure details
     arrival: ConnectionArrival  # Arrival details
     duration: int  # Duration of the connection in minutes
-    remarks: Remarks  # Remarks for the connection
-    alerts: Alerts  # Alerts for the connection
-    vias: Vias | None = field(default=None)  # Vias information
+    remarks: list[Remark] = field(default_factory=list)  # List of remarks for the connection
+    alerts: list[Alert] = field(default_factory=list)  # List of alerts for the connection
+    vias: list[Via] | None = field(default=None)  # List of via details
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Flatten the structure of the 'connections' response by extracting lists of remarks, alerts, and optionally flatten vias before deserialization."""
+        # Extract 'remark' and 'alert' list from 'remarks' and 'alerts' before deserialization.
+        d["remarks"] = d["remarks"]["remark"]
+        d["alerts"] = d["alerts"]["alert"]
+
+        # Safely flatten vias
+        if "vias" in d and d["vias"] is not None:
+            d["vias"] = d["vias"].get("via", [])
+        else:
+            d["vias"] = None  # Set to None if missing or null
+
+        return d
 
 
 @dataclass
 class ConnectionsApiResponse(ApiResponse):
     """Holds a list of connections returned by the connections endpoint."""
 
-    connections: List[ConnectionDetails] = field(
+    connections: list[ConnectionDetails] = field(
         metadata=field_options(alias="connection"), default_factory=list
     )  # List of connections
 
@@ -384,20 +372,18 @@ class VehicleStop(DataClassORJSONMixin):
 
 
 @dataclass
-class VehicleStops(DataClassORJSONMixin):
-    """Holds the number of stops and a list of detailed stop information for vehicles."""
-
-    number: int  # Number of stops
-    stop: List[VehicleStop] = field(default_factory=list)  # List of stop details
-
-
-@dataclass
 class VehicleApiResponse(ApiResponse):
-    """Provides detailed data about a particular vehicle, including its stops."""
+    """Provides detailed data about a particular vehicle, including a list of its stops."""
 
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle information
-    stops: VehicleStops  # Stops information
+    stops: list[VehicleStop] = field(default_factory=list)  # List of stop details
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'stop' list from 'stops' before deserialization."""
+        d["stops"] = d["stops"]["stop"]
+        return d
 
 
 @dataclass
@@ -465,19 +451,17 @@ class Unit(DataClassORJSONMixin):
 
 
 @dataclass
-class CompositionUnits(DataClassORJSONMixin):
-    """Holds the number of units and a list of detailed unit information."""
-
-    number: int  # Number of units
-    unit: List[Unit] = field(default_factory=list)  # List of units
-
-
-@dataclass
 class SegmentComposition(DataClassORJSONMixin):
     """Describes a collection of train units and related metadata."""
 
     source: str  # Source of the composition
-    units: CompositionUnits  # Units information
+    units: list[Unit] = field(default_factory=list)  # List of units
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'unit' list from 'units' before deserialization."""
+        d["units"] = d["units"]["unit"]
+        return d
 
 
 @dataclass
@@ -491,25 +475,16 @@ class Segment(DataClassORJSONMixin):
 
 
 @dataclass
-class Segments(DataClassORJSONMixin):
-    """Holds the number of segments and a list of detailed segment information."""
-
-    number: int  # Number of segments
-    segment: List[Segment] = field(default_factory=list)  # List of segments
-
-
-@dataclass
-class CompositionSegments(DataClassORJSONMixin):
-    """Encapsulated the composition segments of a specific train."""
-
-    segments: Segments  # Segments information
-
-
-@dataclass
 class CompositionApiResponse(ApiResponse):
     """Encapsulates the response containing composition details of a specific train."""
 
-    composition: CompositionSegments  # Composition details
+    composition: list[Segment] = field(default_factory=list)  # Composition details of the train
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Pre-deserialization hook to safely flatten composition segments."""
+        d["composition"] = d["composition"]["segments"]["segment"]
+        return d
 
 
 @dataclass
@@ -519,16 +494,6 @@ class DescriptionLink(DataClassORJSONMixin):
     id: str  # Link ID
     link: str  # URL of the link
     text: str  # Text displayed for the link
-
-
-@dataclass
-class DescriptionLinks(DataClassORJSONMixin):
-    """Holds the number of description links and a list of detailed description link information."""
-
-    number: int  # Number of description links
-    description_link: List[DescriptionLink] = field(
-        metadata=field_options(alias="descriptionLink"), default_factory=list
-    )  # List of description links
 
 
 @dataclass
@@ -544,13 +509,21 @@ class Disturbance(DataClassORJSONMixin):
         metadata=field_options(deserialize=_timestamp_to_datetime)
     )  # Timestamp of the disturbance
     richtext: str  # Rich-text description (HTML-like)
-    description_links: DescriptionLinks = field(metadata=field_options(alias="descriptionLinks"))  # Description links
+    description_links: list[DescriptionLink] = field(
+        metadata=field_options(alias="descriptionLinks"), default_factory=list
+    )  # List of description links
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        """Extract 'descriptionLink' list from 'descriptionLinks' before deserialization."""
+        d["descriptionLinks"] = d["descriptionLinks"]["descriptionLink"]
+        return d
 
 
 @dataclass
 class DisturbancesApiResponse(ApiResponse):
     """Encapsulates multiple disturbances returned by the disturbances endpoint."""
 
-    disturbances: List[Disturbance] = field(
+    disturbances: list[Disturbance] = field(
         metadata=field_options(alias="disturbance"), default_factory=list
     )  # List of disturbances
