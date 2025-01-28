@@ -19,18 +19,27 @@ def _str_to_bool(strbool: str) -> bool:
     return strbool == "1"
 
 
-class Orientation(Enum):
-    """Enum for the orientation of the material type of a train unit, either 'LEFT' or 'RIGHT'."""
-
-    LEFT = "LEFT"
-    RIGHT = "RIGHT"
-
-
 class DisturbanceType(Enum):
     """Enum for the type of disturbance, either 'disturbance' or 'planned'."""
 
     DISTURBANCE = "disturbance"
     PLANNED = "planned"
+
+
+class OccupancyName(Enum):
+    """Enum for the occupancy, either 'low', 'medium', 'high', or 'unknown'."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    UNKNOWN = "unknown"
+
+
+class Orientation(Enum):
+    """Enum for the orientation of the material type of a train unit, either 'LEFT' or 'RIGHT'."""
+
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
 
 
 @dataclass
@@ -88,7 +97,7 @@ class Occupancy(DataClassORJSONMixin):
     """Represents occupancy details for a specific departure."""
 
     at_id: str = field(metadata=field_options(alias="@id"))  # Identifier for the occupancy level
-    name: str  # Occupancy level (e.g., low, high)
+    name: OccupancyName  # Occupancy level (e.g., low, high)
 
 
 @dataclass
