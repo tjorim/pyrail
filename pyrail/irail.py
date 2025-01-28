@@ -10,6 +10,7 @@ from typing import Any, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
+from pyrail.exceptions import InvalidRequestError, NotFoundError, RateLimitError
 from pyrail.models import (
     CompositionApiResponse,
     ConnectionsApiResponse,
@@ -309,13 +310,18 @@ class iRail:
             retry_after: int = int(response.headers.get("Retry-After", 1))
             logger.warning("Rate limited, retrying after %d seconds", retry_after)
             await asyncio.sleep(retry_after)
-            return await self._do_request(method, args)
+            raise RateLimitError(f"Rate limit exceeded for method {method}")
+            #return await self._do_request(method, args)
         elif response.status == 400:
-            logger.error("Bad request: %s", await response.text())
-            return None
+            error_message = await response.text()
+            logger.error("Bad request: %s", error_message)
+            raise InvalidRequestError(error_message)
+            #return None
         elif response.status == 404:
-            logger.error("Endpoint %s not found, response: %s", method, await response.text())
-            return None
+            error_message = await response.text()
+            logger.error("Endpoint %s not found, response: %s", method, error_message)
+            raise NotFoundError(error_message)
+            #return None
         elif response.status == 200:
             return await self._handle_success_response(response, method)
         elif response.status == 304:
