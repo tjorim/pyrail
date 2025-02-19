@@ -1,6 +1,6 @@
 """Unit tests for the iRail API wrapper."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 from aiohttp import ClientSession
@@ -331,21 +331,21 @@ async def test_error_handling():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Timezone is different on different systems")
 async def test_timestamp_to_datetime():
     """Test the timestamp_to_datetime function."""
     # Test valid timestamps
-    assert _timestamp_to_datetime("1705593600") == datetime(2024, 1, 18, 17, 0)  # 2024-01-18 16:00:00
-    assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 1, 0)  # Unix epoch
+    assert _timestamp_to_datetime("1705593600") == datetime(
+        2024, 1, 18, 16, 0, tzinfo=timezone.utc
+    )  # 2024-01-18 16:00:00
+    assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)  # Unix epoch
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Timezone is different on different systems")
 async def test_timestamp_field_deserialization():
     """Test timestamp field deserialization in various models."""
     # Test ApiResponse timestamp
     api_response = ApiResponse.from_dict({"version": "1.0", "timestamp": "1705593600"})
-    assert api_response.timestamp == datetime(2024, 1, 18, 17, 0)
+    assert api_response.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
 
     # Test LiveboardDeparture time
     departure = LiveboardDeparture.from_dict(
@@ -381,7 +381,7 @@ async def test_timestamp_field_deserialization():
             "departureConnection": "http://irail.be/connections/8821006/20250106/EC9272",
         }
     )
-    assert departure.time == datetime(2024, 1, 18, 17, 0)
+    assert departure.time == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
 
     # Test Alert start_time and end_time
     alert = Alert.from_dict(
@@ -394,8 +394,8 @@ async def test_timestamp_field_deserialization():
             "endTime": "1705597200",
         }
     )
-    assert alert.start_time == datetime(2024, 1, 18, 17, 0)
-    assert alert.end_time == datetime(2024, 1, 18, 18, 0)
+    assert alert.start_time == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
+    assert alert.end_time == datetime(2024, 1, 18, 17, 0, tzinfo=timezone.utc)
 
     # Test Disturbance timestamp
     disturbance = Disturbance.from_dict(
@@ -434,7 +434,7 @@ async def test_timestamp_field_deserialization():
             },
         }
     )
-    assert disturbance.timestamp == datetime(2024, 1, 18, 17, 0)
+    assert disturbance.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio
