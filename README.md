@@ -112,14 +112,43 @@ async def main():
 
 ### Cache Management
 
-You can clear the ETag cache when needed:
+pyRail features an enhanced ETag-based caching system that stores both ETags and response data, enabling efficient caching that returns cached data when the server responds with 304 Not Modified.
+
+#### Basic Cache Operations
 
 ```python
 async with iRail() as api:
-    # Clear the ETag cache
-    api.clear_etag_cache()
-    # Subsequent requests will fetch fresh data
+    # Clear all cached responses
+    api.clear_cache()
+    
+    # Get cache statistics
+    stats = api.get_cache_stats()
+    print(f"Total cache entries: {stats['total_entries']}")
+    print(f"Valid entries: {stats['valid_entries']}")
+    print(f"Expired entries: {stats['expired_entries']}")
+    
+    # Set cache expiration time (default: 1 hour)
+    api.set_cache_max_age(1800)  # 30 minutes
+```
+
+#### Advanced Cache Features
+
+- **Automatic cache expiration**: Entries expire after a configurable time period
+- **Parameter-aware caching**: Different requests with different parameters are cached separately
+- **Efficient 304 handling**: Returns cached data when server indicates content hasn't changed
+- **Cache invalidation**: Remove specific cached entries when needed
+
+```python
+async with iRail() as api:
+    # First request: fresh data fetched and cached
     stations = await api.get_stations()
+    
+    # Second request: if data unchanged, returns cached response
+    stations_cached = await api.get_stations()  # May return cached data on 304
+    
+    # Force fresh data by clearing cache
+    api.clear_cache()
+    stations_fresh = await api.get_stations()  # Always fetches fresh data
 ```
 
 ### Rate Limiting

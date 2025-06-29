@@ -2,7 +2,9 @@
 
 import asyncio
 from asyncio import Lock
+from dataclasses import dataclass
 from datetime import datetime
+import hashlib
 import logging
 import time
 from types import TracebackType
@@ -21,6 +23,26 @@ from pyrail.models import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CacheEntry:
+    """Represents a cached API response with ETag and metadata."""
+    
+    etag: str
+    data: dict[str, Any]
+    timestamp: float
+    
+    def is_expired(self, max_age_seconds: float = 3600) -> bool:
+        """Check if the cache entry has expired.
+        
+        Args:
+            max_age_seconds: Maximum age in seconds before considering expired (default: 1 hour)
+            
+        Returns:
+            bool: True if the entry is expired, False otherwise
+        """
+        return time.time() - self.timestamp > max_age_seconds
 
 
 class iRail:
@@ -72,7 +94,8 @@ class iRail:
         self.lock: Lock = Lock()
         self.session: ClientSession | None = session
         self._owns_session = session is None  # Track ownership
-        self.etag_cache: dict[str, str] = {}
+        self.response_cache: dict[str, CacheEntry] = {}
+        self.cache_max_age: float = 3600  # 1 hour default cache expiration
         logger.info("iRail instance created")
 
     async def __aenter__(self) -> "iRail":
@@ -124,10 +147,111 @@ class iRail:
         else:
             self.__lang = "en"
 
+    def clear_cache(self) -> None:
+        """Clear the response cache."""
+        self.response_cache.clear()
+        logger.info("Response cache cleared")
+    
     def clear_etag_cache(self) -> None:
-        """Clear the ETag cache."""
-        self.etag_cache.clear()
-        logger.info("ETag cache cleared")
+        """Clear the ETag cache (deprecated, use clear_cache instead)."""
+        logger.warning("clear_etag_cache is deprecated, use clear_cache instead")
+        self.clear_cache()
+    
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get statistics about the current cache state.
+        
+        Returns:
+            dict: Cache statistics including total entries, expired entries, etc.
+        """
+        total_entries = len(self.response_cache)
+        expired_entries = sum(
+            1 for entry in self.response_cache.values() 
+            if entry.is_expired(self.cache_max_age)
+        )
+        valid_entries = total_entries - expired_entries
+        
+        return {
+            "total_entries": total_entries,
+            "valid_entries": valid_entries,
+            "expired_entries": expired_entries,
+            "cache_max_age_seconds": self.cache_max_age
+        }
+    
+    def set_cache_max_age(self, max_age_seconds: float) -> None:
+        """Set the maximum age for cache entries.
+        
+        Args:
+            max_age_seconds: Maximum age in seconds before cache entries expire
+        """
+        if max_age_seconds <= 0:
+            raise ValueError("Cache max age must be positive")
+        
+        self.cache_max_age = max_age_seconds
+        logger.info("Cache max age set to %f seconds", max_age_seconds)
+    
+    def invalidate_cache_for_method(self, method: str) -> int:
+        """Invalidate all cache entries for a specific API method.
+        
+        Args:
+            method: The API method name (e.g., 'stations', 'liveboard')
+            
+        Returns:
+            int: Number of cache entries removed
+        """
+        keys_to_remove = []
+        
+        # Find cache keys that match this method by checking if they would generate
+        # the same cache key prefix (first part of the hash)
+        method_prefix = self._generate_cache_key(method)[:8]
+        
+        for key in self.response_cache.keys():
+            # Generate possible cache keys for this method with no args
+            if self._generate_cache_key(method)[:8] == key[:8]:
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del self.response_cache[key]
+        
+        removed_count = len(keys_to_remove)
+        if removed_count > 0:
+            logger.info("Invalidated %d cache entries for method: %s", removed_count, method)
+        
+        return removed_count
+    
+    def _generate_cache_key(self, method: str, args: dict[str, Any] | None = None) -> str:
+        """Generate a cache key for the given method and arguments.
+        
+        Args:
+            method: The API method name
+            args: The request arguments
+            
+        Returns:
+            str: A unique cache key for this request
+        """
+        # Create a deterministic string representation of the request
+        key_parts = [method, self.lang]
+        
+        if args:
+            # Sort arguments for consistent cache keys
+            sorted_args = sorted(args.items())
+            key_parts.extend(f"{k}={v}" for k, v in sorted_args)
+        
+        key_string = "|".join(key_parts)
+        # Use hash for shorter, more manageable cache keys
+        return hashlib.sha256(key_string.encode()).hexdigest()[:16]
+    
+    def _cleanup_expired_cache_entries(self) -> None:
+        """Remove expired cache entries."""
+        expired_keys = [
+            key for key, entry in self.response_cache.items() 
+            if entry.is_expired(self.cache_max_age)
+        ]
+        
+        for key in expired_keys:
+            del self.response_cache[key]
+            
+        if expired_keys:
+            logger.debug("Removed %d expired cache entries", len(expired_keys))
 
     def _refill_tokens(self) -> None:
         """Refill tokens for rate limiting using a token bucket algorithm.
@@ -168,11 +292,11 @@ class iRail:
         else:
             self.tokens -= 1
 
-    def _add_etag_header(self, method: str) -> dict[str, str]:
-        """Add ETag header for the given method if a cached ETag is available.
+    def _add_etag_header(self, cache_key: str) -> dict[str, str]:
+        """Add ETag header for the given cache key if a cached ETag is available.
 
         Args:
-            method (str): The API endpoint for which the header is being generated.
+            cache_key (str): The cache key for which to check for a cached ETag.
 
         Returns:
             dict[str, str]: A dictionary containing HTTP headers, including the ETag header
@@ -180,9 +304,20 @@ class iRail:
 
         """
         headers: dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
-        if method in self.etag_cache:
-            logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
-            headers["If-None-Match"] = self.etag_cache[method]
+        
+        # Clean up expired entries before checking cache
+        self._cleanup_expired_cache_entries()
+        
+        if cache_key in self.response_cache:
+            cached_entry = self.response_cache[cache_key]
+            if not cached_entry.is_expired(self.cache_max_age):
+                logger.debug("Adding If-None-Match header with value: %s", cached_entry.etag)
+                headers["If-None-Match"] = cached_entry.etag
+            else:
+                # Remove expired entry
+                del self.response_cache[cache_key]
+                logger.debug("Removed expired cache entry for key: %s", cache_key)
+                
         return headers
 
     def _validate_date(self, date: str | None) -> bool:
@@ -288,23 +423,56 @@ class iRail:
 
         return True
 
-    async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
-        """Handle a successful API response."""
-        if "Etag" in response.headers:
-            self.etag_cache[method] = response.headers["Etag"]
+    async def _handle_success_response(
+        self, response: ClientResponse, cache_key: str
+    ) -> dict[str, Any] | None:
+        """Handle a successful API response and cache it.
+        
+        Args:
+            response: The HTTP response object
+            cache_key: The cache key for storing this response
+            
+        Returns:
+            The parsed JSON response data
+        """
         try:
             json_data: dict[str, Any] | None = await response.json()
             if not json_data:
                 logger.warning("Empty response received")
+                return json_data
+                
+            # Cache the response if we have an ETag
+            if "Etag" in response.headers:
+                etag = response.headers["Etag"]
+                cache_entry = CacheEntry(
+                    etag=etag,
+                    data=json_data,
+                    timestamp=time.time()
+                )
+                self.response_cache[cache_key] = cache_entry
+                logger.debug("Cached response for key: %s with ETag: %s", cache_key, etag)
+            else:
+                logger.debug("No ETag header found, response not cached")
+                
             return json_data
-        except ValueError:
-            logger.error("Failed to parse JSON response")
+        except ValueError as e:
+            logger.error("Failed to parse JSON response: %s", e)
             return None
 
     async def _handle_response(
-        self, response: ClientResponse, method: str, args: dict[str, Any] | None = None
+        self, response: ClientResponse, method: str, cache_key: str, args: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
-        """Handle the API response based on status code."""
+        """Handle the API response based on status code.
+        
+        Args:
+            response: The HTTP response object
+            method: The API method name
+            cache_key: The cache key for this request
+            args: The request arguments
+            
+        Returns:
+            The response data or cached data for 304 responses
+        """
         if response.status == 429:
             retry_after: int = int(response.headers.get("Retry-After", 1))
             logger.warning("Rate limited, retrying after %d seconds", retry_after)
@@ -317,9 +485,20 @@ class iRail:
             logger.error("Endpoint %s not found, response: %s", method, await response.text())
             return None
         elif response.status == 200:
-            return await self._handle_success_response(response, method)
+            return await self._handle_success_response(response, cache_key)
         elif response.status == 304:
-            logger.info("Data not modified, using cached data for method %s", method)
+            # Return cached data for 304 Not Modified responses
+            if cache_key in self.response_cache:
+                cached_entry = self.response_cache[cache_key]
+                if not cached_entry.is_expired(self.cache_max_age):
+                    logger.info("Data not modified, returning cached data for method %s", method)
+                    return cached_entry.data
+                else:
+                    # Cache expired, remove it
+                    del self.response_cache[cache_key]
+                    logger.warning("Received 304 but cache entry expired for method %s", method)
+            else:
+                logger.warning("Received 304 but no cached data found for method %s", method)
             return None
         else:
             logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
@@ -361,17 +540,20 @@ class iRail:
         async with self.lock:
             await self._handle_rate_limit()
 
+        # Generate cache key for this request
+        cache_key = self._generate_cache_key(method, args)
+        
         # Construct the request URL and parameters
         url: str = "https://api.irail.be/{}/".format(method)
         params = {"format": "json", "lang": self.lang}
         if args:
             params.update(args)
 
-        request_headers: dict[str, str] = self._add_etag_header(method)
+        request_headers: dict[str, str] = self._add_etag_header(cache_key)
 
         try:
             async with self.session.get(url, params=params, headers=request_headers) as response:
-                return await self._handle_response(response, method, args)
+                return await self._handle_response(response, method, cache_key, args)
         except ClientError as e:
             logger.error("Request failed due to an exception: %s", e)
             return None

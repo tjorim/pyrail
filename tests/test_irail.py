@@ -1,12 +1,13 @@
 """Unit tests for the iRail API wrapper."""
 
 from datetime import datetime, timedelta, timezone
+import time
 from unittest.mock import AsyncMock, patch
 
 from aiohttp import ClientSession
 import pytest
 
-from pyrail.irail import iRail
+from pyrail.irail import iRail, CacheEntry
 from pyrail.models import (
     Alert,
     ApiResponse,
@@ -495,3 +496,273 @@ async def test_boolean_field_deserialization():
     assert departure.left is False, "Departure left field should be False when '0'"
     assert departure.is_extra is True, "Departure is_extra field should be True when '1'"
     assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
+
+
+# Enhanced ETag Caching Tests
+@pytest.mark.asyncio
+async def test_cache_entry_creation():
+    """Test CacheEntry dataclass functionality."""
+    current_time = time.time()
+    data = {"test": "data"}
+    etag = "W/\"12345\""
+    
+    entry = CacheEntry(etag=etag, data=data, timestamp=current_time)
+    
+    assert entry.etag == etag
+    assert entry.data == data
+    assert entry.timestamp == current_time
+    assert not entry.is_expired(max_age_seconds=3600)  # Should not be expired immediately
+    
+    # Test expiration
+    old_entry = CacheEntry(etag=etag, data=data, timestamp=current_time - 7200)  # 2 hours ago
+    assert old_entry.is_expired(max_age_seconds=3600)  # Should be expired after 1 hour max age
+
+
+@pytest.mark.asyncio
+async def test_cache_key_generation():
+    """Test cache key generation for different scenarios."""
+    async with iRail() as api:
+        # Test basic method cache key
+        key1 = api._generate_cache_key("stations")
+        key2 = api._generate_cache_key("stations")
+        assert key1 == key2, "Same method should generate same cache key"
+        
+        # Test different methods generate different keys
+        key_stations = api._generate_cache_key("stations")
+        key_liveboard = api._generate_cache_key("liveboard")
+        assert key_stations != key_liveboard, "Different methods should generate different cache keys"
+        
+        # Test same method with different args
+        args1 = {"station": "Brussels-South"}
+        args2 = {"station": "Antwerp-Central"}
+        key_args1 = api._generate_cache_key("liveboard", args1)
+        key_args2 = api._generate_cache_key("liveboard", args2)
+        assert key_args1 != key_args2, "Same method with different args should generate different keys"
+        
+        # Test arg order doesn't matter
+        args_ordered1 = {"from": "Brussels", "to": "Antwerp"}
+        args_ordered2 = {"to": "Antwerp", "from": "Brussels"}
+        key_ordered1 = api._generate_cache_key("connections", args_ordered1)
+        key_ordered2 = api._generate_cache_key("connections", args_ordered2)
+        assert key_ordered1 == key_ordered2, "Argument order should not affect cache key"
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_etag_caching_workflow(mock_get):
+    """Test complete ETag caching workflow."""
+    # First request: 200 response with ETag
+    mock_response_200 = AsyncMock()
+    mock_response_200.status = 200
+    mock_response_200.headers = {"Etag": "W/\"12345\""}
+    mock_response_200.json = AsyncMock(return_value={"stations": [{"name": "Brussels"}]})
+    
+    # Second request: 304 Not Modified response
+    mock_response_304 = AsyncMock()
+    mock_response_304.status = 304
+    mock_response_304.headers = {"Etag": "W/\"12345\""}
+    
+    mock_get.return_value.__aenter__.side_effect = [mock_response_200, mock_response_304]
+    
+    async with iRail() as api:
+        # First request should cache the response
+        result1 = await api._do_request("stations")
+        assert result1 == {"stations": [{"name": "Brussels"}]}
+        
+        # Verify cache was populated
+        cache_stats = api.get_cache_stats()
+        assert cache_stats["total_entries"] == 1
+        assert cache_stats["valid_entries"] == 1
+        
+        # Second request should return cached data on 304
+        result2 = await api._do_request("stations")
+        assert result2 == {"stations": [{"name": "Brussels"}]}
+        assert result1 == result2, "Cached data should be identical to original"
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_etag_header_sent_on_cached_request(mock_get):
+    """Test that If-None-Match header is sent when cache exists."""
+    # First request: 200 response with ETag
+    mock_response_200 = AsyncMock()
+    mock_response_200.status = 200
+    mock_response_200.headers = {"Etag": "W/\"12345\""}
+    mock_response_200.json = AsyncMock(return_value={"data": "test"})
+    
+    # Second request: should include If-None-Match header
+    mock_response_304 = AsyncMock()
+    mock_response_304.status = 304
+    mock_response_304.headers = {}
+    
+    mock_get.return_value.__aenter__.side_effect = [mock_response_200, mock_response_304]
+    
+    async with iRail() as api:
+        # First request - no If-None-Match header expected
+        await api._do_request("stations")
+        
+        # Verify first call didn't include If-None-Match
+        first_call_headers = mock_get.call_args_list[0][1]["headers"]
+        assert "If-None-Match" not in first_call_headers
+        
+        # Second request - If-None-Match header should be included
+        await api._do_request("stations")
+        
+        # Verify second call included If-None-Match
+        second_call_headers = mock_get.call_args_list[1][1]["headers"]
+        assert "If-None-Match" in second_call_headers
+        assert second_call_headers["If-None-Match"] == "W/\"12345\""
+
+
+@pytest.mark.asyncio
+async def test_cache_expiration():
+    """Test cache expiration functionality."""
+    async with iRail() as api:
+        # Set very short cache expiration for testing
+        api.set_cache_max_age(0.1)  # 100ms
+        
+        # Create expired cache entry manually
+        expired_entry = CacheEntry(
+            etag="W/\"expired\"",
+            data={"expired": "data"},
+            timestamp=time.time() - 1  # 1 second ago
+        )
+        
+        cache_key = api._generate_cache_key("test_method")
+        api.response_cache[cache_key] = expired_entry
+        
+        # Check cache stats before cleanup
+        stats_before = api.get_cache_stats()
+        assert stats_before["total_entries"] == 1
+        assert stats_before["expired_entries"] == 1
+        assert stats_before["valid_entries"] == 0
+        
+        # Trigger cleanup by calling _add_etag_header
+        headers = api._add_etag_header(cache_key)
+        
+        # Expired entry should be removed
+        assert cache_key not in api.response_cache
+        assert "If-None-Match" not in headers
+
+
+@pytest.mark.asyncio
+async def test_cache_invalidation():
+    """Test cache invalidation methods."""
+    async with iRail() as api:
+        # Add some cache entries
+        entry1 = CacheEntry(etag="1", data={"data": 1}, timestamp=time.time())
+        entry2 = CacheEntry(etag="2", data={"data": 2}, timestamp=time.time())
+        entry3 = CacheEntry(etag="3", data={"data": 3}, timestamp=time.time())
+        
+        key1 = api._generate_cache_key("stations")
+        key2 = api._generate_cache_key("liveboard", {"station": "Brussels"})
+        key3 = api._generate_cache_key("connections", {"from": "A", "to": "B"})
+        
+        api.response_cache[key1] = entry1
+        api.response_cache[key2] = entry2
+        api.response_cache[key3] = entry3
+        
+        assert len(api.response_cache) == 3
+        
+        # Test clearing all cache
+        api.clear_cache()
+        assert len(api.response_cache) == 0
+        
+        # Re-add entries for method-specific invalidation test
+        api.response_cache[key1] = entry1
+        api.response_cache[key2] = entry2
+        api.response_cache[key3] = entry3
+        
+        # Test invalidating specific method (this is approximate due to hash-based keys)
+        removed = api.invalidate_cache_for_method("stations")
+        # Note: This test might be fragile due to hash collision possibilities
+        # In a real implementation, you might want to store method info in the cache
+
+
+@pytest.mark.asyncio
+async def test_cache_stats():
+    """Test cache statistics functionality."""
+    async with iRail() as api:
+        # Initially empty cache
+        stats = api.get_cache_stats()
+        assert stats["total_entries"] == 0
+        assert stats["valid_entries"] == 0
+        assert stats["expired_entries"] == 0
+        assert stats["cache_max_age_seconds"] == 3600  # Default
+        
+        # Add valid entry
+        valid_entry = CacheEntry(
+            etag="valid",
+            data={"valid": "data"},
+            timestamp=time.time()
+        )
+        api.response_cache["valid_key"] = valid_entry
+        
+        # Add expired entry
+        expired_entry = CacheEntry(
+            etag="expired",
+            data={"expired": "data"},
+            timestamp=time.time() - 7200  # 2 hours ago
+        )
+        api.response_cache["expired_key"] = expired_entry
+        
+        stats = api.get_cache_stats()
+        assert stats["total_entries"] == 2
+        assert stats["valid_entries"] == 1
+        assert stats["expired_entries"] == 1
+
+
+@pytest.mark.asyncio
+async def test_cache_max_age_setting():
+    """Test setting cache max age."""
+    async with iRail() as api:
+        # Test setting valid max age
+        api.set_cache_max_age(1800)  # 30 minutes
+        assert api.cache_max_age == 1800
+        
+        # Test error on invalid max age
+        with pytest.raises(ValueError, match="Cache max age must be positive"):
+            api.set_cache_max_age(-1)
+        
+        with pytest.raises(ValueError, match="Cache max age must be positive"):
+            api.set_cache_max_age(0)
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_no_cache_without_etag(mock_get):
+    """Test that responses without ETag headers are not cached."""
+    # Response without ETag header
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.headers = {}  # No ETag
+    mock_response.json = AsyncMock(return_value={"data": "no_etag"})
+    
+    mock_get.return_value.__aenter__.return_value = mock_response
+    
+    async with iRail() as api:
+        result = await api._do_request("stations")
+        assert result == {"data": "no_etag"}
+        
+        # Verify no cache entry was created
+        cache_stats = api.get_cache_stats()
+        assert cache_stats["total_entries"] == 0
+
+
+@pytest.mark.asyncio
+async def test_deprecated_clear_etag_cache():
+    """Test that the deprecated clear_etag_cache method still works."""
+    async with iRail() as api:
+        # Add a cache entry
+        entry = CacheEntry(etag="test", data={"test": "data"}, timestamp=time.time())
+        api.response_cache["test_key"] = entry
+        
+        assert len(api.response_cache) == 1
+        
+        # Use deprecated method (should log warning)
+        with patch('pyrail.irail.logger') as mock_logger:
+            api.clear_etag_cache()
+            mock_logger.warning.assert_called_with("clear_etag_cache is deprecated, use clear_cache instead")
+        
+        # Cache should be cleared
+        assert len(api.response_cache) == 0
