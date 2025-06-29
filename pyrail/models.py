@@ -166,6 +166,99 @@ class LiveboardApiResponse(ApiResponse):
             d["arrivals"] = None  # Set to None if missing or null
 
         return d
+    
+    def has_departures(self) -> bool:
+        """Check if the response contains any departure information.
+        
+        Returns:
+            bool: True if there are departures, False if empty or None
+        """
+        return self.departures is not None and len(self.departures) > 0
+    
+    def has_arrivals(self) -> bool:
+        """Check if the response contains any arrival information.
+        
+        Returns:
+            bool: True if there are arrivals, False if empty or None
+        """
+        return self.arrivals is not None and len(self.arrivals) > 0
+    
+    def is_empty_but_valid(self) -> bool:
+        """Check if this is a valid response with no departures/arrivals.
+        
+        This can happen during late night hours or at stations with limited service.
+        This is NOT an error condition - it's a legitimate response from the API.
+        
+        Returns:
+            bool: True if response is valid but contains no departures/arrivals
+        """
+        return (
+            self.station is not None 
+            and self.station_info is not None
+            and (self.departures is not None or self.arrivals is not None)
+            and not self.has_departures() 
+            and not self.has_arrivals()
+        )
+    
+    def is_night_hours(self) -> bool:
+        """Check if the response timestamp indicates night hours (22:00 - 06:00).
+        
+        During these hours, many stations have no departures, which is normal.
+        
+        Returns:
+            bool: True if the response is from night hours (22:00 - 06:00)
+        """
+        hour = self.timestamp.hour
+        return hour >= 22 or hour < 6
+    
+    def get_departure_count(self) -> int:
+        """Get the number of departures in the response.
+        
+        Returns:
+            int: Number of departures, 0 if None or empty
+        """
+        return len(self.departures) if self.departures is not None else 0
+    
+    def get_arrival_count(self) -> int:
+        """Get the number of arrivals in the response.
+        
+        Returns:
+            int: Number of arrivals, 0 if None or empty
+        """
+        return len(self.arrivals) if self.arrivals is not None else 0
+    
+    def get_status_summary(self) -> dict[str, Any]:
+        """Get a summary of the liveboard status for integration purposes.
+        
+        Returns:
+            dict: Summary containing status information and guidance for integrations
+        """
+        departure_count = self.get_departure_count()
+        arrival_count = self.get_arrival_count()
+        is_night = self.is_night_hours()
+        is_empty = self.is_empty_but_valid()
+        
+        return {
+            "station": self.station,
+            "departure_count": departure_count,
+            "arrival_count": arrival_count,
+            "has_data": departure_count > 0 or arrival_count > 0,
+            "is_empty_but_valid": is_empty,
+            "is_night_hours": is_night,
+            "timestamp": self.timestamp.isoformat(),
+            "status": self._get_status_description(departure_count, arrival_count, is_night, is_empty)
+        }
+    
+    def _get_status_description(self, departure_count: int, arrival_count: int, is_night: bool, is_empty: bool) -> str:
+        """Get a human-readable status description."""
+        if departure_count > 0 or arrival_count > 0:
+            return f"Active service: {departure_count} departures, {arrival_count} arrivals"
+        elif is_empty and is_night:
+            return "No service during night hours (normal)"
+        elif is_empty:
+            return "No current service (may be temporary or limited schedule)"
+        else:
+            return "Invalid or incomplete response"
 
 
 @dataclass

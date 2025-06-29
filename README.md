@@ -141,6 +141,76 @@ async with iRail() as api:
 
 Exceeding the request limit will cause the server to return 429 responses. You can monitor rate limiting through debug logs.
 
+## Handling Empty Departures (Integration Guidance)
+
+**Important for Integration Developers**: Empty departure lists (`departures=[]`) are **valid responses**, not errors. This commonly occurs during night hours (22:00-06:00) when train service is limited or suspended.
+
+### Understanding Empty Responses
+
+```python
+async with iRail() as api:
+    # Use the validation helper for integration-friendly responses
+    liveboard, summary = await api.get_liveboard_with_validation(station="Ostend")
+    
+    if liveboard and summary['is_valid_response']:
+        if summary['has_data']:
+            print(f"Found {summary['departure_count']} departures")
+        elif summary['is_empty_but_valid'] and summary['is_night_hours']:
+            print("No departures during night hours - this is normal")
+        elif summary['is_empty_but_valid']:
+            print("No departures available - may be temporary or limited service")
+        else:
+            print(f"Unexpected response: {summary['status']}")
+    else:
+        print("Request failed or invalid response")
+```
+
+### Utility Methods for Integrations
+
+```python
+# Check if empty departures are expected based on time and station
+from datetime import datetime, timezone
+
+timestamp = datetime(2025, 6, 29, 23, 30, 0, tzinfo=timezone.utc)
+if iRail.is_likely_night_service_gap(timestamp, "Ostend"):
+    print("Empty departures expected during night hours")
+
+# Use response utility methods
+if liveboard:
+    print(f"Status: {liveboard.get_status_summary()['status']}")
+    print(f"Is night hours: {liveboard.is_night_hours()}")
+    print(f"Empty but valid: {liveboard.is_empty_but_valid()}")
+```
+
+### Common Integration Patterns
+
+**✅ Correct Pattern**:
+```python
+liveboard = await api.get_liveboard(station="Station")
+if liveboard:
+    if liveboard.has_departures():
+        # Process departures
+        for departure in liveboard.departures:
+            process_departure(departure)
+    elif liveboard.is_empty_but_valid():
+        # Handle valid empty response (not an error!)
+        if liveboard.is_night_hours():
+            log_info("No service during night hours")
+        else:
+            log_info("No current departures available")
+    else:
+        log_error("Invalid or incomplete response")
+else:
+    log_error("Request failed")
+```
+
+**❌ Incorrect Pattern** (causes false error logs):
+```python
+liveboard = await api.get_liveboard(station="Station")
+if not liveboard or not liveboard.departures:
+    log_error("API returned invalid departures")  # This is wrong!
+```
+
 ## Development
 
 The devcontainer setup includes all necessary dependencies and tools for development.

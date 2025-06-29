@@ -495,3 +495,260 @@ async def test_boolean_field_deserialization():
     assert departure.left is False, "Departure left field should be False when '0'"
     assert departure.is_extra is True, "Departure is_extra field should be True when '1'"
     assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
+
+
+# Empty Departures Handling Tests
+@pytest.mark.asyncio
+async def test_liveboard_empty_departures_night_hours():
+    """Test LiveboardApiResponse utility methods for empty departures during night hours."""
+    from pyrail.models import LiveboardApiResponse, StationDetails
+    
+    # Create a response representing night hours with empty departures
+    night_timestamp = datetime(2025, 6, 29, 23, 30, 0, tzinfo=timezone.utc)  # 23:30 UTC
+    
+    liveboard = LiveboardApiResponse(
+        version="1.3",
+        timestamp=night_timestamp,
+        station="Ostend",
+        station_info=StationDetails(
+            at_id="http://irail.be/stations/NMBS/008891702",
+            id="BE.NMBS.008891702",
+            name="Ostend",
+            longitude=2.925809,
+            latitude=51.228212,
+            standard_name="Oostende"
+        ),
+        departures=[],  # Empty list - this is what triggers the HA error
+        arrivals=None
+    )
+    
+    # Test utility methods
+    assert not liveboard.has_departures(), "Should report no departures"
+    assert not liveboard.has_arrivals(), "Should report no arrivals"
+    assert liveboard.is_empty_but_valid(), "Should be recognized as valid empty response"
+    assert liveboard.is_night_hours(), "Should recognize night hours"
+    assert liveboard.get_departure_count() == 0, "Departure count should be 0"
+    assert liveboard.get_arrival_count() == 0, "Arrival count should be 0"
+    
+    # Test status summary
+    summary = liveboard.get_status_summary()
+    assert summary["departure_count"] == 0
+    assert summary["arrival_count"] == 0
+    assert not summary["has_data"]
+    assert summary["is_empty_but_valid"]
+    assert summary["is_night_hours"]
+    assert "night hours (normal)" in summary["status"]
+
+
+@pytest.mark.asyncio
+async def test_liveboard_empty_departures_day_hours():
+    """Test LiveboardApiResponse for empty departures during day hours."""
+    from pyrail.models import LiveboardApiResponse, StationDetails
+    
+    # Create a response representing day hours with empty departures
+    day_timestamp = datetime(2025, 6, 29, 14, 30, 0, tzinfo=timezone.utc)  # 14:30 UTC
+    
+    liveboard = LiveboardApiResponse(
+        version="1.3",
+        timestamp=day_timestamp,
+        station="Small-Station",
+        station_info=StationDetails(
+            at_id="http://irail.be/stations/NMBS/123456789",
+            id="BE.NMBS.123456789",
+            name="Small-Station",
+            longitude=4.0,
+            latitude=51.0,
+            standard_name="Small-Station"
+        ),
+        departures=[],
+        arrivals=None
+    )
+    
+    assert liveboard.is_empty_but_valid(), "Should be valid empty response"
+    assert not liveboard.is_night_hours(), "Should not be night hours"
+    
+    summary = liveboard.get_status_summary()
+    assert summary["is_empty_but_valid"]
+    assert not summary["is_night_hours"]
+    assert "limited schedule" in summary["status"]
+
+
+@pytest.mark.asyncio
+async def test_liveboard_with_departures():
+    """Test LiveboardApiResponse with actual departures."""
+    from pyrail.models import LiveboardApiResponse, StationDetails, LiveboardDeparture
+    
+    # Create a mock departure
+    departure = LiveboardDeparture(
+        id="123",
+        delay=0,
+        station="Brussels-Central",
+        station_info=StationDetails(
+            at_id="http://irail.be/stations/NMBS/008813003",
+            id="BE.NMBS.008813003", 
+            name="Brussels-Central",
+            longitude=4.357056,
+            latitude=50.845966,
+            standard_name="Brussel-Centraal"
+        ),
+        time=datetime.now(timezone.utc),
+        vehicle="BE.NMBS.IC123",
+        vehicle_info=None,
+        platform="1",
+        platform_info=None,
+        canceled=False,
+        left=False,
+        is_extra=False,
+        alerts=None,
+        occupancy=None,
+        walking_time=None,
+        departure_connection=""
+    )
+    
+    liveboard = LiveboardApiResponse(
+        version="1.3",
+        timestamp=datetime.now(timezone.utc),
+        station="Brussels-Central",
+        station_info=departure.station_info,
+        departures=[departure],
+        arrivals=None
+    )
+    
+    assert liveboard.has_departures(), "Should have departures"
+    assert not liveboard.is_empty_but_valid(), "Should not be empty"
+    assert liveboard.get_departure_count() == 1
+    
+    summary = liveboard.get_status_summary()
+    assert summary["has_data"]
+    assert summary["departure_count"] == 1
+    assert "Active service" in summary["status"]
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_get_liveboard_with_validation_empty_night(mock_get):
+    """Test get_liveboard_with_validation with empty night response."""
+    # Mock empty liveboard response during night hours
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.headers = {}
+    mock_response.json = AsyncMock(return_value={
+        "version": "1.3",
+        "timestamp": "1719706238",  # Night time timestamp
+        "station": "Ostend",
+        "stationinfo": {
+            "@id": "http://irail.be/stations/NMBS/008891702",
+            "id": "BE.NMBS.008891702",
+            "name": "Ostend",
+            "longitude": "2.925809", 
+            "latitude": "51.228212",
+            "standardname": "Oostende"
+        },
+        "departures": {"departure": []},  # Empty departures
+        "arrivals": None
+    })
+    
+    mock_get.return_value.__aenter__.return_value = mock_response
+    
+    async with iRail() as api:
+        liveboard, summary = await api.get_liveboard_with_validation(station="Ostend")
+        
+        assert liveboard is not None
+        assert summary["is_valid_response"]
+        assert not summary["has_data"]
+        assert summary["is_empty_but_valid"]
+        assert summary["departure_count"] == 0
+        assert "not an error" in summary["guidance"]
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_get_liveboard_with_validation_failed_request(mock_get):
+    """Test get_liveboard_with_validation with failed request."""
+    # Mock failed request
+    mock_response = AsyncMock()
+    mock_response.status = 404
+    mock_response.text = AsyncMock(return_value="Station not found")
+    
+    mock_get.return_value.__aenter__.return_value = mock_response
+    
+    async with iRail() as api:
+        liveboard, summary = await api.get_liveboard_with_validation(station="InvalidStation")
+        
+        assert liveboard is None
+        assert not summary["is_valid_response"]
+        assert not summary["has_data"]
+        assert not summary["is_empty_but_valid"]
+        assert summary["status"] == "Request failed or returned None"
+        assert "network connectivity" in summary["guidance"]
+
+
+@pytest.mark.asyncio
+async def test_is_likely_night_service_gap():
+    """Test the static method for detecting night service gaps."""
+    # Test deep night hours (should always return True)
+    deep_night = datetime(2025, 6, 29, 23, 30, 0, tzinfo=timezone.utc)
+    assert iRail.is_likely_night_service_gap(deep_night, "Any Station")
+    
+    very_early = datetime(2025, 6, 29, 4, 30, 0, tzinfo=timezone.utc)
+    assert iRail.is_likely_night_service_gap(very_early, "Any Station")
+    
+    # Test night hours for small stations (should return True)
+    night_small_station = datetime(2025, 6, 29, 2, 0, 0, tzinfo=timezone.utc)
+    assert iRail.is_likely_night_service_gap(night_small_station, "Small-Town")
+    
+    # Test night hours for major stations (should return False)
+    night_major_station = datetime(2025, 6, 29, 2, 0, 0, tzinfo=timezone.utc)
+    assert not iRail.is_likely_night_service_gap(night_major_station, "Brussels-South")
+    assert not iRail.is_likely_night_service_gap(night_major_station, "Antwerp-Central")
+    
+    # Test day hours (should return False)
+    day_time = datetime(2025, 6, 29, 14, 0, 0, tzinfo=timezone.utc)
+    assert not iRail.is_likely_night_service_gap(day_time, "Any Station")
+
+
+@pytest.mark.asyncio
+async def test_liveboard_response_none_vs_empty_departures():
+    """Test distinction between None departures and empty list departures."""
+    from pyrail.models import LiveboardApiResponse, StationDetails
+    
+    station_info = StationDetails(
+        at_id="http://irail.be/stations/NMBS/123",
+        id="BE.NMBS.123",
+        name="Test Station", 
+        longitude=4.0,
+        latitude=51.0,
+        standard_name="Test"
+    )
+    
+    # Test with None departures (API didn't provide departures data)
+    liveboard_none = LiveboardApiResponse(
+        version="1.3",
+        timestamp=datetime.now(timezone.utc),
+        station="Test Station",
+        station_info=station_info,
+        departures=None,  # None means no departures data provided
+        arrivals=None
+    )
+    
+    # Test with empty list departures (API provided empty departures data)
+    liveboard_empty = LiveboardApiResponse(
+        version="1.3", 
+        timestamp=datetime.now(timezone.utc),
+        station="Test Station",
+        station_info=station_info,
+        departures=[],  # Empty list means no departures available
+        arrivals=None
+    )
+    
+    # None departures should not be considered "empty but valid"
+    assert not liveboard_none.is_empty_but_valid()
+    assert liveboard_none.get_departure_count() == 0
+    
+    # Empty list departures should be considered "empty but valid"
+    assert liveboard_empty.is_empty_but_valid()
+    assert liveboard_empty.get_departure_count() == 0
+    
+    # Both should report no departures
+    assert not liveboard_none.has_departures()
+    assert not liveboard_empty.has_departures()

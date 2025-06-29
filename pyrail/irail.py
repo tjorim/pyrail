@@ -557,3 +557,124 @@ class iRail:
         if disturbances_response_dict is None:
             return None
         return DisturbancesApiResponse.from_dict(disturbances_response_dict)
+    
+    async def get_liveboard_with_validation(
+        self, 
+        station: str | None = None, 
+        station_id: str | None = None,
+        date: str | None = None,
+        time: str | None = None,
+        arrdep: str | None = None,
+        alerts: bool | None = None
+    ) -> tuple[LiveboardApiResponse | None, dict[str, Any]]:
+        """Get liveboard data with additional validation information for integrations.
+        
+        This method returns both the liveboard response and a validation summary
+        to help integrations properly handle empty departures scenarios.
+        
+        Args:
+            station: Station name
+            station_id: Station ID  
+            date: Date in DDMMYY format
+            time: Time in HHMM format
+            arrdep: 'departure' or 'arrival' 
+            alerts: Include alerts in response
+            
+        Returns:
+            tuple: (LiveboardApiResponse or None, validation_summary dict)
+            
+        Example:
+            async with iRail() as api:
+                liveboard, summary = await api.get_liveboard_with_validation(station="Ostend")
+                
+                if liveboard and summary['is_valid_response']:
+                    if summary['has_data']:
+                        print(f"Found {summary['departure_count']} departures")
+                    elif summary['is_empty_but_valid']:
+                        print(f"No departures available - {summary['status']}")
+                else:
+                    print("Invalid or failed response")
+        """
+        # Get standard liveboard response
+        liveboard = await self.get_liveboard(
+            station=station,
+            id=station_id, 
+            date=date,
+            time=time,
+            arrdep=arrdep,
+            alerts=alerts
+        )
+        
+        # Generate validation summary
+        if liveboard is None:
+            summary = {
+                "is_valid_response": False,
+                "has_data": False,
+                "is_empty_but_valid": False,
+                "is_night_hours": False,
+                "departure_count": 0,
+                "arrival_count": 0,
+                "status": "Request failed or returned None",
+                "guidance": "Check network connectivity and station name/ID"
+            }
+        else:
+            base_summary = liveboard.get_status_summary()
+            summary = {
+                "is_valid_response": True,
+                **base_summary,
+                "guidance": self._get_integration_guidance(liveboard)
+            }
+        
+        return liveboard, summary
+    
+    def _get_integration_guidance(self, liveboard: LiveboardApiResponse) -> str:
+        """Get guidance text for integrations on how to handle the response."""
+        if liveboard.has_departures() or liveboard.has_arrivals():
+            return "Response contains valid departure/arrival data"
+        elif liveboard.is_empty_but_valid() and liveboard.is_night_hours():
+            return "Empty response during night hours is normal - not an error"
+        elif liveboard.is_empty_but_valid():
+            return "Empty response may indicate limited service or temporary suspension"
+        else:
+            return "Response may be incomplete or invalid"
+    
+    @staticmethod
+    def is_likely_night_service_gap(timestamp: datetime, station_name: str) -> bool:
+        """Check if empty departures are likely due to night service gaps.
+        
+        This static method can be used by integrations to validate if empty
+        departures are expected based on time and station characteristics.
+        
+        Args:
+            timestamp: The response timestamp
+            station_name: Name of the station
+            
+        Returns:
+            bool: True if empty departures are likely due to night service gaps
+        """
+        hour = timestamp.hour
+        
+        # Define night hours when service is typically limited
+        is_night = hour >= 23 or hour < 5
+        
+        # Major stations might have some night service, smaller ones typically don't
+        major_stations = [
+            "Brussels-South", "Brussel-Zuid", "Bruxelles-Midi",
+            "Brussels-Central", "Brussel-Centraal", "Bruxelles-Central", 
+            "Antwerp-Central", "Antwerpen-Centraal",
+            "Ghent-Sint-Pieters", "Gent-Sint-Pieters",
+            "Liège-Guillemins", "Luik-Guillemins"
+        ]
+        
+        is_major_station = any(major in station_name for major in major_stations)
+        
+        # Late night (23:00-01:00) or very early morning (04:00-05:00) 
+        # are likely service gaps even for major stations
+        deep_night = (hour >= 23) or (hour <= 1) or (4 <= hour < 5)
+        
+        if deep_night:
+            return True
+        elif is_night and not is_major_station:
+            return True
+        else:
+            return False
