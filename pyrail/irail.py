@@ -9,6 +9,7 @@ from types import TracebackType
 from typing import Any, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from pyrail.exceptions import InvalidRequestError, NotFoundError, RateLimitError
 from pyrail.models import (
@@ -334,12 +335,66 @@ class iRail:
             logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
             return None
 
+    def _should_retry_on_status(self, response: ClientResponse) -> bool:
+        """Determine if a response status code should trigger a retry.
+
+        Args:
+            response: The HTTP response to check
+
+        Returns:
+            bool: True if the status should trigger a retry, False otherwise
+
+        """
+        # Retry on server errors (5xx) but not on client errors (4xx except 429)
+        # 429 is handled separately in _handle_response
+        return 500 <= response.status < 600
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(ClientError),
+        reraise=True
+    )
+    async def _execute_http_request(
+        self, url: str, params: dict[str, Any], headers: dict[str, str], method: str, args: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
+        """Execute the HTTP request with retry logic for network failures and server errors.
+
+        Args:
+            url: The URL to request
+            params: Query parameters
+            headers: Request headers
+            method: API method name for logging
+            args: Original method arguments for potential retry
+
+        Returns:
+            dict or None: Parsed response or None if failed
+
+        """
+        if self.session is None:
+            logger.error("Session not initialized")
+            return None
+
+        try:
+            async with self.session.get(url, params=params, headers=headers) as response:
+                # Check if we should retry on this status code
+                if self._should_retry_on_status(response):
+                    logger.warning("Server error %d for endpoint %s, will retry", response.status, method)
+                    # Create a temporary exception to trigger tenacity retry
+                    raise ClientError(f"Server error {response.status}")
+
+                return await self._handle_response(response, method, args)
+        except ClientError as e:
+            logger.warning("Network error for endpoint %s: %s", method, e)
+            raise  # Re-raise to trigger tenacity retry
+
     async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
 
         This method handles API requests with rate limiting, parameter validation,
         and ETag-based caching. It supports conditional requests and manages
-        various HTTP response scenarios.
+        various HTTP response scenarios. Network errors and server errors (5xx)
+        are automatically retried with exponential backoff using tenacity.
 
         Args:
             method (str): The iRail API endpoint method to request.
@@ -360,6 +415,7 @@ class iRail:
             - Implements rate limiting using a token-based mechanism
             - Supports ETag-based conditional requests
             - Raises RateLimitError on rate limit (429) responses after waiting for Retry-After
+            - Retries network failures and server errors with exponential backoff
             - Logs detailed information about request processing
 
         """
@@ -370,6 +426,7 @@ class iRail:
         if not self._validate_params(method, args or {}):
             logger.error("Validation failed for method: %s with args: %s", method, args)
             return None
+
         async with self.lock:
             await self._handle_rate_limit()
 
@@ -382,10 +439,9 @@ class iRail:
         request_headers: dict[str, str] = self._add_etag_header(method)
 
         try:
-            async with self.session.get(url, params=params, headers=request_headers) as response:
-                return await self._handle_response(response, method, args)
+            return await self._execute_http_request(url, params, request_headers, method, args)
         except ClientError as e:
-            logger.error("Request failed due to an exception: %s", e)
+            logger.error("Request failed after retries due to an exception: %s", e)
             return None
 
     async def get_stations(self) -> StationsApiResponse | None:

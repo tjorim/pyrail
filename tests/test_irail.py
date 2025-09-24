@@ -628,21 +628,81 @@ async def test_handle_response_rate_limited(mock_get, mock_sleep):
 
 
 @pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_response_server_error(mock_get):
-    """Test that an unexpected status code returns None."""
+async def test_handle_response_server_error(mock_get, mock_sleep):
+    """Test that a persistent 5xx response is retried and then returns None."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=500)
     async with iRail() as api:
         assert await api._do_request("stations") is None
+    assert mock_get.call_count == 3
 
 
 @pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_request_client_error(mock_get):
-    """Test that a client error during the request returns None."""
+async def test_request_client_error(mock_get, mock_sleep):
+    """Test that a persistent client error is retried and then returns None."""
     mock_get.side_effect = ClientError("connection failed")
     async with iRail() as api:
         assert await api._do_request("stations") is None
+    assert mock_get.call_count == 3
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
+@patch("pyrail.irail.ClientSession.get")
+async def test_retry_on_network_error(mock_get, mock_sleep):
+    """Test that network errors are retried until the request succeeds."""
+    mock_get.side_effect = [
+        ClientError("Connection failed"),
+        ClientError("Timeout"),
+        AsyncMock(__aenter__=AsyncMock(return_value=_mock_response(data={"data": "success_after_retry"}))),
+    ]
+    async with iRail() as api:
+        assert await api._do_request("stations") == {"data": "success_after_retry"}
+    assert mock_get.call_count == 3
+    assert mock_sleep.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
+@patch("pyrail.irail.ClientSession.get")
+async def test_retry_on_server_error(mock_get, mock_sleep):
+    """Test that a 5xx response is retried until the request succeeds."""
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(status=500),
+        _mock_response(data={"data": "success_after_server_error"}),
+    ]
+    async with iRail() as api:
+        assert await api._do_request("stations") == {"data": "success_after_server_error"}
+    assert mock_get.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
+@patch("pyrail.irail.ClientSession.get")
+async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
+    """Test that every failed attempt is logged before the retry sleep."""
+    mock_get.side_effect = ClientError("Persistent network error")
+    async with iRail() as api:
+        with caplog.at_level(logging.WARNING):
+            assert await api._do_request("stations") is None
+    assert mock_get.call_count == 3
+    assert caplog.text.count("Retrying") == 2
+    assert "Request failed after retries" in caplog.text
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
+@patch("pyrail.irail.ClientSession.get")
+async def test_no_retry_on_client_error_status(mock_get, mock_sleep):
+    """Test that 4xx responses are raised immediately without retrying."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(status=404)
+    async with iRail() as api:
+        with pytest.raises(NotFoundError):
+            await api._do_request("stations")
+    assert mock_get.call_count == 1
 
 
 @pytest.mark.asyncio
