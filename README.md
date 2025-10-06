@@ -15,6 +15,7 @@ pyRail is a Python library that provides a convenient interface for interacting 
 - Supports API endpoints: stations, liveboard, vehicle, connections, and disturbances.
 - Caching and conditional GET requests using ETags.
 - Rate limiting to handle API request limits efficiently.
+- Automatic retry with exponential backoff for network resilience.
 
 ## Installation
 
@@ -140,6 +141,26 @@ async with iRail() as api:
 ```
 
 Exceeding the request limit will cause the server to return 429 responses. You can monitor rate limiting through debug logs.
+
+### Network Resilience and Retry Logic
+
+pyRail implements automatic retry logic with exponential backoff to handle transient network issues and server errors:
+
+- **Network Errors**: Connection timeouts, DNS failures, and other network-related issues are automatically retried up to 3 times with exponential backoff (1s, 2s, 4s, up to 10s maximum).
+- **Server Errors**: HTTP 5xx server errors trigger automatic retries, allowing recovery from temporary server issues.
+- **Client Errors**: HTTP 4xx errors (except 429 rate limits) are not retried, as they typically indicate permanent issues like invalid requests.
+- **Rate Limits**: HTTP 429 responses are handled separately with the existing rate limit logic, respecting the server's `Retry-After` header.
+
+The retry functionality is powered by the [tenacity](https://github.com/jd/tenacity) library and works transparently:
+
+```python
+async with iRail() as api:
+    # Network errors and server errors are automatically retried
+    # No additional code needed - retry logic is built-in
+    stations = await api.get_stations()
+```
+
+You can monitor retry attempts through the warning logs when network issues occur.
 
 ## Development
 
