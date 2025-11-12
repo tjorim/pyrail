@@ -495,3 +495,119 @@ async def test_boolean_field_deserialization():
     assert departure.left is False, "Departure left field should be False when '0'"
     assert departure.is_extra is True, "Departure is_extra field should be True when '1'"
     assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_retry_on_network_error(mock_get):
+    """Test that network errors trigger retry with exponential backoff."""
+    from aiohttp import ClientError
+    
+    # Mock the get method to fail first two times, then succeed
+    mock_response_success = AsyncMock()
+    mock_response_success.status = 200
+    mock_response_success.json = AsyncMock(return_value={"data": "success_after_retry"})
+    
+    mock_get.side_effect = [
+        ClientError("Connection failed"),
+        ClientError("Timeout"),
+        AsyncMock(__aenter__=AsyncMock(return_value=mock_response_success))
+    ]
+
+    async with iRail() as api:
+        response = await api._do_request("stations")
+        
+        # Should succeed after retries
+        assert response == {"data": "success_after_retry"}
+        assert mock_get.call_count == 3
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_retry_on_server_error(mock_get):
+    """Test that server errors (5xx) trigger retry."""
+    # Mock first response as 500 server error, second as success
+    mock_response_error = AsyncMock()
+    mock_response_error.status = 500
+    mock_response_error.text = AsyncMock(return_value="Internal Server Error")
+    
+    mock_response_success = AsyncMock()
+    mock_response_success.status = 200
+    mock_response_success.json = AsyncMock(return_value={"data": "success_after_server_error"}) 
+    mock_response_success.headers = {}
+    
+    mock_get.side_effect = [
+        AsyncMock(__aenter__=AsyncMock(return_value=mock_response_error)),
+        AsyncMock(__aenter__=AsyncMock(return_value=mock_response_success))
+    ]
+
+    async with iRail() as api:
+        response = await api._do_request("stations")
+        
+        # Should succeed after server error retry
+        assert response == {"data": "success_after_server_error"}
+        assert mock_get.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_no_retry_on_client_error(mock_get):
+    """Test that client errors (4xx except 429) do not trigger retry."""
+    mock_response = AsyncMock()
+    mock_response.status = 404
+    mock_response.text = AsyncMock(return_value="Not Found")
+    mock_get.return_value.__aenter__.return_value = mock_response
+
+    async with iRail() as api:
+        response = await api._do_request("stations")
+        
+        # Should not retry on 404
+        assert response is None
+        assert mock_get.call_count == 1
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_retry_exhaustion(mock_get):
+    """Test that after exhausting retries, the method returns None."""
+    from aiohttp import ClientError
+    
+    # Always fail with network error
+    mock_get.side_effect = ClientError("Persistent network error")
+
+    async with iRail() as api:
+        response = await api._do_request("stations")
+        
+        # Should return None after exhausting retries
+        assert response is None
+        # Should attempt 3 times (original + 2 retries)
+        assert mock_get.call_count == 3
+
+
+@pytest.mark.asyncio 
+@patch("pyrail.irail.ClientSession.get")
+async def test_preserve_rate_limit_behavior(mock_get):
+    """Test that existing 429 rate limit handling is preserved."""
+    # Mock 429 response first, then success
+    mock_response_429 = AsyncMock()
+    mock_response_429.status = 429
+    mock_response_429.headers = {"Retry-After": "1"}
+    
+    mock_response_success = AsyncMock()
+    mock_response_success.status = 200
+    mock_response_success.json = AsyncMock(return_value={"data": "success_after_rate_limit"})
+    mock_response_success.headers = {}
+    
+    mock_get.side_effect = [
+        AsyncMock(__aenter__=AsyncMock(return_value=mock_response_429)),
+        AsyncMock(__aenter__=AsyncMock(return_value=mock_response_success))
+    ]
+
+    # Mock sleep to avoid actual delay in tests
+    with patch("asyncio.sleep"):
+        async with iRail() as api:
+            response = await api._do_request("stations")
+            
+            # Should succeed after rate limit handling
+            assert response == {"data": "success_after_rate_limit"}
+            assert mock_get.call_count == 2
