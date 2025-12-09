@@ -1,10 +1,52 @@
 version: 2
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+  # Monitor pip dependencies (Poetry project)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "friday"
+      time: "18:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "tjorim"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "pip"
+    versioning-strategy: "increase"
+    groups:
+      # Group core runtime dependencies (API interaction and data handling)
+      core:
+        patterns:
+          - "aiohttp"
+          - "mashumaro"
+          - "orjson"
+      # Group testing tools together (all test dependencies)
+      testing:
+        patterns:
+          - "pytest*"
+      # Group linting and type checking tools (all dev dependencies)
+      linting:
+        patterns:
+          - "ruff"
+          - "mypy"
+
+  # Monitor GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "18:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "tjorim"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
