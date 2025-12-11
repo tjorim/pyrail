@@ -18,10 +18,9 @@ updates:
       - "pip"
     versioning-strategy: "increase"
     groups:
-      # Group core runtime dependencies (API interaction and data handling)
-      core:
+      # Group data serialization libraries (tightly coupled via extras)
+      serialization:
         patterns:
-          - "aiohttp"
           - "mashumaro"
           - "orjson"
       # Group testing tools together (all test dependencies)
