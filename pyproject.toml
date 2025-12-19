@@ -28,7 +28,7 @@ pytest-asyncio = ">=0.25.1,<1.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.8.4,<0.15.0"
-mypy = "^1.14.1"
+mypy = "^1.19.1"
 
 [tool.mypy]
 check_untyped_defs = true
