@@ -362,7 +362,7 @@ class iRail:
             await self._handle_rate_limit()
 
         # Construct the request URL and parameters
-        url: str = "https://api.irail.be/v1/{}/".format(method)
+        url: str = f"https://api.irail.be/v1/{method}/"
         params = {"format": "json", "lang": self.lang}
         if args:
             params.update(args)
