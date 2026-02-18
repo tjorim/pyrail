@@ -42,6 +42,8 @@ class iRail:
 
     """
 
+    _API_BASE_URL = "https://api.irail.be/v1"
+
     # Available iRail API endpoints and their parameter requirements.
     # Each endpoint is configured with required parameters, optional parameters, and XOR
     # parameter groups (where exactly one parameter from the group must be provided).
@@ -362,7 +364,7 @@ class iRail:
             await self._handle_rate_limit()
 
         # Construct the request URL and parameters
-        url: str = f"https://api.irail.be/v1/{method}/"
+        url: str = f"{_API_BASE_URL}/{method}/"
         params = {"format": "json", "lang": self.lang}
         if args:
             params.update(args)
