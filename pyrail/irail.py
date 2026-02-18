@@ -22,6 +22,8 @@ from pyrail.models import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
 
+# API base URL constant
+_API_BASE_URL = "https://api.irail.be/v1"
 
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
@@ -362,7 +364,7 @@ class iRail:
             await self._handle_rate_limit()
 
         # Construct the request URL and parameters
-        url: str = "https://api.irail.be/{}/".format(method)
+        url: str = f"{_API_BASE_URL}/{method}/"
         params = {"format": "json", "lang": self.lang}
         if args:
             params.update(args)
