@@ -42,7 +42,7 @@ async def test_successful_request(mock_get):
         assert api.session is not None
         response = await api._do_request("stations")
         mock_get.assert_called_once_with(
-            "https://api.irail.be/stations/",
+            "https://api.irail.be/v1/stations/",
             params={"format": "json", "lang": "en"},
             headers={"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"},
         )
