@@ -22,6 +22,8 @@ from pyrail.models import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
 
+# API base URL constant
+_API_BASE_URL = "https://api.irail.be/v1"
 
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
@@ -41,8 +43,6 @@ class iRail:
         disturbances: Retrieve information about current disturbances on the rail network.
 
     """
-
-    _API_BASE_URL = "https://api.irail.be/v1"
 
     # Available iRail API endpoints and their parameter requirements.
     # Each endpoint is configured with required parameters, optional parameters, and XOR
