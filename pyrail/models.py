@@ -416,7 +416,6 @@ class Unit(DataClassORJSONMixin):
     has_airco: bool = field(
         metadata=field_options(alias="hasAirco", deserialize=_str_to_bool)
     )  # Whether the unit has air conditioning
-    traction_type: str = field(metadata=field_options(alias="tractionType"))  # Traction type of the unit
     can_pass_to_next_unit: bool = field(
         metadata=field_options(alias="canPassToNextUnit", deserialize=_str_to_bool)
     )  # Whether the unit can pass to the next
@@ -448,6 +447,7 @@ class Unit(DataClassORJSONMixin):
     has_bike_section: bool = field(
         metadata=field_options(alias="hasBikeSection", deserialize=_str_to_bool)
     )  # Whether the unit has a bike section
+    traction_type: str | None = field(default=None, metadata=field_options(alias="tractionType"))  # Traction type of the unit
 
 
 @dataclass
