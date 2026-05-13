@@ -5,7 +5,7 @@
 	"image": "mcr.microsoft.com/devcontainers/python:3.12",
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
-		"ghcr.io/devcontainers-extra/features/poetry:2": {},
+		"ghcr.io/devcontainers-extra/features/uv:1": {},
 		"ghcr.io/devcontainers-extra/features/ruff:1": {},
 		"ghcr.io/devcontainers/features/git:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {}
@@ -13,7 +13,7 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "poetry install",
+	"postCreateCommand": "uv venv && uv pip install -e . \"ruff>=0.15.12,<0.16.0\" \"ty==0.0.35\" \"pytest>=8.3.4,<10.0.0\" \"pytest-mock>=3.14.0,<4.0.0\" \"pytest-asyncio>=0.25.1,<1.4.0\"",
 	// Configure tool-specific properties.
 	"customizations": {
 		"vscode": {

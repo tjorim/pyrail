@@ -19,13 +19,16 @@ jobs:
       with:
         python-version: 3.12
 
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
+
     - name: Install dependencies
       run: |
-        pip install poetry
-        poetry install
+        uv venv
+        uv pip install -e . "ruff>=0.15.12,<0.16.0" "ty==0.0.35"
 
     - name: Run Ruff
-      run: poetry run ruff check .
+      run: uv run ruff check .
 
     - name: Run ty
-      run: poetry run ty check .
+      run: uv run ty check .

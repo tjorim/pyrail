@@ -19,10 +19,13 @@ jobs:
       with:
         python-version: 3.12
 
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
+
     - name: Install dependencies
       run: |
-        pip install poetry
-        poetry install
+        uv venv
+        uv pip install -e . "pytest>=8.3.4,<10.0.0" "pytest-mock>=3.14.0,<4.0.0" "pytest-asyncio>=0.25.1,<1.4.0"
 
     - name: Run tests
-      run: poetry run pytest
+      run: uv run pytest
