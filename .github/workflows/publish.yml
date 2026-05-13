@@ -18,10 +18,11 @@ jobs:
       with:
         python-version: 3.12
 
-    - name: Install Poetry and dependencies
-      run: |
-        pip install poetry
-        poetry install
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
+
+    - name: Install dependencies
+      run: uv sync --locked
 
     - name: Extract version from Git tag
       id: version
@@ -31,18 +32,45 @@ jobs:
 
     - name: Bump version in pyproject.toml
       run: |
-        poetry version $VERSION
-        poetry lock
+        python <<'PY'
+        from pathlib import Path
+        import re
+        import os
+
+        version = os.environ.get("VERSION")
+        if not version:
+            raise RuntimeError("VERSION environment variable is required but not set")
+        # major.minor.patch with optional pre-release/build metadata
+        semver_pattern = r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?"
+        if not re.fullmatch(semver_pattern, version):
+            raise RuntimeError(f"VERSION is not a valid semantic version: {version}")
+        pyproject = Path("pyproject.toml")
+        content = pyproject.read_text()
+        updated, updated_count = re.subn(
+            r'(?m)^version = ".*"$',
+            f'version = "{version}"',
+            content,
+            count=1,
+        )
+        if updated_count != 1:
+            raise RuntimeError(
+                f"Expected exactly 1 version substitution in pyproject.toml, found {updated_count}"
+            )
+        pyproject.write_text(updated)
+        PY
 
     - name: Push version bump to main
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
-        git add pyproject.toml poetry.lock
+        git add pyproject.toml
         git commit -m "Bump version to $VERSION"
         git push origin HEAD:main  # Push from detached HEAD directly to main
 
-    - name: Build the package and publish to PyPI
+    - name: Build the package
+      run: uv build
+
+    - name: Publish package to PyPI
       env:
-        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-      run: poetry publish --build
+        UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      run: uv publish

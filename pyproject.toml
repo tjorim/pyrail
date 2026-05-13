@@ -1,34 +1,31 @@
-[tool.poetry]
+[project]
 name = "pyrail"
 version = "0.4.1"
 description = "A Python wrapper for the iRail API"
-authors = ["Jorim Tielemans <tielemans.jorim@gmail.com>"]
+authors = [{name = "Jorim Tielemans", email = "tielemans.jorim@gmail.com"}]
 license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/tjorim/pyrail"
-repository = "https://github.com/tjorim/pyrail"
-documentation = "https://github.com/tjorim/pyrail"
 keywords = ["irail", "nmbs"]
 classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
-packages = [
-    { include = "pyrail" },
+urls = { Homepage = "https://github.com/tjorim/pyrail", Repository = "https://github.com/tjorim/pyrail", Documentation = "https://github.com/tjorim/pyrail" }
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "aiohttp>=3.13.5,<4.0.0",
+    "mashumaro[orjson]>=3.21,<4.0.0",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-aiohttp = "^3.13.5"
-mashumaro = {extras = ["orjson"], version = "^3.21"}
-
-[tool.poetry.group.test.dependencies]
-pytest = ">=8.3.4,<10.0.0"
-pytest-mock = "^3.14.0"
-pytest-asyncio = ">=0.25.1,<1.4.0"
-
-[tool.poetry.group.dev.dependencies]
-ruff = ">=0.15.12,<0.16.0"
-ty = "^0.0.35"
+[dependency-groups]
+test = [
+    "pytest>=8.3.4,<10.0.0",
+    "pytest-mock>=3.14.0,<4.0.0",
+    "pytest-asyncio>=0.25.1,<1.4.0",
+]
+dev = [
+    "ruff>=0.15.12,<0.16.0",
+    "ty>=0.0.35,<0.0.36",
+]
 
 [tool.ruff]
 line-length = 120
@@ -58,6 +55,9 @@ split-on-trailing-comma = false
 [tool.ruff.lint.pydocstyle]
 property-decorators = ["propcache.cached_property"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["pyrail"]
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
