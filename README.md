@@ -163,6 +163,10 @@ The devcontainer setup includes all necessary dependencies and tools for develop
     code .
    ```
 3. Once VS Code opens, it will detect the devcontainer configuration and prompt you to reopen the project in a container. Click "Reopen in Container" to start the development environment.
+4. To sync dependencies from the lock file, run:
+   ```bash
+   uv sync --all-groups --locked
+   ```
 
 ### Running Tests
 

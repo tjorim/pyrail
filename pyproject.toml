@@ -1,3 +1,31 @@
+[project]
+name = "pyrail"
+version = "0.4.1"
+description = "A Python wrapper for the iRail API"
+authors = [{name = "Jorim Tielemans", email = "tielemans.jorim@gmail.com"}]
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["irail", "nmbs"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "aiohttp>=3.13.5,<4.0.0",
+    "mashumaro[orjson]>=3.21,<4.0.0",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=8.3.4,<10.0.0",
+    "pytest-mock>=3.14.0,<4.0.0",
+    "pytest-asyncio>=0.25.1,<1.4.0",
+]
+dev = [
+    "ruff>=0.15.12,<0.16.0",
+    "ty>=0.0.35,<0.0.36",
+]
+
 [tool.poetry]
 name = "pyrail"
 version = "0.4.1"

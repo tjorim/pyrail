@@ -23,9 +23,7 @@ jobs:
       uses: astral-sh/setup-uv@v6
 
     - name: Install dependencies
-      run: |
-        uv venv
-        uv pip install -e . "pytest>=8.3.4,<10.0.0" "pytest-mock>=3.14.0,<4.0.0" "pytest-asyncio>=0.25.1,<1.4.0"
+      run: uv sync --only-group test --locked
 
     - name: Run tests
       run: uv run pytest
