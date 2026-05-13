@@ -40,11 +40,13 @@ jobs:
         version = os.environ.get("VERSION")
         if not version:
             raise RuntimeError("VERSION environment variable is required but not set")
+        if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", version):
+            raise RuntimeError(f"VERSION is not a valid semantic version: {version}")
         pyproject = Path("pyproject.toml")
         content = pyproject.read_text()
         updated, updated_count = re.subn(
             r'(?m)^version = "[^"]+"$',
-            f'version = "{version}"',
+            lambda _match: f'version = "{version}"',
             content,
             count=1,
         )
