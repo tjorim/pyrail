@@ -32,7 +32,7 @@ jobs:
 
     - name: Bump version in pyproject.toml
       run: |
-        python - <<'PY'
+        python <<'PY'
         from pathlib import Path
         import re
         import os
