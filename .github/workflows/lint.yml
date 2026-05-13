@@ -1,4 +1,4 @@
-name: Lint with Ruff
+name: Lint and Type Check
 
 on:
   push:
@@ -26,3 +26,6 @@ jobs:
 
     - name: Run Ruff
       run: poetry run ruff check .
+
+    - name: Run ty
+      run: poetry run ty check .
