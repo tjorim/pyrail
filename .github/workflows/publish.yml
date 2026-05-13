@@ -40,12 +40,14 @@ jobs:
         version = os.environ["VERSION"]
         pyproject = Path("pyproject.toml")
         content = pyproject.read_text()
-        updated = re.sub(
+        updated, updated_count = re.subn(
             r'(?m)^version = "[^"]+"$',
             f'version = "{version}"',
             content,
             count=1,
         )
+        if updated_count != 1:
+            raise RuntimeError("Failed to update [project].version in pyproject.toml")
         pyproject.write_text(updated)
         PY
 
