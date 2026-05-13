@@ -37,7 +37,9 @@ jobs:
         import re
         import os
 
-        version = os.environ["VERSION"]
+        version = os.environ.get("VERSION")
+        if not version:
+            raise RuntimeError("VERSION environment variable is required but not set")
         pyproject = Path("pyproject.toml")
         content = pyproject.read_text()
         updated, updated_count = re.subn(
@@ -47,7 +49,9 @@ jobs:
             count=1,
         )
         if updated_count != 1:
-            raise RuntimeError("Failed to update [project].version in pyproject.toml")
+            raise RuntimeError(
+                f"Expected exactly 1 version substitution in pyproject.toml, found {updated_count}"
+            )
         pyproject.write_text(updated)
         PY
 
