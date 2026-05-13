@@ -31,7 +31,7 @@ updates:
       linting:
         patterns:
           - "ruff"
-          - "mypy"
+          - "ty"
 
   # Monitor GitHub Actions
   - package-ecosystem: "github-actions"

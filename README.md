@@ -186,6 +186,12 @@ To automatically fix style issues, run:
 ruff check . --fix
 ```
 
+We use ty for type checking:
+
+```bash
+ty check .
+```
+
 ## Logging
 
 pyRail uses Python's built-in logging module. You can set the logging level at runtime to get detailed logs.
