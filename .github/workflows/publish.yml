@@ -46,7 +46,7 @@ jobs:
         pyproject = Path("pyproject.toml")
         content = pyproject.read_text()
         updated, updated_count = re.subn(
-            rf'(?m)^version = "{semver_pattern}"$',
+            r'(?m)^version = ".*"$',
             lambda _match: f'version = "{version}"',
             content,
             count=1,
