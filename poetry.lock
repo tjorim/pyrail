@@ -334,14 +334,14 @@ files = [
 
 [[package]]
 name = "mashumaro"
-version = "3.21"
+version = "3.22"
 description = "Fast and well tested serialization library"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "mashumaro-3.21-py3-none-any.whl", hash = "sha256:b8e11e259a77d1c6e277c17909381448750956acee1eb79014b06704a10053d6"},
-    {file = "mashumaro-3.21.tar.gz", hash = "sha256:9bc53b0c7dbed0be80e3ccc3efe1d621ce146b4b7a673ec41ba001a417f2c4b4"},
+    {file = "mashumaro-3.22-py3-none-any.whl", hash = "sha256:17dc4d7294c33ef380a8b929dda0608577aa2141988c00a0c4932310108fe71d"},
+    {file = "mashumaro-3.22.tar.gz", hash = "sha256:64538cc365204402a060ebde683a86505b5a4344acf6870d79021e9fbfe57360"},
 ]
 
 [package.dependencies]
@@ -904,4 +904,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "375eaedfe68c80246bd264884e1858d76a622e88b851a98279460f1d095c13cd"
+content-hash = "a9b7193c22c001313301604572bbe141b527d84e5c7e117afd025e9673dbf2b5"
