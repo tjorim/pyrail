@@ -27,8 +27,8 @@ pytest-mock = "^3.14.0"
 pytest-asyncio = ">=1.4.0,<1.5.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.15.18,<0.16.0"
-ty = "^0.0.51"
+ruff = ">=0.15.20,<0.16.0"
+ty = "^0.0.54"
 
 [tool.ruff]
 line-length = 120
