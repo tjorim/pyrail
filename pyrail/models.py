@@ -447,7 +447,9 @@ class Unit(DataClassORJSONMixin):
     has_bike_section: bool = field(
         metadata=field_options(alias="hasBikeSection", deserialize=_str_to_bool)
     )  # Whether the unit has a bike section
-    traction_type: str | None = field(default=None, metadata=field_options(alias="tractionType"))  # Traction type of the unit
+    traction_type: str | None = field(
+        default=None, metadata=field_options(alias="tractionType")
+    )  # Traction type of the unit (optional)
 
 
 @dataclass
@@ -460,7 +462,10 @@ class SegmentComposition(DataClassORJSONMixin):
     @classmethod
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'unit' list from 'units' before deserialization."""
-        d["units"] = d["units"]["unit"]
+        if "units" in d and d["units"] is not None:
+            d["units"] = d["units"].get("unit", [])
+        else:
+            d["units"] = []
         return d
 
 
