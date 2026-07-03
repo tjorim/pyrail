@@ -462,7 +462,7 @@ class SegmentComposition(DataClassORJSONMixin):
     @classmethod
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'unit' list from 'units' before deserialization."""
-        if "units" in d and d["units"] is not None:
+        if "units" in d and isinstance(d["units"], dict):
             d["units"] = d["units"].get("unit", [])
         else:
             d["units"] = []
