@@ -5,13 +5,16 @@ on:
     tags:
       - "v*"  # Trigger on tags starting with 'v' (e.g., v1.0.0, v1.2.3)
 
+permissions:
+  contents: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up Python
       uses: actions/setup-python@v6

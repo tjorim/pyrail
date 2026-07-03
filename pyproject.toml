@@ -18,32 +18,17 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
-aiohttp = "^3.13.5"
-mashumaro = {extras = ["orjson"], version = "^3.21"}
+aiohttp = "^3.14.1"
+mashumaro = {extras = ["orjson"], version = "^3.22"}
 
 [tool.poetry.group.test.dependencies]
-pytest = ">=8.3.4,<10.0.0"
+pytest = ">=9.1.1,<10.0.0"
 pytest-mock = "^3.14.0"
-pytest-asyncio = ">=0.25.1,<1.4.0"
+pytest-asyncio = ">=1.4.0,<1.5.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.15.12,<0.16.0"
-mypy = "^1.20.2"
-
-[tool.mypy]
-check_untyped_defs = true
-disallow_incomplete_defs = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
-exclude = ["^tests/"]
-no_implicit_optional = true
-python_version = "3.12"
-show_error_codes = true
-strict = true
-strict_equality = true
-warn_return_any = true
-warn_unused_configs = true
+ruff = ">=0.15.20,<0.16.0"
+ty = "^0.0.54"
 
 [tool.ruff]
 line-length = 120
