@@ -20,15 +20,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v7
 
-    - name: Set up Python
-      uses: actions/setup-python@v7
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10.3.0
       with:
         python-version: 3.12
-
-    - name: Install dependencies
-      run: |
-        pip install poetry
-        poetry install
+        enable-cache: true
 
     - name: Run live smoke tests
-      run: poetry run pytest -m live
+      run: uv run --locked pytest -m live

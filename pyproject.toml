@@ -1,34 +1,42 @@
-[tool.poetry]
+[project]
 name = "pyrail"
-version = "0.4.1"
+dynamic = ["version"]
 description = "A Python wrapper for the iRail API"
-authors = ["Jorim Tielemans <tielemans.jorim@gmail.com>"]
+authors = [{name = "Jorim Tielemans", email = "tielemans.jorim@gmail.com"}]
 license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/tjorim/pyrail"
-repository = "https://github.com/tjorim/pyrail"
-documentation = "https://github.com/tjorim/pyrail"
 keywords = ["irail", "nmbs"]
 classifiers = [
-    "Topic :: Software Development :: Libraries :: Python Modules"
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-packages = [
-    { include = "pyrail" },
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.14.4",
+    "mashumaro[orjson]>=3.23",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-aiohttp = "^3.14.4"
-mashumaro = {extras = ["orjson"], version = "^3.23"}
+[project.urls]
+Homepage = "https://github.com/tjorim/pyrail"
+Repository = "https://github.com/tjorim/pyrail"
+Documentation = "https://github.com/tjorim/pyrail"
 
-[tool.poetry.group.test.dependencies]
-pytest = ">=9.1.1,<10.0.0"
-pytest-mock = "^3.16.0"
-pytest-asyncio = ">=1.4.0,<1.5.0"
+[dependency-groups]
+test = [
+    "pytest>=9.1.1",
+    "pytest-mock>=3.16.0",
+    "pytest-asyncio>=1.4.0",
+]
+dev = [
+    "ruff>=0.16.10",
+    "ty>=0.0.84",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = ">=0.16.10,<0.17.0"
-ty = "^0.0.84"
+[tool.uv]
+default-groups = ["dev", "test"]
 
 [tool.ruff]
 line-length = 120
@@ -72,6 +80,13 @@ all = "error"
 strict-equality-semantics = true
 strict-generic-narrowing = true
 
+[tool.hatch.version]
+source = "vcs"
+raw-options = { fallback_version = "0.0.0" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyrail"]
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling>=1.27.0", "hatch-vcs"]
+build-backend = "hatchling.build"

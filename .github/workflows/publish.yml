@@ -6,46 +6,28 @@ on:
       - "v*"  # Trigger on tags starting with 'v' (e.g., v1.0.0, v1.2.3)
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Required for PyPI Trusted Publishing (OIDC)
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
+      with:
+        fetch-depth: 0  # The package version is derived from the git tag (hatch-vcs)
 
-    - name: Set up Python
-      uses: actions/setup-python@v7
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10.3.0
       with:
         python-version: 3.12
 
-    - name: Install Poetry and dependencies
-      run: |
-        pip install poetry
-        poetry install
+    - name: Build the package
+      run: uv build
 
-    - name: Extract version from Git tag
-      id: version
-      run: |
-        VERSION=$(echo ${GITHUB_REF} | sed 's/refs\/tags\/v//')  # Strip 'v' prefix
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-    - name: Bump version in pyproject.toml
-      run: |
-        poetry version $VERSION
-        poetry lock
-
-    - name: Push version bump to main
-      run: |
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-        git add pyproject.toml poetry.lock
-        git commit -m "Bump version to $VERSION"
-        git push origin HEAD:main  # Push from detached HEAD directly to main
-
-    - name: Build the package and publish to PyPI
-      env:
-        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-      run: poetry publish --build
+    - name: Publish package to PyPI
+      run: uv publish --trusted-publishing always

@@ -17,18 +17,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v7
 
-    - name: Set up Python
-      uses: actions/setup-python@v7
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10.3.0
       with:
         python-version: 3.12
-
-    - name: Install dependencies
-      run: |
-        pip install poetry
-        poetry install
+        enable-cache: true
 
     - name: Run Ruff
-      run: poetry run ruff check .
+      run: uv run --locked ruff check .
 
     - name: Run ty
-      run: poetry run ty check .
+      run: uv run --locked ty check .
