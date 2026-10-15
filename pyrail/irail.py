@@ -2,7 +2,8 @@
 
 import asyncio
 from asyncio import Lock
-from datetime import datetime
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import logging
 import time
 from types import TracebackType
@@ -10,7 +11,7 @@ from typing import Any, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
-from pyrail.exceptions import InvalidRequestError, NotFoundError, RateLimitError
+from pyrail.exceptions import ApiUnavailableError, InvalidRequestError, NotFoundError, RateLimitError
 from pyrail.models import (
     CompositionApiResponse,
     ConnectionsApiResponse,
@@ -26,6 +27,44 @@ logger: logging.Logger = logging.getLogger(__name__)
 # API base URL constant
 _API_BASE_URL = "https://api.irail.be/v1"
 
+# Retry policy: exponential backoff starting at _RETRY_BASE_DELAY seconds, capped at _RETRY_MAX_DELAY seconds
+_RETRY_BASE_DELAY = 1.0
+_RETRY_MAX_DELAY = 10.0
+
+
+def _describe(error: BaseException) -> str:
+    """Describe an exception for log and error messages, including its type when it has no message."""
+    return f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
+
+
+def _parse_retry_after(value: str | None) -> int | None:
+    """Parse a Retry-After header, given as seconds or an HTTP date, into whole seconds.
+
+    Returns None when the header is missing or cannot be parsed.
+    """
+    if value is None:
+        return None
+    try:
+        return max(0, int(value))
+    except ValueError:
+        pass
+    try:
+        retry_at = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=timezone.utc)
+    return max(0, int((retry_at - datetime.now(timezone.utc)).total_seconds()))
+
+
+class _ServerError(ClientError):
+    """Raised for 5xx responses so that they are retried like network failures."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(f"Server error {status}")
+        self.status = status
+
+
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
 
@@ -34,6 +73,8 @@ class iRail:
         session (ClientSession, optional): The HTTP session used for API requests.
             If not provided, a new session will be created and managed internally.
             If provided, the session lifecycle must be managed externally.
+        max_retries (int): How many times a request is retried after a network error, timeout or
+            server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
 
     Endpoints:
         stations: Retrieve all stations.
@@ -60,14 +101,22 @@ class iRail:
         "disturbances": {"optional": ["lineBreakCharacter"]},
     }
 
-    def __init__(self, lang: str = "en", session: ClientSession | None = None) -> None:
+    def __init__(self, lang: str = "en", session: ClientSession | None = None, max_retries: int = 2) -> None:
         """Initialize the iRail API client.
 
         Args:
             lang (str): The language for API responses. Default is 'en'.
             session (ClientSession, optional): An existing aiohttp session. Defaults to None.
+            max_retries (int): Number of retries after a transient failure. Default is 2 (3 attempts in total).
+                Use 0 to disable retrying.
+
+        Raises:
+            ValueError: If max_retries is negative.
 
         """
+        if max_retries < 0:
+            raise ValueError("max_retries must be 0 or greater")
+        self.max_retries: int = max_retries
         self.lang: str = lang
         self.tokens: int = 3
         self.burst_tokens: int = 5
@@ -309,10 +358,9 @@ class iRail:
     ) -> dict[str, Any] | None:
         """Handle the API response based on status code."""
         if response.status == 429:
-            retry_after: int = int(response.headers.get("Retry-After", 1))
-            logger.warning("Rate limited, retrying after %d seconds", retry_after)
-            await asyncio.sleep(retry_after)
-            raise RateLimitError(f"Rate limit exceeded for method {method}")
+            retry_after = _parse_retry_after(response.headers.get("Retry-After"))
+            logger.warning("Rate limited on %s, the API asks to retry after %s seconds", method, retry_after)
+            raise RateLimitError(f"Rate limit exceeded for method {method}", retry_after=retry_after)
         elif response.status == 400:
             error_message = await response.text()
             try:
@@ -334,12 +382,57 @@ class iRail:
             logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
             return None
 
+    def _should_retry_on_status(self, response: ClientResponse) -> bool:
+        """Determine if a response status code should trigger a retry.
+
+        Args:
+            response: The HTTP response to check
+
+        Returns:
+            bool: True if the status should trigger a retry, False otherwise
+
+        """
+        # Retry on server errors (5xx) but not on client errors (4xx except 429)
+        # 429 is handled separately in _handle_response
+        return 500 <= response.status < 600
+
+    async def _execute_http_request(
+        self, url: str, params: dict[str, Any], headers: dict[str, str], method: str, args: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
+        """Perform a single HTTP request attempt.
+
+        Args:
+            url: The URL to request
+            params: Query parameters
+            headers: Request headers
+            method: API method name for logging
+            args: Original method arguments, passed on to the response handler
+
+        Returns:
+            dict or None: Parsed response, or None if the response is not usable
+
+        Raises:
+            ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
+            TimeoutError: If the request times out.
+
+        """
+        if self.session is None:
+            logger.error("Session not initialized")
+            return None
+
+        async with self.session.get(url, params=params, headers=headers) as response:
+            if self._should_retry_on_status(response):
+                raise _ServerError(response.status)
+
+            return await self._handle_response(response, method, args)
+
     async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
 
         This method handles API requests with rate limiting, parameter validation,
         and ETag-based caching. It supports conditional requests and manages
-        various HTTP response scenarios.
+        various HTTP response scenarios. Network errors, timeouts and server errors (5xx)
+        are retried up to ``max_retries`` times with exponential backoff.
 
         Args:
             method (str): The iRail API endpoint method to request.
@@ -349,17 +442,21 @@ class iRail:
         Returns:
             dict or None: Parsed JSON response from the API if successful,
                 None if the data is not modified (304), the server returns an unexpected
-                status, or the request fails or the body cannot be parsed.
+                status, or the body cannot be parsed.
 
         Raises:
-            RateLimitError: If the API responds with HTTP 429 (after waiting for Retry-After).
+            RateLimitError: If the API responds with HTTP 429. The exception's ``retry_after`` holds the
+                Retry-After delay in seconds, if given. The request is not retried.
             InvalidRequestError: If the API responds with HTTP 400.
             NotFoundError: If the API responds with HTTP 404.
+            ApiUnavailableError: If the request still fails after all retries (network error, timeout or HTTP 5xx).
 
         Notes:
             - Implements rate limiting using a token-based mechanism
             - Supports ETag-based conditional requests
-            - Raises RateLimitError on rate limit (429) responses after waiting for Retry-After
+            - Raises RateLimitError immediately on rate limit (429) responses, without waiting or retrying
+            - Retries network failures, timeouts and server errors with exponential backoff;
+              every attempt, including retries, goes through the rate limiter
             - Logs detailed information about request processing
 
         """
@@ -370,8 +467,6 @@ class iRail:
         if not self._validate_params(method, args or {}):
             logger.error("Validation failed for method: %s with args: %s", method, args)
             return None
-        async with self.lock:
-            await self._handle_rate_limit()
 
         # Construct the request URL and parameters
         url: str = f"{_API_BASE_URL}/{method}/"
@@ -379,14 +474,32 @@ class iRail:
         if args is not None:
             params.update(args)
 
-        request_headers: dict[str, str] = self._add_etag_header(method)
+        max_attempts = self.max_retries + 1
+        for attempt in range(1, max_attempts + 1):
+            # Every attempt consumes a rate limit token, so retries cannot exceed the API limits
+            async with self.lock:
+                await self._handle_rate_limit()
 
-        try:
-            async with self.session.get(url, params=params, headers=request_headers) as response:
-                return await self._handle_response(response, method, args)
-        except ClientError as e:
-            logger.error("Request failed due to an exception: %s", e)
-            return None
+            request_headers: dict[str, str] = self._add_etag_header(method)
+            try:
+                return await self._execute_http_request(url, params, request_headers, method, args)
+            except (ClientError, TimeoutError) as e:
+                if attempt == max_attempts:
+                    logger.error("Request to %s failed after %d attempt(s): %s", method, attempt, _describe(e))
+                    raise ApiUnavailableError(
+                        f"Request to {method} failed after {attempt} attempt(s): {_describe(e)}"
+                    ) from e
+                delay = min(_RETRY_BASE_DELAY * 2 ** (attempt - 1), _RETRY_MAX_DELAY)
+                logger.warning(
+                    "Request to %s failed (%s), retrying in %.1f seconds (attempt %d of %d)",
+                    method,
+                    _describe(e),
+                    delay,
+                    attempt,
+                    max_attempts,
+                )
+                await asyncio.sleep(delay)
+        return None  # pragma: no cover - the loop always returns or raises
 
     async def get_stations(self) -> StationsApiResponse | None:
         """Retrieve a list of all train stations from the iRail API.
@@ -394,12 +507,13 @@ class iRail:
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
         Returns:
-            StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified or the request fails.
+            StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
             async with iRail() as client:
@@ -436,12 +550,13 @@ class iRail:
             alerts (bool, optional): Whether to include service alerts. Defaults to False.
 
         Returns:
-            LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified or the request fails.
+            LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
             async with iRail() as client:
@@ -485,12 +600,13 @@ class iRail:
             type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
 
         Returns:
-            ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the data is not modified or the request fails.
+            ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
             async with iRail() as client:
@@ -523,12 +639,13 @@ class iRail:
             alerts (bool, optional): Flag to include service alerts for the vehicle. Defaults to False.
 
         Returns:
-            VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the data is not modified or the request fails.
+            VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
             async with iRail() as client:
@@ -551,12 +668,13 @@ class iRail:
             data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to '' (filtered data).
 
         Returns:
-            CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the data is not modified or the request fails.
+            CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
             async with iRail() as client:
@@ -578,12 +696,13 @@ class iRail:
             line_break_character (str, optional): A custom character to use for line breaks in the disturbance description. Defaults to ''.
 
         Returns:
-            DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified or the request fails.
+            DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
             async with iRail() as client:

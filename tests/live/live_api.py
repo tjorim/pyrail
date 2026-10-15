@@ -1,9 +1,9 @@
 """Retrying, failure-classifying client wrapper for the live smoke tests.
 
-pyRail reports unavailable endpoints by logging an error and returning None
-(network errors, unparseable bodies) or by raising a ``PyRailError`` (HTTP 400,
-404 and 429), while a successful response that no longer matches the models
-raises during deserialization. ``LiveApi`` uses that difference to fail with one
+pyRail reports unavailable endpoints by raising a ``PyRailError`` (HTTP 400, 404 and
+429, or ``ApiUnavailableError`` for network errors, timeouts and HTTP 5xx) or by logging
+an error and returning None (unparseable bodies, unexpected statuses), while a
+successful response that no longer matches the models raises during deserialization. ``LiveApi`` uses that difference to fail with one
 of two clearly distinct messages.
 """
 
@@ -15,16 +15,18 @@ from typing import override
 from aiohttp import ClientTimeout
 import pytest
 
-from pyrail.exceptions import PyRailError
+from pyrail.exceptions import InvalidRequestError, NotFoundError, PyRailError
 from pyrail.irail import iRail
 
-# Bounded retry policy: 3 attempts with a growing pause, on top of the client's own
-# rate limiting and Retry-After handling for HTTP 429.
+# Bounded retry policy: 3 attempts with a growing pause. The client is created with
+# max_retries=0 (see conftest.py), so this is the only retry layer; the client still
+# applies its own rate limiting.
 ATTEMPTS = 3
 BACKOFF_SECONDS = (5, 15)
 REQUEST_TIMEOUT = ClientTimeout(total=30)
 
 UNAVAILABLE = "API UNAVAILABLE"
+REJECTED = "API REJECTED REQUEST"
 INCOMPATIBLE = "API INCOMPATIBLE"
 
 
@@ -51,9 +53,10 @@ class LiveApi:
     async def fetch[T](self, endpoint: str, request: Callable[[iRail], Awaitable[T | None]]) -> T:
         """Call an endpoint, retrying when no usable response arrives.
 
-        Fails with ``API UNAVAILABLE`` when every attempt gets no response, and with
+        Fails with ``API UNAVAILABLE`` when every attempt gets no response, with
+        ``API REJECTED REQUEST`` when the API answers HTTP 400 or 404, and with
         ``API INCOMPATIBLE`` when a response arrives but cannot be deserialized.
-        Deserialization failures are not retried, as they are deterministic.
+        Rejections and deserialization failures are not retried, as they are deterministic.
         """
         logger = logging.getLogger("pyrail.irail")
         reason = "no response"
@@ -63,8 +66,10 @@ class LiveApi:
             logger.addHandler(collector)
             try:
                 result = await request(self.client)
-            except TimeoutError:
-                reason = f"request timed out after {REQUEST_TIMEOUT.total}s"
+            except (InvalidRequestError, NotFoundError) as err:
+                pytest.fail(
+                    f"{REJECTED}: '{endpoint}' answered {type(err).__name__}: {str(err)[:300]}", pytrace=False
+                )
             except PyRailError as err:
                 reason = f"{type(err).__name__}: {str(err)[:300]}"
             except Exception as err:

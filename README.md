@@ -15,6 +15,7 @@ pyRail is a Python library that provides a convenient interface for interacting 
 - Supports API endpoints: stations, liveboard, vehicle, connections, and disturbances.
 - Caching and conditional GET requests using ETags.
 - Rate limiting to handle API request limits efficiently.
+- Automatic retry with exponential backoff for network resilience.
 
 ## Installation
 
@@ -143,27 +144,51 @@ Exceeding the request limit will cause the server to return 429 responses, which
 
 ### Error Handling
 
-pyRail raises exceptions for HTTP errors returned by the iRail API. All of them inherit from `PyRailError`:
+pyRail raises exceptions for errors returned by the iRail API and for connection failures. All of them inherit from `PyRailError`:
 
-| Exception             | Raised when                                           |
-| --------------------- | ----------------------------------------------------- |
-| `InvalidRequestError` | The API responds with HTTP 400 (invalid request)      |
-| `NotFoundError`       | The API responds with HTTP 404 (resource not found)   |
-| `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded)  |
+| Exception             | Raised when                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `InvalidRequestError` | The API responds with HTTP 400 (invalid request)                                    |
+| `NotFoundError`       | The API responds with HTTP 404 (resource not found)                                 |
+| `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded); see `retry_after`             |
+| `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
-from pyrail import iRail, NotFoundError, PyRailError
+from pyrail import iRail, NotFoundError, PyRailError, RateLimitError
 
 async with iRail() as api:
     try:
         liveboard = await api.get_liveboard(station="Unknown station")
     except NotFoundError:
         print("Station not found")
+    except RateLimitError as err:
+        print(f"Rate limited, retry in {err.retry_after} seconds")
     except PyRailError as err:
         print(f"Request failed: {err}")
 ```
 
-Other failures (network errors, unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
+Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
+
+### Network Resilience and Retry Logic
+
+pyRail automatically retries transient failures with exponential backoff:
+
+- **Network Errors and Timeouts**: Connection failures, DNS errors and request timeouts are retried.
+- **Server Errors**: HTTP 5xx responses are retried, allowing recovery from temporary server issues.
+- **Client Errors**: HTTP 4xx errors are never retried, as they indicate a problem with the request. This includes 429 rate limits, which raise a `RateLimitError` immediately; its `retry_after` attribute holds the server's `Retry-After` delay in seconds (or `None`), so you decide when to try again (see [Error Handling](#error-handling)).
+- **Rate Limiting**: Every attempt, including each retry, goes through the client's rate limiter.
+
+By default a request is attempted up to 3 times in total, waiting 1s and then 2s between attempts (the delay doubles each time, capped at 10s). Use `max_retries` to change this, or set it to `0` to disable retrying:
+
+```python
+async with iRail(max_retries=5) as api:
+    stations = await api.get_stations()
+
+async with iRail(max_retries=0) as api:  # fail fast, no retries
+    stations = await api.get_stations()
+```
+
+When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Each failed attempt is logged as a warning.
 
 ## Development
 
@@ -192,7 +217,7 @@ The devcontainer setup includes all necessary dependencies and tools for develop
 
 There are two test suites:
 
-- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 429 retries, ETags, invalid JSON, ...) and runs on every push and pull request.
+- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, ETags, invalid JSON, ...) and runs on every push and pull request.
 - **Live smoke suite** (`tests/live`): calls all six endpoints of the real iRail API and checks that the responses still deserialize into the library models. It asserts only stable structure, never specific trains, times or disturbances. It catches upstream API changes that the recorded responses cannot.
 
 To run the offline suite, use the following command in the terminal within the devcontainer:
