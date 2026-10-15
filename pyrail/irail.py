@@ -313,17 +313,18 @@ class iRail:
             logger.warning("Rate limited, retrying after %d seconds", retry_after)
             await asyncio.sleep(retry_after)
             raise RateLimitError(f"Rate limit exceeded for method {method}")
-            #return await self._do_request(method, args)
         elif response.status == 400:
             error_message = await response.text()
+            try:
+                error_message = (await response.json()).get("error", error_message)
+            except (ValueError, AttributeError):
+                pass
             logger.error("Bad request: %s", error_message)
             raise InvalidRequestError(error_message)
-            #return None
         elif response.status == 404:
             error_message = await response.text()
             logger.error("Endpoint %s not found, response: %s", method, error_message)
             raise NotFoundError(error_message)
-            #return None
         elif response.status == 200:
             return await self._handle_success_response(response, method)
         elif response.status == 304:

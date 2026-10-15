@@ -1,9 +1,10 @@
 """Retrying, failure-classifying client wrapper for the live smoke tests.
 
-pyRail reports unavailable endpoints (network errors, HTTP errors, unparseable
-bodies) by logging an error and returning None, while a successful response
-that no longer matches the models raises during deserialization. ``LiveApi``
-uses that difference to fail with one of two clearly distinct messages.
+pyRail reports unavailable endpoints by logging an error and returning None
+(network errors, unparseable bodies) or by raising a ``PyRailError`` (HTTP 400,
+404 and 429), while a successful response that no longer matches the models
+raises during deserialization. ``LiveApi`` uses that difference to fail with one
+of two clearly distinct messages.
 """
 
 import asyncio
@@ -14,6 +15,7 @@ from typing import override
 from aiohttp import ClientTimeout
 import pytest
 
+from pyrail.exceptions import PyRailError
 from pyrail.irail import iRail
 
 # Bounded retry policy: 3 attempts with a growing pause, on top of the client's own
@@ -63,6 +65,8 @@ class LiveApi:
                 result = await request(self.client)
             except TimeoutError:
                 reason = f"request timed out after {REQUEST_TIMEOUT.total}s"
+            except PyRailError as err:
+                reason = f"{type(err).__name__}: {str(err)[:300]}"
             except Exception as err:
                 pytest.fail(
                     f"{INCOMPATIBLE}: '{endpoint}' answered successfully but the response failed to "
