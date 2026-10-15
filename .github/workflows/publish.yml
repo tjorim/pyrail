@@ -22,7 +22,7 @@ jobs:
         fetch-depth: 0  # The package version is derived from the git tag (hatch-vcs)
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@v10
+      uses: astral-sh/setup-uv@v10.3.0
       with:
         python-version: 3.12
 
