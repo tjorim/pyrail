@@ -5,14 +5,14 @@ Built with aiohttp, it provides non-blocking I/O operations for optimal performa
 
 ## Overview
 
-pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, vehicle, connections, and disturbances. The library includes features like caching and rate limiting to optimize API usage.
+pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, connections, vehicle, composition, and disturbances. The library includes features like caching and rate limiting to optimize API usage.
 
 ## Features
 
 - Async handling
 - Retrieve real-time train information, including liveboards and vehicle details.
 - Access train station data, connections, and disturbances.
-- Supports API endpoints: stations, liveboard, vehicle, connections, and disturbances.
+- Supports API endpoints: stations, liveboard, connections, vehicle, composition, and disturbances.
 - Caching and conditional GET requests using ETags.
 - Rate limiting to handle API request limits efficiently.
 - Automatic retry with exponential backoff for network resilience.
@@ -40,10 +40,10 @@ async def main():
             # Get the total number of stations
             stations = await api.get_stations()
             if stations:
-                print(f"Total stations: {len(stations)}")
+                print(f"Total stations: {len(stations.stations)}")
                 # Example output: Total stations: 691
-                # stations = [
-                #     {"name": "Brussels-South", "id": "BE.NMBS.008814001", ...},
+                # stations.stations = [
+                #     StationDetails(name="Brussels-South", id="BE.NMBS.008814001", ...),
                 #     ...
                 # ]
             # Get the liveboard for a specific station
@@ -104,7 +104,7 @@ async def main():
     async with ClientSession() as session:
         async with iRail(session=session) as api:
             stations = await api.get_stations()
-            print(f"Total stations: {len(stations)}")
+            print(f"Total stations: {len(stations.stations)}")
 
     # Or let iRail manage its own session
     async with iRail() as api:
@@ -217,7 +217,7 @@ The devcontainer setup includes all necessary dependencies and tools for develop
 
 There are two test suites:
 
-- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, ETags, invalid JSON, ...) and runs on every push and pull request.
+- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, ETags, invalid JSON, ...) and runs on every pull request and on pushes to main.
 - **Live smoke suite** (`tests/live`): calls all six endpoints of the real iRail API and checks that the responses still deserialize into the library models. It asserts only stable structure, never specific trains, times or disturbances. It catches upstream API changes that the recorded responses cannot.
 
 To run the offline suite, use the following command in the terminal within the devcontainer:

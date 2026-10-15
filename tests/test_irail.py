@@ -31,6 +31,7 @@ from pyrail.models import (
     PlatformInfo,
     StationDetails,
     StationsApiResponse,
+    Unit,
     VehicleApiResponse,
     VehicleInfo,
     _str_to_bool,
@@ -227,7 +228,7 @@ async def test_get_composition(mock_get):
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("composition.json"))
 
     async with iRail() as api:
-        composition = await api.get_composition("IC538")
+        composition = await api.get_composition("S102092")
 
         assert composition is not None, "The response should not be None"
         assert isinstance(composition, CompositionApiResponse), (
@@ -237,22 +238,32 @@ async def test_get_composition(mock_get):
         # Test segments structure
         segments = composition.composition
         assert isinstance(segments, list), "Expected 'segments' to be a list"
-        assert len(segments) > 0, "Expected 'number' to be a non-negative integer"
+        assert len(segments) > 0, "Expected at least one segment"
 
-        if len(segments) > 0:
-            segment = segments[0]
-            assert isinstance(segment.origin, StationDetails), "Expected origin to be a StationDetails object"
-            assert isinstance(segment.destination, StationDetails), "Expected destination to be a StationDetails object"
+        segment = segments[0]
+        assert isinstance(segment.origin, StationDetails), "Expected origin to be a StationDetails object"
+        assert isinstance(segment.destination, StationDetails), "Expected destination to be a StationDetails object"
 
-            # Test units in composition
-            units = segment.composition.units
-            assert len(units) > 0, "Expected 'number' to be a non-negative integer"
+        # Test units in composition
+        units = segment.composition.units
+        assert len(units) > 0, "Expected at least one unit"
 
-            if len(units) > 0:
-                unit = units[0]
-                assert isinstance(unit.has_toilets, bool), "Expected 'has_toilets' to be a boolean"
-                assert isinstance(unit.seats_first_class, int), "Expected 'seats_first_class' to be an integer"
-                assert isinstance(unit.length_in_meter, int), "Expected 'length_in_meter' to be an integer"
+        unit = units[0]
+        assert isinstance(unit.has_toilets, bool), "Expected 'has_toilets' to be a boolean"
+        assert isinstance(unit.seats_first_class, int), "Expected 'seats_first_class' to be an integer"
+        assert isinstance(unit.length_in_meter, int), "Expected 'length_in_meter' to be an integer"
+        assert isinstance(unit.material_number, str | None), (
+            "Expected 'material_number' to be a string or None"
+        )
+        assert isinstance(unit.material_sub_type_name, str | None), (
+            "Expected 'material_sub_type_name' to be a string or None"
+        )
+        assert isinstance(unit.has_tables, bool | None), (
+            "Expected 'has_tables' to be a boolean or None"
+        )
+        assert isinstance(unit.has_luggage_section, bool | None), (
+            "Expected 'has_luggage_section' to be a boolean or None"
+        )
 
 
 @pytest.mark.asyncio
@@ -491,6 +502,32 @@ def test_str_to_bool():
     # Test valid inputs
     assert _str_to_bool("1") is True, "String '1' should convert to True"
     assert _str_to_bool("0") is False, "String '0' should convert to False"
+
+
+def test_unit_optional_field_deserialization():
+    """Test deserialization of the optional composition unit fields against the recorded example."""
+    example = _load_example("composition.json")
+    segment = example["composition"]["segments"]["segment"][0]
+    unit_data = deepcopy(segment["composition"]["units"]["unit"][0])
+
+    assert "materialNumber" in unit_data, "Expected the recorded unit to carry materialNumber"
+    assert "materialSubTypeName" in unit_data, "Expected the recorded unit to carry materialSubTypeName"
+
+    unit = Unit.from_dict(unit_data)
+    assert unit.material_number == unit_data["materialNumber"], (
+        "Expected 'material_number' to read the materialNumber key"
+    )
+    assert unit.material_sub_type_name == unit_data["materialSubTypeName"], (
+        "Expected 'material_sub_type_name' to read the materialSubTypeName key"
+    )
+    assert unit.has_tables is None, "Expected 'has_tables' to default to None when absent"
+    assert unit.has_luggage_section is None, "Expected 'has_luggage_section' to default to None when absent"
+
+    unit_data["hasTables"] = "1"
+    unit_data["hasLuggageSection"] = "0"
+    unit = Unit.from_dict(unit_data)
+    assert unit.has_tables is True, "Expected 'has_tables' to be True when '1'"
+    assert unit.has_luggage_section is False, "Expected 'has_luggage_section' to be False when '0'"
 
 
 def test_boolean_field_deserialization():

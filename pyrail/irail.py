@@ -297,8 +297,8 @@ class iRail:
             4. Prevents unexpected parameters from being included
 
         Example:
-            # Validates parameters for a 'get_liveboard' method
-            is_valid = self.validate_params('get_liveboard', {'station': 'Brussels', 'date': '2025-01-15'})
+            # Validates parameters for the liveboard endpoint
+            is_valid = self._validate_params('liveboard', {'station': 'Brussels', 'date': '150923'})
 
         """
         if method not in self.endpoints:
@@ -519,7 +519,7 @@ class iRail:
             async with iRail() as client:
                 stations = await client.get_stations()
                 if stations:
-                    print(f"Total stations: {len(stations)}")
+                    print(f"Total stations: {len(stations.stations)}")
 
         """
         stations_response_dict = await self._do_request("stations")
@@ -595,7 +595,7 @@ class iRail:
             from_station (str): Name or ID of the departure station
             to_station (str): Name or ID of the arrival station
             date (str, optional): Date of travel in format 'DDMMYY' (default: current date)
-            time (str, optional): Time of travel in format 'HH:MM' (default: current time)
+            time (str, optional): Time of travel in format 'HHMM' (default: current time)
             timesel (str, optional): Time selection type, either 'departure' or 'arrival' (default: 'departure')
             type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
 
@@ -665,7 +665,7 @@ class iRail:
 
         Args:
             id (str): The unique identifier of the train for which composition details are requested.
-            data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to '' (filtered data).
+            data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to None, which requests the filtered data.
 
         Returns:
             CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the data is not modified.
