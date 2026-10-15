@@ -31,6 +31,10 @@ _API_BASE_URL = "https://api.irail.be/v1"
 _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
 
+# The API silently falls back to 'automatic' for a typeOfTransport it does not recognise, and it only
+# recognises 'no_international_trains', so the spelling without underscores is translated.
+_TYPE_OF_TRANSPORT_ALIASES = {"nointernationaltrains": "no_international_trains"}
+
 
 def _describe(error: BaseException) -> str:
     """Describe an exception for log and error messages, including its type when it has no message."""
@@ -547,7 +551,8 @@ class iRail:
             date (str, optional): Date for the liveboard in format 'DDMMYY', in Belgian local time. Defaults to current date.
             time (str, optional): Time for the liveboard in format 'HHMM', in Belgian local time. Defaults to current time.
             arrdep (str, optional): Type of board to retrieve. Either 'departure' (default) or 'arrival'.
-            alerts (bool, optional): Whether to include service alerts. Defaults to False.
+            alerts (bool, optional): Whether to request service alerts. Defaults to False. The iRail API currently
+                ignores this for liveboards: the response has the same shape either way and carries no alerts.
 
         Returns:
             LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified.
@@ -597,7 +602,9 @@ class iRail:
             date (str, optional): Date of travel in format 'DDMMYY', in Belgian local time (default: current date)
             time (str, optional): Time of travel in format 'HHMM', in Belgian local time (default: current time)
             timesel (str, optional): Time selection type, either 'departure' or 'arrival' (default: 'departure')
-            type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
+            type_of_transport (str, optional): Type of transport, one of 'automatic', 'trains', 'no_international_trains'
+                or 'all' (default: 'automatic'). The spelling 'nointernationaltrains' is accepted as an alias.
+                The API silently treats any other value as 'automatic'.
 
         Returns:
             ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the data is not modified.
@@ -621,7 +628,7 @@ class iRail:
             "date": date,
             "time": time,
             "timesel": timesel,
-            "typeOfTransport": type_of_transport,
+            "typeOfTransport": _TYPE_OF_TRANSPORT_ALIASES.get(type_of_transport, type_of_transport),
         }
         connections_response_dict = await self._do_request(
             "connections", {k: v for k, v in extra_params.items() if v is not None}

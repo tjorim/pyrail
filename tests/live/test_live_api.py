@@ -68,6 +68,25 @@ async def test_live_liveboard(live: LiveApi, travel_date: tuple[str, str]) -> No
 
 
 @pytest.mark.asyncio
+async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tuple[str, str]) -> None:
+    """A liveboard requested by station id, with and without alerts, deserializes for both board types."""
+    date, time = travel_date
+    for arrdep in ("departure", "arrival"):
+        for alerts in (False, True):
+            response = await live.fetch(
+                f"liveboard (id, {arrdep}, alerts={alerts})",
+                lambda api, arrdep=arrdep, alerts=alerts: api.get_liveboard(
+                    id=BRUSSELS_CENTRAL_ID, date=date, time=time, arrdep=arrdep, alerts=alerts
+                ),
+            )
+
+            assert isinstance(response, LiveboardApiResponse)
+            assert response.station_info.id == BRUSSELS_CENTRAL_ID
+            board = response.arrivals if arrdep == "arrival" else response.departures
+            assert board
+
+
+@pytest.mark.asyncio
 async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """The connections endpoint returns routes between two stations."""
     date, time = travel_date
@@ -79,6 +98,28 @@ async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> 
     assert isinstance(response, ConnectionsApiResponse)
     assert response.connections
     assert all(c.departure.vehicle and c.arrival.station_info.id for c in response.connections)
+
+
+@pytest.mark.asyncio
+async def test_live_connections_timesel_and_type_of_transport(live: LiveApi, travel_date: tuple[str, str]) -> None:
+    """Connections deserialize when selected by arrival time and for each transport filter."""
+    date, time = travel_date
+    variants: dict[str, dict[str, str]] = {
+        "timesel=arrival": {"timesel": "arrival"},
+        "typeOfTransport=trains": {"type_of_transport": "trains"},
+        "typeOfTransport=no_international_trains": {"type_of_transport": "no_international_trains"},
+        "typeOfTransport=all": {"type_of_transport": "all"},
+    }
+    for label, options in variants.items():
+        response = await live.fetch(
+            f"connections ({label})",
+            lambda api, options=options: api.get_connections(
+                "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, **options
+            ),
+        )
+
+        assert isinstance(response, ConnectionsApiResponse)
+        assert response.connections, label
 
 
 @pytest.mark.asyncio
