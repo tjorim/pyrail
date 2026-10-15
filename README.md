@@ -325,6 +325,9 @@ Contributions are welcome! Here's how you can contribute to pyRail:
 ## Contributors
 
 - @tjorim
+- @silamon
+- @DaanVervacke
+- @Bertware
 - @jcoetsie
 - @lgnap
 
