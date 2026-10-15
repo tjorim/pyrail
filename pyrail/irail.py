@@ -9,7 +9,7 @@ from types import TracebackType
 from typing import Any, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from pyrail.exceptions import InvalidRequestError, NotFoundError, RateLimitError
 from pyrail.models import (
@@ -26,6 +26,14 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 # API base URL constant
 _API_BASE_URL = "https://api.irail.be/v1"
+
+class _ServerError(ClientError):
+    """Raised for 5xx responses so that the retry policy treats them like network failures."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(f"Server error {status}")
+        self.status = status
+
 
 class iRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
@@ -353,40 +361,41 @@ class iRail:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         retry=retry_if_exception_type(ClientError),
-        reraise=True
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
     )
     async def _execute_http_request(
         self, url: str, params: dict[str, Any], headers: dict[str, str], method: str, args: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
-        """Execute the HTTP request with retry logic for network failures and server errors.
+        """Execute the HTTP request, retrying network failures and server errors.
+
+        Retries are handled entirely by the tenacity decorator, which logs each failed attempt before
+        sleeping. Once all attempts are exhausted the last ``ClientError`` is re-raised unchanged; turning
+        it into a ``None`` result is the sole responsibility of the caller (``_do_request``).
 
         Args:
             url: The URL to request
             params: Query parameters
             headers: Request headers
             method: API method name for logging
-            args: Original method arguments for potential retry
+            args: Original method arguments, passed on to the response handler
 
         Returns:
-            dict or None: Parsed response or None if failed
+            dict or None: Parsed response, or None if the request was rejected without a retryable error
+
+        Raises:
+            ClientError: If the request still fails after the last retry attempt.
 
         """
         if self.session is None:
             logger.error("Session not initialized")
             return None
 
-        try:
-            async with self.session.get(url, params=params, headers=headers) as response:
-                # Check if we should retry on this status code
-                if self._should_retry_on_status(response):
-                    logger.warning("Server error %d for endpoint %s, will retry", response.status, method)
-                    # Create a temporary exception to trigger tenacity retry
-                    raise ClientError(f"Server error {response.status}")
+        async with self.session.get(url, params=params, headers=headers) as response:
+            if self._should_retry_on_status(response):
+                raise _ServerError(response.status)
 
-                return await self._handle_response(response, method, args)
-        except ClientError as e:
-            logger.warning("Network error for endpoint %s: %s", method, e)
-            raise  # Re-raise to trigger tenacity retry
+            return await self._handle_response(response, method, args)
 
     async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
