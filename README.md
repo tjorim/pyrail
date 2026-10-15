@@ -75,6 +75,18 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+### Response Objects
+
+Every method returns the full iRail response object, mirroring the API: `version` and `timestamp` sit next to the data. For list endpoints the list is an attribute of that object, so use `stations.stations`, `disturbances.disturbances` and `connections.connections`:
+
+```python
+stations = await api.get_stations()
+print(stations.version, stations.timestamp)
+print(len(stations.stations))
+```
+
+pyRail only changes the type of values, not their meaning: string flags become `bool`, epoch strings become `datetime`, names are snake_case, and count-only wrappers such as `departures.departure` are flattened. Data is never converted or derived.
+
 ### Date and Time
 
 The `date` (`DDMMYY`) and `time` (`HHMM`) request parameters are interpreted as Belgian local time, so pass local clock times, not UTC.
