@@ -1,9 +1,9 @@
 """Retrying, failure-classifying client wrapper for the live smoke tests.
 
-pyRail reports unavailable endpoints by logging an error and returning None
-(network errors, unparseable bodies) or by raising a ``PyRailError`` (HTTP 400,
-404 and 429), while a successful response that no longer matches the models
-raises during deserialization. ``LiveApi`` uses that difference to fail with one
+pyRail reports unavailable endpoints by raising a ``PyRailError`` (HTTP 400, 404 and
+429, or ``ApiUnavailableError`` for network errors, timeouts and HTTP 5xx) or by logging
+an error and returning None (unparseable bodies, unexpected statuses), while a
+successful response that no longer matches the models raises during deserialization. ``LiveApi`` uses that difference to fail with one
 of two clearly distinct messages.
 """
 
@@ -18,8 +18,9 @@ import pytest
 from pyrail.exceptions import PyRailError
 from pyrail.irail import iRail
 
-# Bounded retry policy: 3 attempts with a growing pause, on top of the client's own
-# rate limiting and Retry-After handling for HTTP 429.
+# Bounded retry policy: 3 attempts with a growing pause. The client is created with
+# max_retries=0 (see conftest.py), so this is the only retry layer; the client still
+# applies its own rate limiting and waits for Retry-After on HTTP 429.
 ATTEMPTS = 3
 BACKOFF_SECONDS = (5, 15)
 REQUEST_TIMEOUT = ClientTimeout(total=30)
@@ -63,8 +64,6 @@ class LiveApi:
             logger.addHandler(collector)
             try:
                 result = await request(self.client)
-            except TimeoutError:
-                reason = f"request timed out after {REQUEST_TIMEOUT.total}s"
             except PyRailError as err:
                 reason = f"{type(err).__name__}: {str(err)[:300]}"
             except Exception as err:

@@ -642,6 +642,18 @@ async def test_handle_response_server_error(mock_get, mock_sleep):
 @pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
+async def test_handle_response_unexpected_status(mock_get, mock_sleep):
+    """Test that an unexpected non-5xx status code returns None without retrying."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(status=403)
+    async with iRail() as api:
+        assert await api._do_request("stations") is None
+    assert mock_get.call_count == 1
+    mock_sleep.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
+@patch("pyrail.irail.ClientSession.get")
 async def test_request_client_error(mock_get, mock_sleep):
     """Test that a persistent client error is retried and then raises ApiUnavailableError."""
     mock_get.side_effect = ClientError("connection failed")
@@ -708,6 +720,7 @@ async def test_api_unavailable_error_is_chained(mock_get, mock_sleep):
     assert isinstance(exc_info.value, ApiUnavailableError)
     assert isinstance(exc_info.value.__cause__, TimeoutError)
     assert "stations" in str(exc_info.value)
+    assert "TimeoutError: too slow" in str(exc_info.value)
 
 
 @pytest.mark.asyncio

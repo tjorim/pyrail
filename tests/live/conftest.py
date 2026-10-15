@@ -25,8 +25,12 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 @pytest_asyncio.fixture
 async def live() -> AsyncIterator[LiveApi]:
-    """Provide a LiveApi backed by a session with a bounded request timeout."""
-    async with ClientSession(timeout=REQUEST_TIMEOUT) as session, iRail(session=session) as client:
+    """Provide a LiveApi backed by a session with a bounded request timeout.
+
+    The client's own retries are disabled because LiveApi retries with a longer backoff,
+    which keeps the number of requests and the total runtime per endpoint bounded.
+    """
+    async with ClientSession(timeout=REQUEST_TIMEOUT) as session, iRail(session=session, max_retries=0) as client:
         yield LiveApi(client)
 
 

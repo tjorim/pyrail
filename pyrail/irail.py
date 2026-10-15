@@ -31,6 +31,11 @@ _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
 
 
+def _describe(error: BaseException) -> str:
+    """Describe an exception for log and error messages, including its type when it has no message."""
+    return f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
+
+
 class _ServerError(ClientError):
     """Raised for 5xx responses so that they are retried like network failures."""
 
@@ -459,13 +464,15 @@ class iRail:
                 return await self._execute_http_request(url, params, request_headers, method, args)
             except (ClientError, TimeoutError) as e:
                 if attempt == max_attempts:
-                    logger.error("Request to %s failed after %d attempt(s): %s", method, attempt, e)
-                    raise ApiUnavailableError(f"Request to {method} failed after {attempt} attempt(s): {e}") from e
+                    logger.error("Request to %s failed after %d attempt(s): %s", method, attempt, _describe(e))
+                    raise ApiUnavailableError(
+                        f"Request to {method} failed after {attempt} attempt(s): {_describe(e)}"
+                    ) from e
                 delay = min(_RETRY_BASE_DELAY * 2 ** (attempt - 1), _RETRY_MAX_DELAY)
                 logger.warning(
                     "Request to %s failed (%s), retrying in %.1f seconds (attempt %d of %d)",
                     method,
-                    e,
+                    _describe(e),
                     delay,
                     attempt,
                     max_attempts,

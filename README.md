@@ -215,7 +215,7 @@ The devcontainer setup includes all necessary dependencies and tools for develop
 
 There are two test suites:
 
-- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 429 retries, ETags, invalid JSON, ...) and runs on every push and pull request.
+- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, ETags, invalid JSON, ...) and runs on every push and pull request.
 - **Live smoke suite** (`tests/live`): calls all six endpoints of the real iRail API and checks that the responses still deserialize into the library models. It asserts only stable structure, never specific trains, times or disturbances. It catches upstream API changes that the recorded responses cannot.
 
 To run the offline suite, use the following command in the terminal within the devcontainer:
