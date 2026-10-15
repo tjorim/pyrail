@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-from aiohttp import ClientSession
+from aiohttp import ClientError, ClientSession
+from multidict import CIMultiDict
 import pytest
 
 from pyrail.irail import iRail
@@ -42,15 +43,17 @@ def _load_example(name: str) -> dict[str, Any]:
     return json.loads((EXAMPLES_DIR / name).read_text())
 
 
-def _mock_response(status: int = 200, data: dict[str, Any] | None = None) -> AsyncMock:
-    """Build a mocked ClientResponse returning the given status and JSON body.
+def _mock_response(
+    status: int = 200, data: dict[str, Any] | None = None, headers: dict[str, str] | None = None
+) -> AsyncMock:
+    """Build a mocked ClientResponse returning the given status, JSON body and headers.
 
     Each json() call returns a fresh copy of data, so deserialization hooks
     that mutate the payload cannot leak into the next call.
     """
     response = AsyncMock()
     response.status = status
-    response.headers = {}
+    response.headers = CIMultiDict(headers or {})
     response.json = AsyncMock(side_effect=lambda: deepcopy(data))
     response.text = AsyncMock(return_value="")
     return response
@@ -601,3 +604,75 @@ async def test_handle_success_response_empty(caplog):
     with caplog.at_level(logging.WARNING):
         assert await api._handle_success_response(response, "stations") == {}
     assert "Empty response received" in caplog.text
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_handle_response_bad_request(mock_get):
+    """Test that a 400 response returns None."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(status=400)
+    async with iRail() as api:
+        assert await api._do_request("stations") is None
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
+@patch("pyrail.irail.ClientSession.get")
+async def test_handle_response_rate_limited_retry(mock_get, mock_sleep):
+    """Test that a 429 response waits and retries the request."""
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(status=429, headers={"Retry-After": "0"}),
+        _mock_response(data={"data": "some_data"}),
+    ]
+    async with iRail() as api:
+        api.burst_tokens = 99
+        assert await api._do_request("stations") == {"data": "some_data"}
+    mock_sleep.assert_called_once_with(0)
+    assert mock_get.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_handle_response_server_error(mock_get):
+    """Test that an unexpected status code returns None."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(status=500)
+    async with iRail() as api:
+        assert await api._do_request("stations") is None
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_request_client_error(mock_get):
+    """Test that a client error during the request returns None."""
+    mock_get.side_effect = ClientError("connection failed")
+    async with iRail() as api:
+        assert await api._do_request("stations") is None
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_etag_caching(mock_get):
+    """Test that an ETag from a 200 response is cached and sent as If-None-Match, and a 304 returns None."""
+    etag = '"abc123"'
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(data={"data": "some_data"}, headers={"Etag": etag}),
+        _mock_response(status=304),
+    ]
+    async with iRail() as api:
+        assert await api._do_request("stations") == {"data": "some_data"}
+        assert api.etag_cache == {"stations": etag}
+        assert await api._do_request("stations") is None
+    assert mock_get.call_count == 2
+    assert "If-None-Match" not in mock_get.call_args_list[0].kwargs["headers"]
+    assert mock_get.call_args_list[1].kwargs["headers"]["If-None-Match"] == etag
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_handle_success_response_invalid_json(mock_get):
+    """Test that a body that fails to parse as JSON returns None."""
+    response = _mock_response()
+    response.json.side_effect = ValueError("invalid json")
+    mock_get.return_value.__aenter__.return_value = response
+    async with iRail() as api:
+        assert await api._do_request("stations") is None
