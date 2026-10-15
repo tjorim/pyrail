@@ -168,23 +168,24 @@ Other failures (network errors, unparseable responses, unexpected status codes) 
 
 ### Network Resilience and Retry Logic
 
-pyRail implements automatic retry logic with exponential backoff to handle transient network issues and server errors:
+pyRail automatically retries transient failures with exponential backoff:
 
-- **Network Errors**: Connection timeouts, DNS failures, and other network-related issues are automatically retried up to 3 attempts in total with exponential backoff (1s, then 2s between attempts, capped at 10s).
-- **Server Errors**: HTTP 5xx server errors trigger automatic retries, allowing recovery from temporary server issues.
-- **Client Errors**: HTTP 4xx errors (except 429 rate limits) are not retried, as they typically indicate permanent issues like invalid requests.
-- **Rate Limits**: HTTP 429 responses are not retried automatically; they raise a `RateLimitError` after waiting for the server's `Retry-After` period (see [Error Handling](#error-handling)).
+- **Network Errors and Timeouts**: Connection failures, DNS errors and request timeouts are retried.
+- **Server Errors**: HTTP 5xx responses are retried, allowing recovery from temporary server issues.
+- **Client Errors**: HTTP 4xx errors are never retried, as they indicate a problem with the request. This includes 429 rate limits, which raise a `RateLimitError` after waiting for the server's `Retry-After` period (see [Error Handling](#error-handling)).
+- **Rate Limiting**: Every attempt, including each retry, goes through the client's rate limiter.
 
-The retry functionality is powered by the [tenacity](https://github.com/jd/tenacity) library and works transparently:
+By default a request is attempted up to 3 times in total, waiting 1s and then 2s between attempts (the delay doubles each time, capped at 10s). Use `max_retries` to change this, or set it to `0` to disable retrying:
 
 ```python
-async with iRail() as api:
-    # Network errors and server errors are automatically retried
-    # No additional code needed - retry logic is built-in
+async with iRail(max_retries=5) as api:
+    stations = await api.get_stations()
+
+async with iRail(max_retries=0) as api:  # fail fast, no retries
     stations = await api.get_stations()
 ```
 
-You can monitor retry attempts through the warning logs when network issues occur.
+When all attempts fail, the request returns `None`. Each failed attempt is logged as a warning.
 
 ## Development
 

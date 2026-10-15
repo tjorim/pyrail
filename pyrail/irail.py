@@ -9,7 +9,6 @@ from types import TracebackType
 from typing import Any, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
-from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from pyrail.exceptions import InvalidRequestError, NotFoundError, RateLimitError
 from pyrail.models import (
@@ -27,8 +26,13 @@ logger: logging.Logger = logging.getLogger(__name__)
 # API base URL constant
 _API_BASE_URL = "https://api.irail.be/v1"
 
+# Retry policy: exponential backoff starting at _RETRY_BASE_DELAY seconds, capped at _RETRY_MAX_DELAY seconds
+_RETRY_BASE_DELAY = 1.0
+_RETRY_MAX_DELAY = 10.0
+
+
 class _ServerError(ClientError):
-    """Raised for 5xx responses so that the retry policy treats them like network failures."""
+    """Raised for 5xx responses so that they are retried like network failures."""
 
     def __init__(self, status: int) -> None:
         super().__init__(f"Server error {status}")
@@ -43,6 +47,8 @@ class iRail:
         session (ClientSession, optional): The HTTP session used for API requests.
             If not provided, a new session will be created and managed internally.
             If provided, the session lifecycle must be managed externally.
+        max_retries (int): How many times a request is retried after a network error, timeout or
+            server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
 
     Endpoints:
         stations: Retrieve all stations.
@@ -69,14 +75,22 @@ class iRail:
         "disturbances": {"optional": ["lineBreakCharacter"]},
     }
 
-    def __init__(self, lang: str = "en", session: ClientSession | None = None) -> None:
+    def __init__(self, lang: str = "en", session: ClientSession | None = None, max_retries: int = 2) -> None:
         """Initialize the iRail API client.
 
         Args:
             lang (str): The language for API responses. Default is 'en'.
             session (ClientSession, optional): An existing aiohttp session. Defaults to None.
+            max_retries (int): Number of retries after a transient failure. Default is 2 (3 attempts in total).
+                Use 0 to disable retrying.
+
+        Raises:
+            ValueError: If max_retries is negative.
 
         """
+        if max_retries < 0:
+            raise ValueError("max_retries must be 0 or greater")
+        self.max_retries: int = max_retries
         self.lang: str = lang
         self.tokens: int = 3
         self.burst_tokens: int = 5
@@ -357,21 +371,10 @@ class iRail:
         # 429 is handled separately in _handle_response
         return 500 <= response.status < 600
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type(ClientError),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-        reraise=True,
-    )
     async def _execute_http_request(
         self, url: str, params: dict[str, Any], headers: dict[str, str], method: str, args: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
-        """Execute the HTTP request, retrying network failures and server errors.
-
-        Retries are handled entirely by the tenacity decorator, which logs each failed attempt before
-        sleeping. Once all attempts are exhausted the last ``ClientError`` is re-raised unchanged; turning
-        it into a ``None`` result is the sole responsibility of the caller (``_do_request``).
+        """Perform a single HTTP request attempt.
 
         Args:
             url: The URL to request
@@ -381,10 +384,11 @@ class iRail:
             args: Original method arguments, passed on to the response handler
 
         Returns:
-            dict or None: Parsed response, or None if the request was rejected without a retryable error
+            dict or None: Parsed response, or None if the response is not usable
 
         Raises:
-            ClientError: If the request still fails after the last retry attempt.
+            ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
+            TimeoutError: If the request times out.
 
         """
         if self.session is None:
@@ -402,8 +406,8 @@ class iRail:
 
         This method handles API requests with rate limiting, parameter validation,
         and ETag-based caching. It supports conditional requests and manages
-        various HTTP response scenarios. Network errors and server errors (5xx)
-        are automatically retried with exponential backoff using tenacity.
+        various HTTP response scenarios. Network errors, timeouts and server errors (5xx)
+        are retried up to ``max_retries`` times with exponential backoff.
 
         Args:
             method (str): The iRail API endpoint method to request.
@@ -424,7 +428,8 @@ class iRail:
             - Implements rate limiting using a token-based mechanism
             - Supports ETag-based conditional requests
             - Raises RateLimitError on rate limit (429) responses after waiting for Retry-After
-            - Retries network failures and server errors with exponential backoff
+            - Retries network failures, timeouts and server errors with exponential backoff;
+              every attempt, including retries, goes through the rate limiter
             - Logs detailed information about request processing
 
         """
@@ -436,22 +441,36 @@ class iRail:
             logger.error("Validation failed for method: %s with args: %s", method, args)
             return None
 
-        async with self.lock:
-            await self._handle_rate_limit()
-
         # Construct the request URL and parameters
         url: str = f"{_API_BASE_URL}/{method}/"
         params = {"format": "json", "lang": self.lang}
         if args is not None:
             params.update(args)
 
-        request_headers: dict[str, str] = self._add_etag_header(method)
+        max_attempts = self.max_retries + 1
+        for attempt in range(1, max_attempts + 1):
+            # Every attempt consumes a rate limit token, so retries cannot exceed the API limits
+            async with self.lock:
+                await self._handle_rate_limit()
 
-        try:
-            return await self._execute_http_request(url, params, request_headers, method, args)
-        except ClientError as e:
-            logger.error("Request failed after retries due to an exception: %s", e)
-            return None
+            request_headers: dict[str, str] = self._add_etag_header(method)
+            try:
+                return await self._execute_http_request(url, params, request_headers, method, args)
+            except (ClientError, TimeoutError) as e:
+                if attempt == max_attempts:
+                    logger.error("Request to %s failed after %d attempt(s): %s", method, attempt, e)
+                    return None
+                delay = min(_RETRY_BASE_DELAY * 2 ** (attempt - 1), _RETRY_MAX_DELAY)
+                logger.warning(
+                    "Request to %s failed (%s), retrying in %.1f seconds (attempt %d of %d)",
+                    method,
+                    e,
+                    delay,
+                    attempt,
+                    max_attempts,
+                )
+                await asyncio.sleep(delay)
+        return None  # pragma: no cover - the loop always returns
 
     async def get_stations(self) -> StationsApiResponse | None:
         """Retrieve a list of all train stations from the iRail API.

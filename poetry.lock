@@ -806,22 +806,6 @@ files = [
 ]
 
 [[package]]
-name = "tenacity"
-version = "9.2.1"
-description = "Retry code until it succeeds"
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "tenacity-9.2.1-py3-none-any.whl", hash = "sha256:9e56f17539296baab7beabb08b92f6ee3d7be92d8be72d763360677c2ad6580e"},
-    {file = "tenacity-9.2.1.tar.gz", hash = "sha256:a606b5c808d0cded4a359d5b9932d867ff2a6a6b64d37350260fd01bbdf83839"},
-]
-
-[package.extras]
-doc = ["reno", "sphinx"]
-test = ["pytest", "tornado (>=6.0)"]
-
-[[package]]
 name = "ty"
 version = "0.0.84"
 description = "An extremely fast Python type checker, written in Rust."
@@ -1018,4 +1002,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "f5dfa88eb1f22c213b92f886089a99cc0cb1c88c255280cc1f8bcb601782fc44"
+content-hash = "0b7a10393c3b4a28852b8fe74da965edc9d04d139dbcd5ade075d27510b9428c"
