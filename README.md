@@ -172,6 +172,8 @@ To run the tests, use the following command in the terminal within the devcontai
 pytest
 ```
 
+The suite runs offline against the recorded API responses in examples/, no network needed.
+
 ### Code Style
 
 We use ruff for code formatting and linting. To check your code style, run:
