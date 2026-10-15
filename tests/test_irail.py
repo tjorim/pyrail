@@ -12,6 +12,7 @@ from aiohttp import ClientError, ClientSession
 from multidict import CIMultiDict
 import pytest
 
+from pyrail.exceptions import InvalidRequestError, NotFoundError, RateLimitError
 from pyrail.irail import iRail
 from pyrail.models import (
     Alert,
@@ -361,26 +362,22 @@ async def test_error_handling(mock_get):
     """Test error handling for various API endpoints.
 
     Verifies that:
-    - The response is None for each tested endpoint when the API returns a 404
+    - A NotFoundError is raised for each tested endpoint when the API returns a 404
     """
     mock_get.return_value.__aenter__.return_value = _mock_response(status=404)
 
     async with iRail() as api:
-        # Test with invalid vehicle ID
-        vehicle = await api.get_vehicle("INVALID_ID")
-        assert vehicle is None, "Expected None for invalid vehicle ID"
+        with pytest.raises(NotFoundError):
+            await api.get_vehicle("INVALID_ID")
 
-        # Test with invalid station for liveboard
-        liveboard = await api.get_liveboard("INVALID_STATION")
-        assert liveboard is None, "Expected None for invalid station"
+        with pytest.raises(NotFoundError):
+            await api.get_liveboard("INVALID_STATION")
 
-        # Test with invalid train ID for composition
-        composition = await api.get_composition("INVALID_TRAIN")
-        assert composition is None, "Expected None for invalid train ID"
+        with pytest.raises(NotFoundError):
+            await api.get_composition("INVALID_TRAIN")
 
-        # Test with invalid station for connections
-        connections = await api.get_connections("InvalidStation1", "InvalidStation2")
-        assert connections is None, "Expected None for invalid stations"
+        with pytest.raises(NotFoundError):
+            await api.get_connections("InvalidStation1", "InvalidStation2")
 
 
 def test_timestamp_to_datetime():
@@ -609,26 +606,25 @@ async def test_handle_success_response_empty(caplog):
 @pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_bad_request(mock_get):
-    """Test that a 400 response returns None."""
+    """Test that a 400 response raises an InvalidRequestError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=400)
     async with iRail() as api:
-        assert await api._do_request("stations") is None
+        with pytest.raises(InvalidRequestError):
+            await api._do_request("stations")
 
 
 @pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_response_rate_limited_retry(mock_get, mock_sleep):
-    """Test that a 429 response waits and retries the request."""
-    mock_get.return_value.__aenter__.side_effect = [
-        _mock_response(status=429, headers={"Retry-After": "0"}),
-        _mock_response(data={"data": "some_data"}),
-    ]
+async def test_handle_response_rate_limited(mock_get, mock_sleep):
+    """Test that a 429 response waits for Retry-After and raises a RateLimitError."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "0"})
     async with iRail() as api:
         api.burst_tokens = 99
-        assert await api._do_request("stations") == {"data": "some_data"}
+        with pytest.raises(RateLimitError):
+            await api._do_request("stations")
     mock_sleep.assert_called_once_with(0)
-    assert mock_get.call_count == 2
+    assert mock_get.call_count == 1
 
 
 @pytest.mark.asyncio
