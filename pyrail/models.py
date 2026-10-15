@@ -1,7 +1,7 @@
 """Module defining data models for the pyrail application."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, override
 
@@ -11,7 +11,7 @@ from mashumaro.mixins.orjson import DataClassORJSONMixin
 
 def _timestamp_to_datetime(timestamp: str) -> datetime:
     """Convert an epoch timestamp to a datetime object."""
-    return datetime.fromtimestamp(int(timestamp), timezone.utc)
+    return datetime.fromtimestamp(int(timestamp), UTC)
 
 
 def _str_to_bool(strbool: str) -> bool:

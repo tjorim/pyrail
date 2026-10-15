@@ -47,12 +47,16 @@ line-length = 120
 
 [tool.ruff.lint]
 select = [
+    "ASYNC",  # flake8-async
+    "B",  # flake8-bugbear
     "C",  # complexity
     "D",  # docstrings
     "E",  # pycodestyle
     "F",  # pyflakes
     "G",  # flake8-logging-format
     "I",  # isort
+    "SIM",  # flake8-simplify
+    "UP",  # pyupgrade
     "W",  # pycodestyle warnings
 ]
 ignore = [

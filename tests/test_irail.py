@@ -1,7 +1,7 @@
 """Unit tests for the iRail API wrapper."""
 
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 import json
 import logging
@@ -475,17 +475,15 @@ async def test_error_handling(mock_get):
 def test_timestamp_to_datetime():
     """Test the timestamp_to_datetime function."""
     # Test valid timestamps
-    assert _timestamp_to_datetime("1705593600") == datetime(
-        2024, 1, 18, 16, 0, tzinfo=timezone.utc
-    )  # 2024-01-18 16:00:00
-    assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)  # Unix epoch
+    assert _timestamp_to_datetime("1705593600") == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)  # 2024-01-18 16:00:00
+    assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 0, 0, tzinfo=UTC)  # Unix epoch
 
 
 def test_timestamp_field_deserialization():
     """Test timestamp field deserialization in various models."""
     # Test ApiResponse timestamp
     api_response = ApiResponse.from_dict({"version": "1.0", "timestamp": "1705593600"})
-    assert api_response.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
+    assert api_response.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
 
     # Test LiveboardDeparture time
     departure = LiveboardDeparture.from_dict(
@@ -521,7 +519,7 @@ def test_timestamp_field_deserialization():
             "departureConnection": "http://irail.be/connections/8821006/20250106/EC9272",
         }
     )
-    assert departure.time == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
+    assert departure.time == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
 
     # Test Alert start_time and end_time
     alert = Alert.from_dict(
@@ -534,8 +532,8 @@ def test_timestamp_field_deserialization():
             "endTime": "1705597200",
         }
     )
-    assert alert.start_time == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
-    assert alert.end_time == datetime(2024, 1, 18, 17, 0, tzinfo=timezone.utc)
+    assert alert.start_time == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
+    assert alert.end_time == datetime(2024, 1, 18, 17, 0, tzinfo=UTC)
 
     # Test Disturbance timestamp
     disturbance = Disturbance.from_dict(
@@ -574,7 +572,7 @@ def test_timestamp_field_deserialization():
             },
         }
     )
-    assert disturbance.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
+    assert disturbance.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
 
 
 def test_str_to_bool():
@@ -795,8 +793,8 @@ async def test_handle_response_rate_limited_without_retry_after(mock_get):
 
 def test_parse_retry_after():
     """Test parsing Retry-After given as seconds, as an HTTP date, and as invalid input."""
-    in_30s = format_datetime(datetime.now(timezone.utc) + timedelta(seconds=30), usegmt=True)
-    in_the_past = format_datetime(datetime.now(timezone.utc) - timedelta(seconds=30), usegmt=True)
+    in_30s = format_datetime(datetime.now(UTC) + timedelta(seconds=30), usegmt=True)
+    in_the_past = format_datetime(datetime.now(UTC) - timedelta(seconds=30), usegmt=True)
     assert _parse_retry_after("5") == 5
     assert _parse_retry_after("-3") == 0
     assert _parse_retry_after(in_30s) in range(28, 31)
@@ -878,9 +876,8 @@ async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
     """Test that every failed attempt is logged and the final failure is reported."""
     mock_get.side_effect = ClientError("Persistent network error")
     async with iRail() as api:
-        with caplog.at_level(logging.WARNING):
-            with pytest.raises(ApiUnavailableError):
-                await api._do_request("stations")
+        with caplog.at_level(logging.WARNING), pytest.raises(ApiUnavailableError):
+            await api._do_request("stations")
     assert mock_get.call_count == 3
     assert caplog.text.count("retrying in") == 2
     assert "failed after 3 attempt(s)" in caplog.text
@@ -954,9 +951,11 @@ async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get, mock_sleep)
     """Test that retries pass through the rate limiter instead of bypassing it."""
     mock_get.side_effect = ClientError("down")
     async with iRail() as api:
-        with patch.object(api, "_handle_rate_limit", new_callable=AsyncMock) as mock_rate_limit:
-            with pytest.raises(ApiUnavailableError):
-                await api._do_request("stations")
+        with (
+            patch.object(api, "_handle_rate_limit", new_callable=AsyncMock) as mock_rate_limit,
+            pytest.raises(ApiUnavailableError),
+        ):
+            await api._do_request("stations")
     assert mock_rate_limit.call_count == 3
 
 
