@@ -296,7 +296,7 @@ class iRail:
             self.etag_cache[method] = response.headers["Etag"]
         try:
             json_data: dict[str, Any] | None = await response.json()
-            if json_data is None:
+            if json_data is None or not json_data:
                 logger.warning("Empty response received")
             return json_data
         except ValueError:
