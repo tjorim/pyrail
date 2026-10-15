@@ -17,6 +17,7 @@ from pyrail.models import (
     DisturbancesApiResponse,
     DisturbanceType,
     LiveboardApiResponse,
+    LiveboardArrival,
     LiveboardDeparture,
     Occupancy,
     PlatformInfo,
@@ -495,3 +496,48 @@ async def test_boolean_field_deserialization():
     assert departure.left is False, "Departure left field should be False when '0'"
     assert departure.is_extra is True, "Departure is_extra field should be True when '1'"
     assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
+
+
+def test_liveboard_arrival_boolean_deserialization():
+    """Test that LiveboardArrival boolean fields convert '0' and '1' strings."""
+    arrival_data = {
+        "id": "1",
+        "station": "Brussels",
+        "stationinfo": {
+            "@id": "1",
+            "id": "1",
+            "name": "Brussels",
+            "locationX": 4.3517,
+            "locationY": 50.8503,
+            "standardname": "Brussels-Central",
+        },
+        "time": "1705593600",
+        "delay": 0,
+        "canceled": "0",
+        "arrived": "0",
+        "isExtra": "0",
+        "vehicle": "BE.NMBS.IC1234",
+        "vehicleinfo": {
+            "name": "IC1234",
+            "shortname": "IC1234",
+            "number": "1234",
+            "type": "IC",
+            "locationX": 4.3517,
+            "locationY": 50.8503,
+            "@id": "1",
+        },
+        "platform": "1",
+        "platforminfo": {"name": "1", "normal": "1"},
+        "departureConnection": "1",
+    }
+    arrival = LiveboardArrival.from_dict(arrival_data)
+    assert arrival.canceled is False
+    assert arrival.arrived is False
+    assert arrival.is_extra is False
+    arrival_data["canceled"] = "1"
+    arrival_data["arrived"] = "1"
+    arrival_data["isExtra"] = "1"
+    arrival = LiveboardArrival.from_dict(arrival_data)
+    assert arrival.canceled is True
+    assert arrival.arrived is True
+    assert arrival.is_extra is True

@@ -131,9 +131,11 @@ class LiveboardArrival(DataClassORJSONMixin):
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
     time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Arrival time (timestamp)
     delay: int  # Delay in seconds
-    canceled: bool  # Whether the arrival is canceled
-    arrived: bool  # Whether the train has arrived
-    is_extra: bool = field(metadata=field_options(alias="isExtra"))  # Whether the train is extra
+    canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the arrival is canceled
+    arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the train has arrived
+    is_extra: bool = field(
+        metadata=field_options(alias="isExtra", deserialize=_str_to_bool)
+    )  # Whether the train is extra
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
