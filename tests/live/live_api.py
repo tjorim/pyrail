@@ -67,9 +67,7 @@ class LiveApi:
             try:
                 result = await request(self.client)
             except (InvalidRequestError, NotFoundError) as err:
-                pytest.fail(
-                    f"{REJECTED}: '{endpoint}' answered {type(err).__name__}: {str(err)[:300]}", pytrace=False
-                )
+                pytest.fail(f"{REJECTED}: '{endpoint}' answered {type(err).__name__}: {str(err)[:300]}", pytrace=False)
             except PyRailError as err:
                 reason = f"{type(err).__name__}: {str(err)[:300]}"
             except Exception as err:
