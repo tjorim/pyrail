@@ -173,7 +173,7 @@ pyRail implements automatic retry logic with exponential backoff to handle trans
 - **Network Errors**: Connection timeouts, DNS failures, and other network-related issues are automatically retried up to 3 attempts in total with exponential backoff (1s, then 2s between attempts, capped at 10s).
 - **Server Errors**: HTTP 5xx server errors trigger automatic retries, allowing recovery from temporary server issues.
 - **Client Errors**: HTTP 4xx errors (except 429 rate limits) are not retried, as they typically indicate permanent issues like invalid requests.
-- **Rate Limits**: HTTP 429 responses are handled separately with the existing rate limit logic, respecting the server's `Retry-After` header.
+- **Rate Limits**: HTTP 429 responses are not retried automatically; they raise a `RateLimitError` after waiting for the server's `Retry-After` period (see [Error Handling](#error-handling)).
 
 The retry functionality is powered by the [tenacity](https://github.com/jd/tenacity) library and works transparently:
 
