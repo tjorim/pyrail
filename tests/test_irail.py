@@ -155,6 +155,55 @@ async def test_get_liveboard(mock_get):
 
 @pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
+async def test_get_liveboard_arrivals(mock_get):
+    """An arrival board has arrivals but no departures, and its arrivals carry no occupancy."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard_arrivals.json"))
+
+    async with iRail() as api:
+        liveboard = await api.get_liveboard("Brussels-Central", arrdep="arrival")
+
+    assert liveboard is not None
+    assert liveboard.departures is None
+    assert liveboard.arrivals is not None and len(liveboard.arrivals) > 0
+    assert all(isinstance(arrival, LiveboardArrival) for arrival in liveboard.arrivals)
+    assert not hasattr(liveboard.arrivals[0], "occupancy")
+    assert mock_get.call_args.kwargs["params"]["arrdep"] == "arrival"
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_get_liveboard_by_id(mock_get):
+    """A liveboard can be requested by station id instead of name, but not both."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
+
+    async with iRail() as api:
+        liveboard = await api.get_liveboard(id="BE.NMBS.008813003")
+        params = mock_get.call_args.kwargs["params"]
+        assert liveboard is not None
+        assert params["id"] == "BE.NMBS.008813003"
+        assert "station" not in params
+
+        assert await api.get_liveboard(station="Brussels-Central", id="BE.NMBS.008813003") is None
+        assert await api.get_liveboard() is None
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_get_liveboard_alerts_parameter(mock_get):
+    """The alerts flag is sent as 'true' or 'false' and does not change how the response is read."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
+
+    async with iRail() as api:
+        default = await api.get_liveboard("Brussels-Central")
+        assert mock_get.call_args.kwargs["params"]["alerts"] == "false"
+        with_alerts = await api.get_liveboard("Brussels-Central", alerts=True)
+        assert mock_get.call_args.kwargs["params"]["alerts"] == "true"
+
+    assert default == with_alerts
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
 async def test_get_connections(mock_get):
     """Test the get_connections endpoint.
 
@@ -182,6 +231,39 @@ async def test_get_connections(mock_get):
         assert isinstance(connection_list[0], ConnectionDetails), (
             "Expected the first connection to be a ConnectionDetails object"
         )
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_get_connections_timesel_and_type_of_transport(mock_get):
+    """The time selection and transport filter are sent to the API as given."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
+
+    async with iRail() as api:
+        assert await api.get_connections("Antwerpen-Centraal", "Brussel-Centraal", timesel="arrival")
+        params = mock_get.call_args.kwargs["params"]
+        assert params["timesel"] == "arrival"
+        assert params["typeOfTransport"] == "automatic"
+
+        for type_of_transport in ["automatic", "trains", "no_international_trains", "all"]:
+            await api.get_connections("Brussel-Zuid", "Paris-Nord", type_of_transport=type_of_transport)
+            assert mock_get.call_args.kwargs["params"]["typeOfTransport"] == type_of_transport
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_fixed_value_parameters_reject_unknown_values(mock_get):
+    """Values the API would silently replace by a default are rejected before any request is sent."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
+
+    async with iRail() as api:
+        # 'nointernationaltrains' was once documented, but the API only knows 'no_international_trains'
+        assert await api.get_connections("A", "B", type_of_transport="nointernationaltrains") is None  # ty: ignore[invalid-argument-type]
+        assert await api.get_connections("A", "B", type_of_transport="Trains") is None  # ty: ignore[invalid-argument-type]
+        assert await api.get_connections("A", "B", timesel="arrivals") is None  # ty: ignore[invalid-argument-type]
+        assert await api.get_liveboard("Brussels-Central", arrdep="arrivals") is None  # ty: ignore[invalid-argument-type]
+
+    mock_get.assert_not_called()
 
 
 @pytest.mark.asyncio

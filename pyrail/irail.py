@@ -7,7 +7,7 @@ from email.utils import parsedate_to_datetime
 import logging
 import time
 from types import TracebackType
-from typing import Any, Type
+from typing import Any, Literal, Type
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -30,6 +30,14 @@ _API_BASE_URL = "https://api.irail.be/v1"
 # Retry policy: exponential backoff starting at _RETRY_BASE_DELAY seconds, capped at _RETRY_MAX_DELAY seconds
 _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
+
+# The API silently falls back to a default for values it does not recognise (typeOfTransport to 'automatic',
+# arrdep and timesel to 'departure'), so these parameters are checked before the request is sent.
+_ALLOWED_VALUES: dict[str, frozenset[str]] = {
+    "arrdep": frozenset({"departure", "arrival"}),
+    "timesel": frozenset({"departure", "arrival"}),
+    "typeOfTransport": frozenset({"automatic", "trains", "no_international_trains", "all"}),
+}
 
 
 def _describe(error: BaseException) -> str:
@@ -277,6 +285,26 @@ class iRail:
             logger.error("Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
             return False
 
+    def _validate_values(self, params: dict[str, Any]) -> bool:
+        """Validate the date, the time and the parameters that only accept a fixed set of values.
+
+        Args:
+            params (dict[str, Any]): The request parameters.
+
+        Returns:
+            bool: True if every such parameter present holds an accepted value, False otherwise.
+
+        """
+        if "date" in params and not self._validate_date(params["date"]):
+            return False
+        if "time" in params and not self._validate_time(params["time"]):
+            return False
+        for name, allowed in _ALLOWED_VALUES.items():
+            if name in params and params[name] not in allowed:
+                logger.error("Invalid %s: expected one of %s, got: %s", name, sorted(allowed), params[name])
+                return False
+        return True
+
     def _validate_params(self, method: str, params: dict[str, Any] | None = None) -> bool:
         """Validate parameters for a specific iRail API endpoint based on predefined requirements.
 
@@ -312,10 +340,8 @@ class iRail:
 
         params = params or {}
 
-        # Validate date and time formats if present
-        if "date" in params and not self._validate_date(params["date"]):
-            return False
-        if "time" in params and not self._validate_time(params["time"]):
+        # Validate date and time formats and fixed-value parameters if present
+        if not self._validate_values(params):
             return False
 
         # Ensure all required parameters are present
@@ -533,7 +559,7 @@ class iRail:
         id: str | None = None,
         date: str | None = None,
         time: str | None = None,
-        arrdep: str = "departure",
+        arrdep: Literal["departure", "arrival"] = "departure",
         alerts: bool = False,
     ) -> LiveboardApiResponse | None:
         """Retrieve a liveboard for a specific train station.
@@ -547,7 +573,8 @@ class iRail:
             date (str, optional): Date for the liveboard in format 'DDMMYY', in Belgian local time. Defaults to current date.
             time (str, optional): Time for the liveboard in format 'HHMM', in Belgian local time. Defaults to current time.
             arrdep (str, optional): Type of board to retrieve. Either 'departure' (default) or 'arrival'.
-            alerts (bool, optional): Whether to include service alerts. Defaults to False.
+            alerts (bool, optional): Whether to request service alerts. Defaults to False. The iRail API currently
+                ignores this for liveboards: the response has the same shape either way and carries no alerts.
 
         Returns:
             LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified.
@@ -586,8 +613,8 @@ class iRail:
         to_station: str,
         date: str | None = None,
         time: str | None = None,
-        timesel: str = "departure",
-        type_of_transport: str = "automatic",
+        timesel: Literal["departure", "arrival"] = "departure",
+        type_of_transport: Literal["automatic", "trains", "no_international_trains", "all"] = "automatic",
     ) -> ConnectionsApiResponse | None:
         """Retrieve train connections between two stations using the iRail API.
 
@@ -597,7 +624,8 @@ class iRail:
             date (str, optional): Date of travel in format 'DDMMYY', in Belgian local time (default: current date)
             time (str, optional): Time of travel in format 'HHMM', in Belgian local time (default: current time)
             timesel (str, optional): Time selection type, either 'departure' or 'arrival' (default: 'departure')
-            type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
+            type_of_transport (str, optional): Type of transport, one of 'automatic', 'trains', 'no_international_trains'
+                or 'all' (default: 'automatic')
 
         Returns:
             ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the data is not modified.
@@ -636,7 +664,8 @@ class iRail:
         Args:
             id (str): Unique identifier of the train vehicle to retrieve information for.
             date (str, optional): Specific date for which vehicle information is requested. Defaults to None (current date).
-            alerts (bool, optional): Flag to include service alerts for the vehicle. Defaults to False.
+            alerts (bool, optional): Whether to request service alerts. Defaults to False. The iRail API currently
+                ignores this for vehicles: the response has the same shape either way and carries no alerts.
 
         Returns:
             VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the data is not modified.
