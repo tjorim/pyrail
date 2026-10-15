@@ -5,8 +5,12 @@ assert stable structure, never specific trains, times, counts or disturbances. D
 field assertions and error handling are covered by the offline suite in test_irail.py.
 """
 
+from collections.abc import Awaitable, Callable
+from typing import Literal
+
 import pytest
 
+from pyrail.irail import iRail
 from pyrail.models import (
     CompositionApiResponse,
     ConnectionsApiResponse,
@@ -83,7 +87,7 @@ async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tupl
             assert isinstance(response, LiveboardApiResponse)
             assert response.station_info.id == BRUSSELS_CENTRAL_ID
             board = response.arrivals if arrdep == "arrival" else response.departures
-            assert board
+            assert board is not None and len(board) > 0
 
 
 @pytest.mark.asyncio
@@ -104,22 +108,51 @@ async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> 
 async def test_live_connections_timesel_and_type_of_transport(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """Connections deserialize when selected by arrival time and for each transport filter."""
     date, time = travel_date
-    variants: dict[str, dict[str, str]] = {
-        "timesel=arrival": {"timesel": "arrival"},
-        "typeOfTransport=trains": {"type_of_transport": "trains"},
-        "typeOfTransport=no_international_trains": {"type_of_transport": "no_international_trains"},
-        "typeOfTransport=all": {"type_of_transport": "all"},
+    variants: dict[str, Callable[[iRail], Awaitable[ConnectionsApiResponse | None]]] = {
+        "timesel=arrival": lambda api: api.get_connections(
+            "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, timesel="arrival"
+        ),
+        "typeOfTransport=trains": lambda api: api.get_connections(
+            "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, type_of_transport="trains"
+        ),
+        "typeOfTransport=no_international_trains": lambda api: api.get_connections(
+            "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, type_of_transport="no_international_trains"
+        ),
+        "typeOfTransport=all": lambda api: api.get_connections(
+            "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, type_of_transport="all"
+        ),
     }
-    for label, options in variants.items():
-        response = await live.fetch(
-            f"connections ({label})",
-            lambda api, options=options: api.get_connections(
-                "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, **options
-            ),
-        )
+    for label, request in variants.items():
+        response = await live.fetch(f"connections ({label})", request)
 
         assert isinstance(response, ConnectionsApiResponse)
         assert response.connections, label
+
+
+@pytest.mark.asyncio
+async def test_live_no_international_trains_filter(live: LiveApi, travel_date: tuple[str, str]) -> None:
+    """The no-international-trains filter changes the result.
+
+    The API silently treats an unrecognised typeOfTransport as 'automatic', so merely deserializing
+    would not notice a misspelt value. Brussels-South to Paris-North is served by international trains
+    only when they are not filtered out.
+    """
+    date, time = travel_date
+
+    async def vehicle_types(type_of_transport: Literal["automatic", "no_international_trains"]) -> set[str]:
+        response = await live.fetch(
+            f"connections (typeOfTransport={type_of_transport})",
+            lambda api: api.get_connections(
+                "Brussel-Zuid", "Paris-Nord", date=date, time=time, type_of_transport=type_of_transport
+            ),
+        )
+        return {c.departure.vehicle_info.type for c in response.connections}
+
+    automatic = await vehicle_types("automatic")
+    filtered = await vehicle_types("no_international_trains")
+
+    assert automatic and filtered
+    assert filtered != automatic
 
 
 @pytest.mark.asyncio
