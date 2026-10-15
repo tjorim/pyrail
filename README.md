@@ -139,7 +139,31 @@ async with iRail() as api:
         liveboard = await api.get_liveboard(station=station)
 ```
 
-Exceeding the request limit will cause the server to return 429 responses. You can monitor rate limiting through debug logs.
+Exceeding the request limit will cause the server to return 429 responses, which raise a `RateLimitError` (see [Error Handling](#error-handling)). You can monitor rate limiting through debug logs.
+
+### Error Handling
+
+pyRail raises exceptions for HTTP errors returned by the iRail API. All of them inherit from `PyRailError`:
+
+| Exception             | Raised when                                           |
+| --------------------- | ----------------------------------------------------- |
+| `InvalidRequestError` | The API responds with HTTP 400 (invalid request)      |
+| `NotFoundError`       | The API responds with HTTP 404 (resource not found)   |
+| `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded)  |
+
+```python
+from pyrail import iRail, NotFoundError, PyRailError
+
+async with iRail() as api:
+    try:
+        liveboard = await api.get_liveboard(station="Unknown station")
+    except NotFoundError:
+        print("Station not found")
+    except PyRailError as err:
+        print(f"Request failed: {err}")
+```
+
+Other failures (network errors, unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
 
 ## Development
 

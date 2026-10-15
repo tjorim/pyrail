@@ -348,15 +348,18 @@ class iRail:
 
         Returns:
             dict or None: Parsed JSON response from the API if successful,
-                None if the request fails or encounters an error.
+                None if the data is not modified (304), the server returns an unexpected
+                status, or the request fails or the body cannot be parsed.
 
         Raises:
-            No explicit exceptions, but logs errors for various failure scenarios.
+            RateLimitError: If the API responds with HTTP 429 (after waiting for Retry-After).
+            InvalidRequestError: If the API responds with HTTP 400.
+            NotFoundError: If the API responds with HTTP 404.
 
         Notes:
             - Implements rate limiting using a token-based mechanism
             - Supports ETag-based conditional requests
-            - Handles rate limit (429) responses with automatic retry
+            - Raises RateLimitError on rate limit (429) responses after waiting for Retry-After
             - Logs detailed information about request processing
 
         """
@@ -391,7 +394,12 @@ class iRail:
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
         Returns:
-            StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the request fails.
+            StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified or the request fails.
+
+        Raises:
+            RateLimitError: If the API rate limit is exceeded.
+            InvalidRequestError: If the request is invalid.
+            NotFoundError: If the requested resource is not found.
 
         Example:
             async with iRail() as client:
@@ -428,7 +436,12 @@ class iRail:
             alerts (bool, optional): Whether to include service alerts. Defaults to False.
 
         Returns:
-            LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the request fails.
+            LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified or the request fails.
+
+        Raises:
+            RateLimitError: If the API rate limit is exceeded.
+            InvalidRequestError: If the request is invalid.
+            NotFoundError: If the requested resource is not found.
 
         Example:
             async with iRail() as client:
@@ -472,7 +485,12 @@ class iRail:
             type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
 
         Returns:
-            ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the request fails or no connections are found.
+            ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the data is not modified or the request fails.
+
+        Raises:
+            RateLimitError: If the API rate limit is exceeded.
+            InvalidRequestError: If the request is invalid.
+            NotFoundError: If the requested resource is not found.
 
         Example:
             async with iRail() as client:
@@ -505,7 +523,12 @@ class iRail:
             alerts (bool, optional): Flag to include service alerts for the vehicle. Defaults to False.
 
         Returns:
-            VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the request fails.
+            VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the data is not modified or the request fails.
+
+        Raises:
+            RateLimitError: If the API rate limit is exceeded.
+            InvalidRequestError: If the request is invalid.
+            NotFoundError: If the requested resource is not found.
 
         Example:
             async with iRail() as client:
@@ -528,7 +551,12 @@ class iRail:
             data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to '' (filtered data).
 
         Returns:
-            CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the request fails.
+            CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the data is not modified or the request fails.
+
+        Raises:
+            RateLimitError: If the API rate limit is exceeded.
+            InvalidRequestError: If the request is invalid.
+            NotFoundError: If the requested resource is not found.
 
         Example:
             async with iRail() as client:
@@ -550,7 +578,12 @@ class iRail:
             line_break_character (str, optional): A custom character to use for line breaks in the disturbance description. Defaults to ''.
 
         Returns:
-            DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the request fails or no disturbances are found.
+            DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified or the request fails.
+
+        Raises:
+            RateLimitError: If the API rate limit is exceeded.
+            InvalidRequestError: If the request is invalid.
+            NotFoundError: If the requested resource is not found.
 
         Example:
             async with iRail() as client:
