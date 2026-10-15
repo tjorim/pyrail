@@ -544,8 +544,8 @@ class iRail:
         Args:
             station (str): Name of the train station.
             id (str): Unique identifier of the train station.
-            date (str, optional): Date for the liveboard in format 'DDMMYY'. Defaults to current date.
-            time (str, optional): Time for the liveboard in format 'HHMM'. Defaults to current time.
+            date (str, optional): Date for the liveboard in format 'DDMMYY', in Belgian local time. Defaults to current date.
+            time (str, optional): Time for the liveboard in format 'HHMM', in Belgian local time. Defaults to current time.
             arrdep (str, optional): Type of board to retrieve. Either 'departure' (default) or 'arrival'.
             alerts (bool, optional): Whether to include service alerts. Defaults to False.
 
@@ -594,8 +594,8 @@ class iRail:
         Args:
             from_station (str): Name or ID of the departure station
             to_station (str): Name or ID of the arrival station
-            date (str, optional): Date of travel in format 'DDMMYY' (default: current date)
-            time (str, optional): Time of travel in format 'HHMM' (default: current time)
+            date (str, optional): Date of travel in format 'DDMMYY', in Belgian local time (default: current date)
+            time (str, optional): Time of travel in format 'HHMM', in Belgian local time (default: current time)
             timesel (str, optional): Time selection type, either 'departure' or 'arrival' (default: 'departure')
             type_of_transport (str, optional): Type of transport, options include 'automatic', 'trains', 'nointernationaltrains' or 'all' (default: 'automatic')
 

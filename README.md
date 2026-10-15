@@ -75,6 +75,21 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+### Date and Time
+
+The `date` (`DDMMYY`) and `time` (`HHMM`) request parameters are interpreted as Belgian local time, so pass local clock times, not UTC.
+
+Timestamps in responses are Unix epochs, which pyRail returns as timezone-aware `datetime` objects in UTC. Convert them for display:
+
+```python
+from zoneinfo import ZoneInfo
+
+liveboard = await api.get_liveboard(station="Brussels-South")
+if liveboard and liveboard.departures:
+    departure = liveboard.departures[0]
+    print(departure.time.astimezone(ZoneInfo("Europe/Brussels")).strftime("%H:%M"))
+```
+
 ### Language Selection
 
 You can configure the language for the API requests:
