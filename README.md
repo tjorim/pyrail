@@ -321,12 +321,12 @@ Contributions are welcome! Here's how you can contribute to pyRail:
 
 ## Contributors
 
-- @tjorim
-- @silamon
-- @DaanVervacke
-- @Bertware
-- @jcoetsie
-- @lgnap
+- [@tjorim](https://github.com/tjorim)
+- [@Bertware](https://github.com/Bertware)
+- [@DaanVervacke](https://github.com/DaanVervacke)
+- [@jcoetsie](https://github.com/jcoetsie)
+- [@lgnap](https://github.com/lgnap)
+- [@silamon](https://github.com/silamon)
 
 ## License
 
