@@ -166,13 +166,29 @@ The devcontainer setup includes all necessary dependencies and tools for develop
 
 ### Running Tests
 
-To run the tests, use the following command in the terminal within the devcontainer:
+There are two test suites:
+
+- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 429 retries, ETags, invalid JSON, ...) and runs on every push and pull request.
+- **Live smoke suite** (`tests/live`): calls all six endpoints of the real iRail API and checks that the responses still deserialize into the library models. It asserts only stable structure, never specific trains, times or disturbances. It catches upstream API changes that the recorded responses cannot.
+
+To run the offline suite, use the following command in the terminal within the devcontainer:
 
 ```bash
 pytest
 ```
 
-The suite runs offline against the recorded API responses in examples/, no network needed.
+To run the live suite, which needs network access:
+
+```bash
+pytest -m live
+```
+
+The live tests are excluded from a plain `pytest` run. Run them locally before a release. They also run daily and on demand through the *Live API Smoke Tests* workflow (Actions tab, *Run workflow*), where a failure notifies the maintainers.
+
+The vehicle and composition requests use a vehicle id taken from a Brussels-Central liveboard, as ids go stale with the timetable. A live test fails in one of two ways:
+
+- `API UNAVAILABLE`: no usable response after 3 attempts, for example a network error, a timeout or an HTTP error. This is usually transient on the iRail side; re-run before investigating.
+- `API INCOMPATIBLE`: iRail answered successfully but the response no longer deserializes. The message names the endpoint and the error, and the models in `pyrail/models.py` probably need updating.
 
 ### Code Style
 

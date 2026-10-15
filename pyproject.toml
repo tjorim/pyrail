@@ -58,6 +58,13 @@ split-on-trailing-comma = false
 [tool.ruff.lint.pydocstyle]
 property-decorators = ["propcache.cached_property"]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+markers = [
+    "live: smoke tests against the real iRail API, excluded from ordinary runs (run with 'pytest -m live')",
+]
+addopts = "-m 'not live'"
+
 [tool.ty.rules]
 all = "error"
 
