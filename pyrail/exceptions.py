@@ -10,11 +10,17 @@ class RateLimitError(PyRailError):
 
     This exception indicates that too many requests have been made to the API
     within a short time period. The client should wait before making new requests.
+
+    Attributes:
+        retry_after: Seconds the API asked the client to wait (from the Retry-After header),
+            or None if the API did not say.
+
     """
 
-    def __init__(self, message: str = "API rate limit exceeded") -> None:
-        """Initialize the exception with a message."""
+    def __init__(self, message: str = "API rate limit exceeded", retry_after: int | None = None) -> None:
+        """Initialize the exception with a message and the optional Retry-After delay in seconds."""
         super().__init__(message)
+        self.retry_after: int | None = retry_after
 
 
 class InvalidRequestError(PyRailError):

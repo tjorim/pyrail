@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 import json
 import logging
 from pathlib import Path
@@ -13,7 +14,7 @@ from multidict import CIMultiDict
 import pytest
 
 from pyrail.exceptions import ApiUnavailableError, InvalidRequestError, NotFoundError, PyRailError, RateLimitError
-from pyrail.irail import iRail
+from pyrail.irail import _parse_retry_after, iRail
 from pyrail.models import (
     Alert,
     ApiResponse,
@@ -654,14 +655,37 @@ async def test_not_found_uses_response_text_as_message(mock_get):
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_rate_limited(mock_get, mock_sleep):
-    """Test that a 429 response waits for Retry-After and raises a RateLimitError."""
-    mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "0"})
+    """Test that a 429 response raises a RateLimitError immediately, carrying Retry-After."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "7"})
     async with iRail() as api:
-        api.burst_tokens = 99
-        with pytest.raises(RateLimitError):
+        with pytest.raises(RateLimitError) as exc_info:
             await api._do_request("stations")
-    mock_sleep.assert_called_once_with(0)
+    assert exc_info.value.retry_after == 7
+    mock_sleep.assert_not_called()
     assert mock_get.call_count == 1
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_handle_response_rate_limited_without_retry_after(mock_get):
+    """Test that a 429 without a usable Retry-After header leaves retry_after unset."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "soon"})
+    async with iRail() as api:
+        with pytest.raises(RateLimitError) as exc_info:
+            await api._do_request("stations")
+    assert exc_info.value.retry_after is None
+
+
+def test_parse_retry_after():
+    """Test parsing Retry-After given as seconds, as an HTTP date, and as invalid input."""
+    in_30s = format_datetime(datetime.now(timezone.utc) + timedelta(seconds=30), usegmt=True)
+    in_the_past = format_datetime(datetime.now(timezone.utc) - timedelta(seconds=30), usegmt=True)
+    assert _parse_retry_after("5") == 5
+    assert _parse_retry_after("-3") == 0
+    assert _parse_retry_after(in_30s) in range(28, 31)
+    assert _parse_retry_after(in_the_past) == 0
+    assert _parse_retry_after("soon") is None
+    assert _parse_retry_after(None) is None
 
 
 @pytest.mark.asyncio

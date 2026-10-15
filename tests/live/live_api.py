@@ -20,7 +20,7 @@ from pyrail.irail import iRail
 
 # Bounded retry policy: 3 attempts with a growing pause. The client is created with
 # max_retries=0 (see conftest.py), so this is the only retry layer; the client still
-# applies its own rate limiting and waits for Retry-After on HTTP 429.
+# applies its own rate limiting.
 ATTEMPTS = 3
 BACKOFF_SECONDS = (5, 15)
 REQUEST_TIMEOUT = ClientTimeout(total=30)

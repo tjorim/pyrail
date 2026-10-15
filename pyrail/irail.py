@@ -2,7 +2,8 @@
 
 import asyncio
 from asyncio import Lock
-from datetime import datetime
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import logging
 import time
 from types import TracebackType
@@ -34,6 +35,26 @@ _RETRY_MAX_DELAY = 10.0
 def _describe(error: BaseException) -> str:
     """Describe an exception for log and error messages, including its type when it has no message."""
     return f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
+
+
+def _parse_retry_after(value: str | None) -> int | None:
+    """Parse a Retry-After header, given as seconds or an HTTP date, into whole seconds.
+
+    Returns None when the header is missing or cannot be parsed.
+    """
+    if value is None:
+        return None
+    try:
+        return max(0, int(value))
+    except ValueError:
+        pass
+    try:
+        retry_at = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=timezone.utc)
+    return max(0, int((retry_at - datetime.now(timezone.utc)).total_seconds()))
 
 
 class _ServerError(ClientError):
@@ -337,10 +358,9 @@ class iRail:
     ) -> dict[str, Any] | None:
         """Handle the API response based on status code."""
         if response.status == 429:
-            retry_after: int = int(response.headers.get("Retry-After", 1))
-            logger.warning("Rate limited, retrying after %d seconds", retry_after)
-            await asyncio.sleep(retry_after)
-            raise RateLimitError(f"Rate limit exceeded for method {method}")
+            retry_after = _parse_retry_after(response.headers.get("Retry-After"))
+            logger.warning("Rate limited on %s, the API asks to retry after %s seconds", method, retry_after)
+            raise RateLimitError(f"Rate limit exceeded for method {method}", retry_after=retry_after)
         elif response.status == 400:
             error_message = await response.text()
             try:
@@ -425,7 +445,8 @@ class iRail:
                 status, or the body cannot be parsed.
 
         Raises:
-            RateLimitError: If the API responds with HTTP 429 (after waiting for Retry-After).
+            RateLimitError: If the API responds with HTTP 429. The exception's ``retry_after`` holds the
+                Retry-After delay in seconds, if given. The request is not retried.
             InvalidRequestError: If the API responds with HTTP 400.
             NotFoundError: If the API responds with HTTP 404.
             ApiUnavailableError: If the request still fails after all retries (network error, timeout or HTTP 5xx).
@@ -433,7 +454,7 @@ class iRail:
         Notes:
             - Implements rate limiting using a token-based mechanism
             - Supports ETag-based conditional requests
-            - Raises RateLimitError on rate limit (429) responses after waiting for Retry-After
+            - Raises RateLimitError immediately on rate limit (429) responses, without waiting or retrying
             - Retries network failures, timeouts and server errors with exponential backoff;
               every attempt, including retries, goes through the rate limiter
             - Logs detailed information about request processing
