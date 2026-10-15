@@ -84,6 +84,9 @@ strict-generic-narrowing = true
 source = "vcs"
 raw-options = { fallback_version = "0.0.0" }
 
+[tool.hatch.build.targets.sdist]
+include = ["/pyrail", "/README.md", "/LICENSE"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["pyrail"]
 
