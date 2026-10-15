@@ -19,10 +19,16 @@ pyRail is a Python library that provides a convenient interface for interacting 
 
 ## Installation
 
-To install pyRail, use pip:
+pyRail requires Python 3.12 or newer. Install it with pip:
 
 ```bash
 pip install pyrail
+```
+
+or with uv:
+
+```bash
+uv add pyrail
 ```
 
 ## Usage
@@ -31,7 +37,8 @@ Here is an example of how to use pyRail asynchronously:
 
 ```python
 import asyncio
-from pyrail.irail import iRail
+from pyrail import iRail, PyRailError
+
 
 async def main():
     # Sequential requests example
@@ -47,28 +54,26 @@ async def main():
                 #     ...
                 # ]
             # Get the liveboard for a specific station
-            liveboard = await api.get_liveboard(station='Brussels-South')
+            liveboard = await api.get_liveboard(station="Brussels-South")
             if liveboard:
                 print(f"Liveboard for Brussels-South: {liveboard}")
-        except Exception as e:
+        except PyRailError as e:
             print(f"Error occurred: {e}")
     # Parallel requests example
     async with iRail() as api:
         try:
             connections, vehicle_info = await asyncio.gather(
                 # Get connections between stations
-                api.get_connections(
-                    from_station='Antwerpen-Centraal',
-                    to_station='Brussel-Centraal'
-                ),
+                api.get_connections(from_station="Antwerpen-Centraal", to_station="Brussel-Centraal"),
                 # Get vehicle information
-                api.get_vehicle("BE.NMBS.IC1832")
+                api.get_vehicle("BE.NMBS.IC1832"),
             )
             print("Parallel results:")
             print(f"Connections from Antwerpen-Centraal to Brussel-Centraal: {connections}")
             print(f"Vehicle information for BE.NMBS.IC1832: {vehicle_info}")
-        except Exception as e:
+        except PyRailError as e:
             print(f"Error occurred in parallel requests: {e}")
+
 
 # Run the async code
 if __name__ == "__main__":
@@ -107,7 +112,7 @@ if liveboard and liveboard.departures:
 You can configure the language for the API requests:
 
 ```python
-api = iRail(lang='nl')
+api = iRail(lang="nl")
 ```
 
 Supported languages are:
@@ -125,6 +130,7 @@ You can provide an external aiohttp ClientSession:
 
 ```python
 from aiohttp import ClientSession
+
 
 async def main():
     # Using an external session
@@ -163,7 +169,7 @@ The library automatically handles rate limiting:
 # Rate limiting is handled automatically
 async with iRail() as api:
     # These requests will be rate-limited if needed
-    for station in ['Brussels-South', 'Antwerp-Central', 'Ghent-Sint-Pieters']:
+    for station in ["Brussels-South", "Antwerp-Central", "Ghent-Sint-Pieters"]:
         liveboard = await api.get_liveboard(station=station)
 ```
 
@@ -219,30 +225,19 @@ When all attempts fail, an `ApiUnavailableError` is raised, chained to the under
 
 ## Development
 
-The devcontainer setup includes all necessary dependencies and tools for development.
-
-### Prerequisites
-
-- Docker
-- Visual Studio Code
-- Remote - Containers extension
+pyRail uses [uv](https://docs.astral.sh/uv/) to manage the Python version, the virtual environment and the dependencies.
 
 ### Setup
 
-1. Clone the repository:
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/).
+2. Clone the repository and install the dependencies from the lock file:
    ```bash
    git clone https://github.com/tjorim/pyrail.git
+   cd pyrail
+   uv sync
    ```
-2. Open the project in a devcontainer:
-   ```bash
-    cd pyrail
-    code .
-   ```
-3. Once VS Code opens, it will detect the devcontainer configuration and prompt you to reopen the project in a container. Click "Reopen in Container" to start the development environment.
-4. To sync dependencies from the lock file, run:
-   ```bash
-   uv sync --all-groups --locked
-   ```
+
+Alternatively, use the devcontainer, which has uv and all dependencies preinstalled. You need Docker and Visual Studio Code with the *Dev Containers* extension: open the repository in VS Code and choose "Reopen in Container" when prompted.
 
 ### Running Tests
 
@@ -251,7 +246,7 @@ There are two test suites:
 - **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, ETags, invalid JSON, ...) and runs on every pull request and on pushes to main.
 - **Live smoke suite** (`tests/live`): calls all six endpoints of the real iRail API and checks that the responses still deserialize into the library models. It asserts only stable structure, never specific trains, times or disturbances. It catches upstream API changes that the recorded responses cannot.
 
-To run the offline suite, use the following command in the terminal within the devcontainer:
+To run the offline suite:
 
 ```bash
 uv run pytest
@@ -260,7 +255,7 @@ uv run pytest
 To run the live suite, which needs network access:
 
 ```bash
-pytest -m live
+uv run pytest -m live
 ```
 
 The live tests are excluded from a plain `pytest` run. Run them locally before a release. They also run daily and on demand through the *Live API Smoke Tests* workflow (Actions tab, *Run workflow*), where a failure notifies the maintainers.
@@ -276,12 +271,14 @@ We use ruff for code formatting and linting. To check your code style, run:
 
 ```bash
 uv run ruff check .
+uv run ruff format --check .
 ```
 
-To automatically fix style issues, run:
+To automatically fix style issues and format the code, run:
 
 ```bash
 uv run ruff check . --fix
+uv run ruff format .
 ```
 
 We use ty for type checking:

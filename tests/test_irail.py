@@ -222,7 +222,9 @@ async def test_get_connections(mock_get):
         assert connections is not None, "The response should not be None"
 
         # Validate that the response is a ConnectionsApiResponse object
-        assert isinstance(connections, ConnectionsApiResponse), "Expected response to be a ConnectionsApiResponse object"
+        assert isinstance(connections, ConnectionsApiResponse), (
+            "Expected response to be a ConnectionsApiResponse object"
+        )
 
         # Validate the structure of connection data
         connection_list = connections.connections
@@ -334,15 +336,11 @@ async def test_get_composition(mock_get):
         assert isinstance(unit.has_toilets, bool), "Expected 'has_toilets' to be a boolean"
         assert isinstance(unit.seats_first_class, int), "Expected 'seats_first_class' to be an integer"
         assert isinstance(unit.length_in_meter, int), "Expected 'length_in_meter' to be an integer"
-        assert isinstance(unit.material_number, str | None), (
-            "Expected 'material_number' to be a string or None"
-        )
+        assert isinstance(unit.material_number, str | None), "Expected 'material_number' to be a string or None"
         assert isinstance(unit.material_sub_type_name, str | None), (
             "Expected 'material_sub_type_name' to be a string or None"
         )
-        assert isinstance(unit.has_tables, bool | None), (
-            "Expected 'has_tables' to be a boolean or None"
-        )
+        assert isinstance(unit.has_tables, bool | None), "Expected 'has_tables' to be a boolean or None"
         assert isinstance(unit.has_luggage_section, bool | None), (
             "Expected 'has_luggage_section' to be a boolean or None"
         )
@@ -1001,3 +999,11 @@ async def test_handle_success_response_invalid_json(mock_get):
     mock_get.return_value.__aenter__.return_value = response
     async with iRail() as api:
         assert await api._do_request("stations") is None
+
+
+def test_package_exposes_version() -> None:
+    """The package exposes its installed version as a string."""
+    import pyrail
+
+    assert isinstance(pyrail.__version__, str)
+    assert pyrail.__version__

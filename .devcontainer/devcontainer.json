@@ -6,7 +6,6 @@
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers-extra/features/uv:1": {},
-		"ghcr.io/devcontainers-extra/features/ruff:1": {},
 		"ghcr.io/devcontainers/features/git:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
@@ -18,6 +17,7 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
+				"astral-sh.ty",
 				"charliermarsh.ruff",
 				"github.vscode-pull-request-github",
 				"ms-python.python"
@@ -29,8 +29,8 @@
 				"editor.formatOnSave": true,
 				"editor.formatOnType": false,
 				"files.trimTrailingWhitespace": true,
-				"python.analysis.typeCheckingMode": "basic",
-				"python.analysis.autoImportCompletions": true,
+				"python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+				"python.languageServer": "None",
 				"[python]": {
 					"editor.defaultFormatter": "charliermarsh.ruff"
 				}
