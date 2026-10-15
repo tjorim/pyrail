@@ -456,6 +456,19 @@ class Unit(DataClassORJSONMixin):
     traction_type: str | None = field(
         default=None, metadata=field_options(alias="tractionType")
     )  # Traction type of the unit (optional)
+    material_number: str | None = field(
+        default=None, metadata=field_options(alias="materialNumber")
+    )
+    material_sub_type_name: str | None = field(
+        default=None, metadata=field_options(alias="materialSubTypeName")
+    )
+    has_tables: bool | None = field(
+        default=None, metadata=field_options(alias="hasTables", deserialize=_str_to_bool)
+    )
+    has_luggage_section: bool | None = field(
+        default=None,
+        metadata=field_options(alias="hasLuggageSection", deserialize=_str_to_bool),
+    )
 
 
 @dataclass
