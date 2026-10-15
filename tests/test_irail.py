@@ -3,6 +3,7 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
+import logging
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -297,6 +298,7 @@ async def test_date_time_validation():
         assert not api._validate_date("15092023")  # Too long
         assert not api._validate_date("0")  # Too short
         assert not api._validate_date("290223")  # Invalid leap year 2023
+        assert not api._validate_date("")
 
         # Valid time examples
         assert api._validate_time("1430")  # 2:30 PM
@@ -311,6 +313,7 @@ async def test_date_time_validation():
         assert not api._validate_time("abcd")  # Not numeric
         assert not api._validate_time("143000")  # Too long
         assert not api._validate_time("1")  # Too short
+        assert not api._validate_time("")
 
 
 @pytest.mark.asyncio
@@ -377,8 +380,7 @@ async def test_error_handling(mock_get):
         assert connections is None, "Expected None for invalid stations"
 
 
-@pytest.mark.asyncio
-async def test_timestamp_to_datetime():
+def test_timestamp_to_datetime():
     """Test the timestamp_to_datetime function."""
     # Test valid timestamps
     assert _timestamp_to_datetime("1705593600") == datetime(
@@ -387,8 +389,7 @@ async def test_timestamp_to_datetime():
     assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)  # Unix epoch
 
 
-@pytest.mark.asyncio
-async def test_timestamp_field_deserialization():
+def test_timestamp_field_deserialization():
     """Test timestamp field deserialization in various models."""
     # Test ApiResponse timestamp
     api_response = ApiResponse.from_dict({"version": "1.0", "timestamp": "1705593600"})
@@ -484,16 +485,14 @@ async def test_timestamp_field_deserialization():
     assert disturbance.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=timezone.utc)
 
 
-@pytest.mark.asyncio
-async def test_str_to_bool():
+def test_str_to_bool():
     """Test the str_to_bool function that converts string values to boolean."""
     # Test valid inputs
     assert _str_to_bool("1") is True, "String '1' should convert to True"
     assert _str_to_bool("0") is False, "String '0' should convert to False"
 
 
-@pytest.mark.asyncio
-async def test_boolean_field_deserialization():
+def test_boolean_field_deserialization():
     """Test the deserialization of boolean fields in models."""
     # Test PlatformInfo boolean field
     platform = PlatformInfo.from_dict({"name": "1", "normal": "1"})
@@ -587,3 +586,18 @@ def test_liveboard_arrival_boolean_deserialization():
     assert arrival.canceled is True
     assert arrival.arrived is True
     assert arrival.is_extra is True
+
+
+@pytest.mark.asyncio
+async def test_handle_success_response_empty(caplog):
+    """Test that empty response bodies log a warning and return unchanged."""
+    api = iRail()
+    response = AsyncMock()
+    response.headers = {}
+    response.json = AsyncMock(return_value=None)
+    with caplog.at_level(logging.WARNING):
+        assert await api._handle_success_response(response, "stations") is None
+    response.json = AsyncMock(return_value={})
+    with caplog.at_level(logging.WARNING):
+        assert await api._handle_success_response(response, "stations") == {}
+    assert "Empty response received" in caplog.text

@@ -58,6 +58,13 @@ split-on-trailing-comma = false
 [tool.ruff.lint.pydocstyle]
 property-decorators = ["propcache.cached_property"]
 
+[tool.ty.rules]
+all = "error"
+
+[tool.ty.analysis]
+strict-equality-semantics = true
+strict-generic-narrowing = true
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, override
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -153,6 +153,7 @@ class LiveboardApiResponse(ApiResponse):
     arrivals: list[LiveboardArrival] | None = field(default=None)  # Arrivals information
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Pre-deserialization hook to safely flatten departures and arrivals."""
         # Safely flatten departures
@@ -230,6 +231,7 @@ class ConnectionDeparture(DataClassORJSONMixin):
     stops: list[ConnectionStop] = field(default_factory=list)  # List of stop along the journey
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'stop' list from 'stops' before deserialization."""
         d["stops"] = d["stops"]["stop"]
@@ -310,6 +312,7 @@ class ConnectionDetails(DataClassORJSONMixin):
     vias: list[Via] | None = field(default=None)  # List of via details
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Flatten the structure of the 'connections' response by extracting lists of remarks, alerts, and optionally flatten vias before deserialization."""
         # Extract 'remark' and 'alert' list from 'remarks' and 'alerts' before deserialization.
@@ -382,6 +385,7 @@ class VehicleApiResponse(ApiResponse):
     stops: list[VehicleStop] = field(default_factory=list)  # List of stop details
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'stop' list from 'stops' before deserialization."""
         d["stops"] = d["stops"]["stop"]
@@ -462,6 +466,7 @@ class SegmentComposition(DataClassORJSONMixin):
     units: list[Unit] = field(default_factory=list)  # List of units
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'unit' list from 'units' before deserialization."""
         if "units" in d and isinstance(d["units"], dict):
@@ -488,6 +493,7 @@ class CompositionApiResponse(ApiResponse):
     composition: list[Segment] = field(default_factory=list)  # Composition details of the train
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Pre-deserialization hook to safely flatten composition segments."""
         d["composition"] = d["composition"]["segments"]["segment"]
@@ -521,6 +527,7 @@ class Disturbance(DataClassORJSONMixin):
     )  # List of description links
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'descriptionLink' list from 'descriptionLinks' before deserialization."""
         d["descriptionLinks"] = d["descriptionLinks"]["descriptionLink"]

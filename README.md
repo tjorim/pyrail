@@ -194,6 +194,8 @@ We use ty for type checking:
 ty check .
 ```
 
+ty runs every rule as an error. The settings live in `[tool.ty]` in pyproject.toml.
+
 ## Logging
 
 pyRail uses Python's built-in logging module. You can set the logging level at runtime to get detailed logs.
