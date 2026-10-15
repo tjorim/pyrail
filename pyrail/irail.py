@@ -198,7 +198,7 @@ class iRail:
             bool: True if the date is valid or None is provided, False otherwise.
 
         """
-        if not date:
+        if date is None:
             return True
         try:
             datetime.strptime(date, "%d%m%y")
@@ -218,7 +218,7 @@ class iRail:
             bool: True if the time is valid or None is provided, False otherwise.
 
         """
-        if not time:
+        if time is None:
             return True
         try:
             datetime.strptime(time, "%H%M")
@@ -296,7 +296,7 @@ class iRail:
             self.etag_cache[method] = response.headers["Etag"]
         try:
             json_data: dict[str, Any] | None = await response.json()
-            if not json_data:
+            if json_data is None:
                 logger.warning("Empty response received")
             return json_data
         except ValueError:
@@ -366,7 +366,7 @@ class iRail:
         # Construct the request URL and parameters
         url: str = f"{_API_BASE_URL}/{method}/"
         params = {"format": "json", "lang": self.lang}
-        if args:
+        if args is not None:
             params.update(args)
 
         request_headers: dict[str, str] = self._add_etag_header(method)
