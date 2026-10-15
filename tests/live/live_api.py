@@ -15,7 +15,7 @@ from typing import override
 from aiohttp import ClientTimeout
 import pytest
 
-from pyrail.exceptions import PyRailError
+from pyrail.exceptions import InvalidRequestError, NotFoundError, PyRailError
 from pyrail.irail import iRail
 
 # Bounded retry policy: 3 attempts with a growing pause. The client is created with
@@ -26,6 +26,7 @@ BACKOFF_SECONDS = (5, 15)
 REQUEST_TIMEOUT = ClientTimeout(total=30)
 
 UNAVAILABLE = "API UNAVAILABLE"
+REJECTED = "API REJECTED REQUEST"
 INCOMPATIBLE = "API INCOMPATIBLE"
 
 
@@ -52,9 +53,10 @@ class LiveApi:
     async def fetch[T](self, endpoint: str, request: Callable[[iRail], Awaitable[T | None]]) -> T:
         """Call an endpoint, retrying when no usable response arrives.
 
-        Fails with ``API UNAVAILABLE`` when every attempt gets no response, and with
+        Fails with ``API UNAVAILABLE`` when every attempt gets no response, with
+        ``API REJECTED REQUEST`` when the API answers HTTP 400 or 404, and with
         ``API INCOMPATIBLE`` when a response arrives but cannot be deserialized.
-        Deserialization failures are not retried, as they are deterministic.
+        Rejections and deserialization failures are not retried, as they are deterministic.
         """
         logger = logging.getLogger("pyrail.irail")
         reason = "no response"
@@ -64,6 +66,10 @@ class LiveApi:
             logger.addHandler(collector)
             try:
                 result = await request(self.client)
+            except (InvalidRequestError, NotFoundError) as err:
+                pytest.fail(
+                    f"{REJECTED}: '{endpoint}' answered {type(err).__name__}: {str(err)[:300]}", pytrace=False
+                )
             except PyRailError as err:
                 reason = f"{type(err).__name__}: {str(err)[:300]}"
             except Exception as err:

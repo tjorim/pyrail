@@ -614,6 +614,43 @@ async def test_handle_response_bad_request(mock_get):
 
 
 @pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_bad_request_uses_error_field_from_json_body(mock_get):
+    """Test that the InvalidRequestError message is the 'error' field of a JSON error body."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(
+        status=400, data={"error": "Missing required parameter: station"}
+    )
+    async with iRail() as api:
+        with pytest.raises(InvalidRequestError, match="Missing required parameter: station"):
+            await api._do_request("stations")
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_bad_request_falls_back_to_response_text(mock_get):
+    """Test that the InvalidRequestError message falls back to the raw text when the body is not JSON."""
+    response = _mock_response(status=400)
+    response.text.return_value = "Bad Request"
+    response.json.side_effect = ValueError("not json")
+    mock_get.return_value.__aenter__.return_value = response
+    async with iRail() as api:
+        with pytest.raises(InvalidRequestError, match="Bad Request"):
+            await api._do_request("stations")
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
+async def test_not_found_uses_response_text_as_message(mock_get):
+    """Test that the NotFoundError message is the response text."""
+    response = _mock_response(status=404)
+    response.text.return_value = "Station not found"
+    mock_get.return_value.__aenter__.return_value = response
+    async with iRail() as api:
+        with pytest.raises(NotFoundError, match="Station not found"):
+            await api._do_request("stations")
+
+
+@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_rate_limited(mock_get, mock_sleep):
