@@ -39,3 +39,15 @@ class NotFoundError(PyRailError):
     def __init__(self, message: str = "Resource not found") -> None:
         """Initialize the exception with a message."""
         super().__init__(message)
+
+
+class ApiUnavailableError(PyRailError):
+    """Raised when the API could not be reached or kept failing after all retries.
+
+    This exception indicates a network failure, a request timeout or a server error (HTTP 5xx)
+    that persisted through every attempt. The request may succeed later.
+    """
+
+    def __init__(self, message: str = "API unavailable") -> None:
+        """Initialize the exception with a message."""
+        super().__init__(message)

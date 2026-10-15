@@ -144,13 +144,14 @@ Exceeding the request limit will cause the server to return 429 responses, which
 
 ### Error Handling
 
-pyRail raises exceptions for HTTP errors returned by the iRail API. All of them inherit from `PyRailError`:
+pyRail raises exceptions for errors returned by the iRail API and for connection failures. All of them inherit from `PyRailError`:
 
-| Exception             | Raised when                                           |
-| --------------------- | ----------------------------------------------------- |
-| `InvalidRequestError` | The API responds with HTTP 400 (invalid request)      |
-| `NotFoundError`       | The API responds with HTTP 404 (resource not found)   |
-| `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded)  |
+| Exception             | Raised when                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `InvalidRequestError` | The API responds with HTTP 400 (invalid request)                                    |
+| `NotFoundError`       | The API responds with HTTP 404 (resource not found)                                 |
+| `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded)                                |
+| `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
 from pyrail import iRail, NotFoundError, PyRailError
@@ -164,7 +165,7 @@ async with iRail() as api:
         print(f"Request failed: {err}")
 ```
 
-Other failures (network errors, unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
+Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
 
 ### Network Resilience and Retry Logic
 
@@ -185,7 +186,7 @@ async with iRail(max_retries=0) as api:  # fail fast, no retries
     stations = await api.get_stations()
 ```
 
-When all attempts fail, the request returns `None`. Each failed attempt is logged as a warning.
+When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Each failed attempt is logged as a warning.
 
 ## Development
 

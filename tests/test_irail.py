@@ -12,7 +12,7 @@ from aiohttp import ClientError, ClientSession
 from multidict import CIMultiDict
 import pytest
 
-from pyrail.exceptions import InvalidRequestError, NotFoundError, RateLimitError
+from pyrail.exceptions import ApiUnavailableError, InvalidRequestError, NotFoundError, PyRailError, RateLimitError
 from pyrail.irail import iRail
 from pyrail.models import (
     Alert,
@@ -631,10 +631,11 @@ async def test_handle_response_rate_limited(mock_get, mock_sleep):
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_server_error(mock_get, mock_sleep):
-    """Test that a persistent 5xx response is retried and then returns None."""
+    """Test that a persistent 5xx response is retried and then raises ApiUnavailableError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=500)
     async with iRail() as api:
-        assert await api._do_request("stations") is None
+        with pytest.raises(ApiUnavailableError):
+            await api._do_request("stations")
     assert mock_get.call_count == 3
 
 
@@ -642,10 +643,11 @@ async def test_handle_response_server_error(mock_get, mock_sleep):
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_request_client_error(mock_get, mock_sleep):
-    """Test that a persistent client error is retried and then returns None."""
+    """Test that a persistent client error is retried and then raises ApiUnavailableError."""
     mock_get.side_effect = ClientError("connection failed")
     async with iRail() as api:
-        assert await api._do_request("stations") is None
+        with pytest.raises(ApiUnavailableError):
+            await api._do_request("stations")
     assert mock_get.call_count == 3
 
 
@@ -687,10 +689,25 @@ async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
     mock_get.side_effect = ClientError("Persistent network error")
     async with iRail() as api:
         with caplog.at_level(logging.WARNING):
-            assert await api._do_request("stations") is None
+            with pytest.raises(ApiUnavailableError):
+                await api._do_request("stations")
     assert mock_get.call_count == 3
     assert caplog.text.count("retrying in") == 2
     assert "failed after 3 attempt(s)" in caplog.text
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
+@patch("pyrail.irail.ClientSession.get")
+async def test_api_unavailable_error_is_chained(mock_get, mock_sleep):
+    """Test that ApiUnavailableError is a PyRailError chained to the underlying failure."""
+    mock_get.side_effect = TimeoutError("too slow")
+    async with iRail() as api:
+        with pytest.raises(PyRailError) as exc_info:
+            await api._do_request("stations")
+    assert isinstance(exc_info.value, ApiUnavailableError)
+    assert isinstance(exc_info.value.__cause__, TimeoutError)
+    assert "stations" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -701,7 +718,8 @@ async def test_retry_backoff_delays(mock_get, mock_sleep):
     mock_get.side_effect = ClientError("down")
     async with iRail(max_retries=6) as api:
         api.tokens = api.burst_tokens = 99
-        assert await api._do_request("stations") is None
+        with pytest.raises(ApiUnavailableError):
+            await api._do_request("stations")
     assert [call.args[0] for call in mock_sleep.call_args_list] == [1.0, 2.0, 4.0, 8.0, 10.0, 10.0]
 
 
@@ -726,7 +744,8 @@ async def test_max_retries_zero_disables_retrying(mock_get, mock_sleep):
     """Test that max_retries=0 makes a single attempt."""
     mock_get.side_effect = ClientError("down")
     async with iRail(max_retries=0) as api:
-        assert await api._do_request("stations") is None
+        with pytest.raises(ApiUnavailableError):
+            await api._do_request("stations")
     assert mock_get.call_count == 1
     mock_sleep.assert_not_called()
 
@@ -745,7 +764,8 @@ async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get, mock_sleep)
     mock_get.side_effect = ClientError("down")
     async with iRail() as api:
         with patch.object(api, "_handle_rate_limit", new_callable=AsyncMock) as mock_rate_limit:
-            assert await api._do_request("stations") is None
+            with pytest.raises(ApiUnavailableError):
+                await api._do_request("stations")
     assert mock_rate_limit.call_count == 3
 
 
