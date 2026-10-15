@@ -1,7 +1,7 @@
 version: 2
 updates:
-  # Monitor pip dependencies (Poetry project)
-  - package-ecosystem: "pip"
+  # Monitor Python dependencies (uv project, uv.lock)
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -15,7 +15,7 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
-      - "pip"
+      - "uv"
     versioning-strategy: "increase"
     groups:
       # Group data serialization libraries (tightly coupled via extras)

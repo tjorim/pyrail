@@ -6,27 +6,25 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
-
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: 3.12
+      uses: actions/checkout@v7
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@v6
-
-    - name: Install dependencies
-      run: uv sync --only-group dev --locked
+      uses: astral-sh/setup-uv@v10
+      with:
+        python-version: 3.12
+        enable-cache: true
 
     - name: Run Ruff
-      run: uv run ruff check .
+      run: uv run --locked ruff check .
 
     - name: Run ty
-      run: uv run ty check .
+      run: uv run --locked ty check .

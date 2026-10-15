@@ -1,31 +1,42 @@
 [project]
 name = "pyrail"
-version = "0.4.1"
+dynamic = ["version"]
 description = "A Python wrapper for the iRail API"
 authors = [{name = "Jorim Tielemans", email = "tielemans.jorim@gmail.com"}]
 license = "Apache-2.0"
 readme = "README.md"
 keywords = ["irail", "nmbs"]
 classifiers = [
-    "Topic :: Software Development :: Libraries :: Python Modules"
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-urls = { Homepage = "https://github.com/tjorim/pyrail", Repository = "https://github.com/tjorim/pyrail", Documentation = "https://github.com/tjorim/pyrail" }
-requires-python = ">=3.12,<4.0"
+requires-python = ">=3.12"
 dependencies = [
-    "aiohttp>=3.13.5,<4.0.0",
-    "mashumaro[orjson]>=3.21,<4.0.0",
+    "aiohttp>=3.14.4",
+    "mashumaro[orjson]>=3.23",
 ]
+
+[project.urls]
+Homepage = "https://github.com/tjorim/pyrail"
+Repository = "https://github.com/tjorim/pyrail"
+Documentation = "https://github.com/tjorim/pyrail"
 
 [dependency-groups]
 test = [
-    "pytest>=8.3.4,<10.0.0",
-    "pytest-mock>=3.14.0,<4.0.0",
-    "pytest-asyncio>=0.25.1,<1.4.0",
+    "pytest>=9.1.1",
+    "pytest-mock>=3.16.0",
+    "pytest-asyncio>=1.4.0",
 ]
 dev = [
-    "ruff>=0.15.12,<0.16.0",
-    "ty>=0.0.35,<0.0.36",
+    "ruff>=0.16.10",
+    "ty>=0.0.84",
 ]
+
+[tool.uv]
+default-groups = ["dev", "test"]
 
 [tool.ruff]
 line-length = 120
@@ -55,9 +66,27 @@ split-on-trailing-comma = false
 [tool.ruff.lint.pydocstyle]
 property-decorators = ["propcache.cached_property"]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+markers = [
+    "live: smoke tests against the real iRail API, excluded from ordinary runs (run with 'pytest -m live')",
+]
+addopts = "-m 'not live'"
+
+[tool.ty.rules]
+all = "error"
+
+[tool.ty.analysis]
+strict-equality-semantics = true
+strict-generic-narrowing = true
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { fallback_version = "0.0.0" }
+
 [tool.hatch.build.targets.wheel]
 packages = ["pyrail"]
 
 [build-system]
-requires = ["hatchling>=1.27.0"]
+requires = ["hatchling>=1.27.0", "hatch-vcs"]
 build-backend = "hatchling.build"

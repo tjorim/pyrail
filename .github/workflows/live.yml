@@ -1,0 +1,30 @@
+name: Live API Smoke Tests
+
+# Calls the real iRail API to catch upstream changes the offline fixtures cannot detect.
+# Deliberately not run on push or pull_request, so ordinary CI stays offline.
+# A failed run notifies the maintainers through the usual GitHub Actions notifications.
+on:
+  schedule:
+    - cron: "17 6 * * *"  # daily, off the hour to avoid the scheduler's busiest minutes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10
+      with:
+        python-version: 3.12
+        enable-cache: true
+
+    - name: Run live smoke tests
+      run: uv run --locked pytest -m live

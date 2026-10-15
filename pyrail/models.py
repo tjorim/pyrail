@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, override
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -131,9 +131,11 @@ class LiveboardArrival(DataClassORJSONMixin):
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))  # Detailed station info
     time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))  # Arrival time (timestamp)
     delay: int  # Delay in seconds
-    canceled: bool  # Whether the arrival is canceled
-    arrived: bool  # Whether the train has arrived
-    is_extra: bool = field(metadata=field_options(alias="isExtra"))  # Whether the train is extra
+    canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the arrival is canceled
+    arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))  # Whether the train has arrived
+    is_extra: bool = field(
+        metadata=field_options(alias="isExtra", deserialize=_str_to_bool)
+    )  # Whether the train is extra
     vehicle: str  # Vehicle identifier
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))  # Vehicle details
     platform: str  # Platform name
@@ -151,6 +153,7 @@ class LiveboardApiResponse(ApiResponse):
     arrivals: list[LiveboardArrival] | None = field(default=None)  # Arrivals information
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Pre-deserialization hook to safely flatten departures and arrivals."""
         # Safely flatten departures
@@ -228,6 +231,7 @@ class ConnectionDeparture(DataClassORJSONMixin):
     stops: list[ConnectionStop] = field(default_factory=list)  # List of stop along the journey
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'stop' list from 'stops' before deserialization."""
         d["stops"] = d["stops"]["stop"]
@@ -308,6 +312,7 @@ class ConnectionDetails(DataClassORJSONMixin):
     vias: list[Via] | None = field(default=None)  # List of via details
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Flatten the structure of the 'connections' response by extracting lists of remarks, alerts, and optionally flatten vias before deserialization."""
         # Extract 'remark' and 'alert' list from 'remarks' and 'alerts' before deserialization.
@@ -380,6 +385,7 @@ class VehicleApiResponse(ApiResponse):
     stops: list[VehicleStop] = field(default_factory=list)  # List of stop details
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'stop' list from 'stops' before deserialization."""
         d["stops"] = d["stops"]["stop"]
@@ -416,7 +422,6 @@ class Unit(DataClassORJSONMixin):
     has_airco: bool = field(
         metadata=field_options(alias="hasAirco", deserialize=_str_to_bool)
     )  # Whether the unit has air conditioning
-    traction_type: str = field(metadata=field_options(alias="tractionType"))  # Traction type of the unit
     can_pass_to_next_unit: bool = field(
         metadata=field_options(alias="canPassToNextUnit", deserialize=_str_to_bool)
     )  # Whether the unit can pass to the next
@@ -448,6 +453,22 @@ class Unit(DataClassORJSONMixin):
     has_bike_section: bool = field(
         metadata=field_options(alias="hasBikeSection", deserialize=_str_to_bool)
     )  # Whether the unit has a bike section
+    traction_type: str | None = field(
+        default=None, metadata=field_options(alias="tractionType")
+    )  # Traction type of the unit (optional)
+    material_number: str | None = field(
+        default=None, metadata=field_options(alias="materialNumber")
+    )
+    material_sub_type_name: str | None = field(
+        default=None, metadata=field_options(alias="materialSubTypeName")
+    )
+    has_tables: bool | None = field(
+        default=None, metadata=field_options(alias="hasTables", deserialize=_str_to_bool)
+    )
+    has_luggage_section: bool | None = field(
+        default=None,
+        metadata=field_options(alias="hasLuggageSection", deserialize=_str_to_bool),
+    )
 
 
 @dataclass
@@ -458,9 +479,13 @@ class SegmentComposition(DataClassORJSONMixin):
     units: list[Unit] = field(default_factory=list)  # List of units
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'unit' list from 'units' before deserialization."""
-        d["units"] = d["units"]["unit"]
+        if "units" in d and isinstance(d["units"], dict):
+            d["units"] = d["units"].get("unit", [])
+        else:
+            d["units"] = []
         return d
 
 
@@ -481,6 +506,7 @@ class CompositionApiResponse(ApiResponse):
     composition: list[Segment] = field(default_factory=list)  # Composition details of the train
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Pre-deserialization hook to safely flatten composition segments."""
         d["composition"] = d["composition"]["segments"]["segment"]
@@ -514,6 +540,7 @@ class Disturbance(DataClassORJSONMixin):
     )  # List of description links
 
     @classmethod
+    @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract 'descriptionLink' list from 'descriptionLinks' before deserialization."""
         d["descriptionLinks"] = d["descriptionLinks"]["descriptionLink"]
