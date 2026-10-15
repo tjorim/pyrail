@@ -2,12 +2,13 @@
 
 import asyncio
 from asyncio import Lock
-from datetime import datetime, timezone
+import contextlib
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 import logging
 import time
 from types import TracebackType
-from typing import Any, Literal, Type
+from typing import Any, Literal
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -61,8 +62,8 @@ def _parse_retry_after(value: str | None) -> int | None:
     except (TypeError, ValueError):
         return None
     if retry_at.tzinfo is None:
-        retry_at = retry_at.replace(tzinfo=timezone.utc)
-    return max(0, int((retry_at - datetime.now(timezone.utc)).total_seconds()))
+        retry_at = retry_at.replace(tzinfo=UTC)
+    return max(0, int((retry_at - datetime.now(UTC)).total_seconds()))
 
 
 class _ServerError(ClientError):
@@ -145,7 +146,7 @@ class iRail:
         return self
 
     async def __aexit__(
-        self, exc_type: Type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
     ) -> None:
         """Close the aiohttp client session when exiting the async context."""
         if self.session:
@@ -359,7 +360,7 @@ class iRail:
 
         # Ensure no unexpected parameters are included
         all_params = required + xor + optional
-        for param in params.keys():
+        for param in params:
             if param not in all_params:
                 logger.error("Unexpected parameter: %s for endpoint: %s", param, method)
                 return False
@@ -389,10 +390,8 @@ class iRail:
             raise RateLimitError(f"Rate limit exceeded for method {method}", retry_after=retry_after)
         elif response.status == 400:
             error_message = await response.text()
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 error_message = (await response.json()).get("error", error_message)
-            except (ValueError, AttributeError):
-                pass
             logger.error("Bad request: %s", error_message)
             raise InvalidRequestError(error_message)
         elif response.status == 404:
