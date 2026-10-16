@@ -92,6 +92,8 @@ print(len(stations.stations))
 
 pyRail only changes the type of values, not their meaning: string flags become `bool`, epoch strings become `datetime`, names are snake_case, and count-only wrappers such as `departures.departure` are flattened. Data is never converted or derived.
 
+All response types, including the nested ones, are exported from the package root, so `from pyrail import StationsApiResponse` works.
+
 ### Date and Time
 
 The `date` (`DDMMYY`) and `time` (`HHMM`) request parameters are interpreted as Belgian local time, so pass local clock times, not UTC.

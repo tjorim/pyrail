@@ -1487,3 +1487,11 @@ def test_package_exposes_version() -> None:
     """The package exposes its installed version as a string."""
     assert isinstance(pyrail.__version__, str)
     assert pyrail.__version__
+
+
+def test_package_exports_the_response_models() -> None:
+    """The response models are importable from the package root and every export resolves."""
+    assert pyrail.LiveboardApiResponse is LiveboardApiResponse
+    assert pyrail.DisturbancesApiResponse is DisturbancesApiResponse
+    for name in pyrail.__all__:
+        assert hasattr(pyrail, name)
