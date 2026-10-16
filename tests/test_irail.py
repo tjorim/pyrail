@@ -102,7 +102,7 @@ async def test_successful_request(mock_get: MagicMock) -> None:
 
     async with iRail() as api:
         assert api.session is not None
-        response = await api._do_request("stations")
+        response = await api._do_request("stations", dict)
         mock_get.assert_called_once_with(
             "https://api.irail.be/v1/stations/",
             params={"format": "json", "lang": "en"},
@@ -226,7 +226,7 @@ async def test_saturated_requests_are_paced_smoothly(mock_get: MagicMock) -> Non
         mock_get.return_value.__aenter__.return_value = _mock_response(data={"data": "ok"})
         async with iRail() as api:
             for _ in range(20):
-                await api._do_request("stations")
+                await api._do_request("stations", dict)
 
     assert len(clock.waits) == 12
     assert all(wait == pytest.approx(1 / 3, rel=0.01) for wait in clock.waits)
@@ -247,7 +247,7 @@ async def test_concurrent_requests_share_the_rate_limit_budget(mock_get: MagicMo
         mock_get.return_value.__aenter__.return_value = _mock_response(data={"data": "ok"})
         async with iRail() as api:
             start = clock.now
-            results = await asyncio.gather(*(api._do_request("stations") for _ in range(12)))
+            results = await asyncio.gather(*(api._do_request("stations", dict) for _ in range(12)))
             elapsed = clock.now - start
 
     assert all(result == {"data": "ok"} for result in results)
@@ -439,13 +439,15 @@ async def test_fixed_value_parameters_reject_unknown_values(mock_get: MagicMock)
 
     async with iRail() as api:
         with pytest.raises(ValueError, match="Invalid typeOfTransport"):
-            await api._do_request("connections", {"from": "A", "to": "B", "typeOfTransport": "nointernationaltrains"})
+            await api._do_request(
+                "connections", dict, {"from": "A", "to": "B", "typeOfTransport": "nointernationaltrains"}
+            )
         with pytest.raises(ValueError, match="Invalid typeOfTransport"):
-            await api._do_request("connections", {"from": "A", "to": "B", "typeOfTransport": "Trains"})
+            await api._do_request("connections", dict, {"from": "A", "to": "B", "typeOfTransport": "Trains"})
         with pytest.raises(ValueError, match="Invalid timesel"):
-            await api._do_request("connections", {"from": "A", "to": "B", "timesel": "arrivals"})
+            await api._do_request("connections", dict, {"from": "A", "to": "B", "timesel": "arrivals"})
         with pytest.raises(ValueError, match="Invalid arrdep"):
-            await api._do_request("liveboard", {"station": "Brussels-Central", "arrdep": "arrivals"})
+            await api._do_request("liveboard", dict, {"station": "Brussels-Central", "arrdep": "arrivals"})
 
     mock_get.assert_not_called()
 
@@ -894,13 +896,12 @@ async def test_handle_success_response_empty() -> None:
     response = AsyncMock()
     response.headers = {}
     response.json = AsyncMock(return_value=None)
-    request_key = ("stations", (("format", "json"),))
     with pytest.raises(InvalidResponseError, match="not a JSON object") as exc_info:
-        await api._handle_success_response(response, "stations", request_key)
+        await api._handle_success_response(response, "stations")
     assert exc_info.value.status == 200
     response.json = AsyncMock(return_value={})
     with pytest.raises(InvalidResponseError, match="empty"):
-        await api._handle_success_response(response, "stations", request_key)
+        await api._handle_success_response(response, "stations")
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -909,7 +910,7 @@ async def test_handle_response_bad_request(mock_get: MagicMock) -> None:
     mock_get.return_value.__aenter__.return_value = _mock_response(status=400)
     async with iRail() as api:
         with pytest.raises(InvalidRequestError):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -920,7 +921,7 @@ async def test_bad_request_uses_error_field_from_json_body(mock_get: MagicMock) 
     )
     async with iRail() as api:
         with pytest.raises(InvalidRequestError, match="Missing required parameter: station"):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -932,7 +933,7 @@ async def test_bad_request_falls_back_to_response_text(mock_get: MagicMock) -> N
     mock_get.return_value.__aenter__.return_value = response
     async with iRail() as api:
         with pytest.raises(InvalidRequestError, match="Bad Request"):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -943,7 +944,7 @@ async def test_not_found_uses_response_text_as_message(mock_get: MagicMock) -> N
     mock_get.return_value.__aenter__.return_value = response
     async with iRail() as api:
         with pytest.raises(NotFoundError, match="Station not found"):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
 
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
@@ -953,7 +954,7 @@ async def test_handle_response_rate_limited(mock_get: MagicMock, mock_sleep: Asy
     mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "7"})
     async with iRail() as api:
         with pytest.raises(RateLimitError) as exc_info:
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert exc_info.value.retry_after == 7
     mock_sleep.assert_not_called()
     assert mock_get.call_count == 1
@@ -965,7 +966,7 @@ async def test_handle_response_rate_limited_without_retry_after(mock_get: MagicM
     mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "soon"})
     async with iRail() as api:
         with pytest.raises(RateLimitError) as exc_info:
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert exc_info.value.retry_after is None
 
 
@@ -989,7 +990,7 @@ async def test_handle_response_server_error(mock_get: MagicMock, mock_sleep: Asy
     mock_get.return_value.__aenter__.return_value = _mock_response(status=500)
     async with iRail() as api:
         with pytest.raises(ApiUnavailableError):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert mock_get.call_count == 3
 
 
@@ -1000,7 +1001,7 @@ async def test_handle_response_unexpected_status(mock_get: MagicMock, mock_sleep
     mock_get.return_value.__aenter__.return_value = _mock_response(status=403)
     async with iRail() as api:
         with pytest.raises(InvalidResponseError, match="unexpected status 403") as exc_info:
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert exc_info.value.status == 403
     assert mock_get.call_count == 1
     mock_sleep.assert_not_called()
@@ -1013,7 +1014,7 @@ async def test_request_client_error(mock_get: MagicMock, mock_sleep: AsyncMock) 
     mock_get.side_effect = ClientError("connection failed")
     async with iRail() as api:
         with pytest.raises(ApiUnavailableError):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert mock_get.call_count == 3
 
 
@@ -1027,7 +1028,7 @@ async def test_retry_on_network_error(mock_get: MagicMock, mock_sleep: AsyncMock
         AsyncMock(__aenter__=AsyncMock(return_value=_mock_response(data={"data": "success_after_retry"}))),
     ]
     async with iRail() as api:
-        assert await api._do_request("stations") == {"data": "success_after_retry"}
+        assert await api._do_request("stations", dict) == {"data": "success_after_retry"}
     assert mock_get.call_count == 3
     assert mock_sleep.call_count == 2
 
@@ -1041,7 +1042,7 @@ async def test_retry_on_server_error(mock_get: MagicMock, mock_sleep: AsyncMock)
         _mock_response(data={"data": "success_after_server_error"}),
     ]
     async with iRail() as api:
-        assert await api._do_request("stations") == {"data": "success_after_server_error"}
+        assert await api._do_request("stations", dict) == {"data": "success_after_server_error"}
     assert mock_get.call_count == 2
 
 
@@ -1054,7 +1055,7 @@ async def test_retry_logs_each_failed_attempt(
     mock_get.side_effect = ClientError("Persistent network error")
     async with iRail() as api:
         with caplog.at_level(logging.WARNING), pytest.raises(ApiUnavailableError, match="failed after 3 attempt"):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert mock_get.call_count == 3
     assert caplog.text.count("retrying in") == 2
 
@@ -1066,7 +1067,7 @@ async def test_api_unavailable_error_is_chained(mock_get: MagicMock, mock_sleep:
     mock_get.side_effect = TimeoutError("too slow")
     async with iRail() as api:
         with pytest.raises(PyRailError) as exc_info:
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert isinstance(exc_info.value, ApiUnavailableError)
     assert isinstance(exc_info.value.__cause__, TimeoutError)
     assert "stations" in str(exc_info.value)
@@ -1081,7 +1082,7 @@ async def test_retry_backoff_delays(mock_get: MagicMock, mock_sleep: AsyncMock) 
     async with iRail(max_retries=6) as api:
         api._tokens = api._burst_tokens = 99
         with pytest.raises(ApiUnavailableError):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert [call.args[0] for call in mock_sleep.call_args_list] == [1.0, 2.0, 4.0, 8.0, 10.0, 10.0]
 
 
@@ -1094,7 +1095,7 @@ async def test_retry_on_timeout(mock_get: MagicMock, mock_sleep: AsyncMock) -> N
         AsyncMock(__aenter__=AsyncMock(return_value=_mock_response(data={"data": "after_timeout"}))),
     ]
     async with iRail() as api:
-        assert await api._do_request("stations") == {"data": "after_timeout"}
+        assert await api._do_request("stations", dict) == {"data": "after_timeout"}
     assert mock_get.call_count == 2
 
 
@@ -1105,7 +1106,7 @@ async def test_max_retries_zero_disables_retrying(mock_get: MagicMock, mock_slee
     mock_get.side_effect = ClientError("down")
     async with iRail(max_retries=0) as api:
         with pytest.raises(ApiUnavailableError):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert mock_get.call_count == 1
     mock_sleep.assert_not_called()
 
@@ -1168,7 +1169,7 @@ async def test_request_timeout_is_retried_then_raises(mock_get: MagicMock, mock_
     mock_get.return_value.__aenter__.return_value = response
     async with iRail(request_timeout=0.01) as api:
         with pytest.raises(ApiUnavailableError) as exc_info:
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert mock_get.call_count == 3
     assert isinstance(exc_info.value.__cause__, TimeoutError)
 
@@ -1204,7 +1205,7 @@ async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get: MagicMock, 
             patch.object(api, "_handle_rate_limit", new_callable=AsyncMock) as mock_rate_limit,
             pytest.raises(ApiUnavailableError),
         ):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert mock_rate_limit.call_count == 3
 
 
@@ -1215,7 +1216,7 @@ async def test_no_retry_on_client_error_status(mock_get: MagicMock, mock_sleep: 
     mock_get.return_value.__aenter__.return_value = _mock_response(status=404)
     async with iRail() as api:
         with pytest.raises(NotFoundError):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
     assert mock_get.call_count == 1
 
 
@@ -1228,8 +1229,8 @@ async def test_etag_caching(mock_get: MagicMock) -> None:
         _mock_response(status=304),
     ]
     async with iRail() as api:
-        assert await api._do_request("stations") == {"data": "some_data"}
-        assert await api._do_request("stations") is None
+        assert await api._do_request("stations", dict) == {"data": "some_data"}
+        assert await api._do_request("stations", dict) is None
     assert mock_get.call_count == 2
     assert "If-None-Match" not in mock_get.call_args_list[0].kwargs["headers"]
     assert mock_get.call_args_list[1].kwargs["headers"]["If-None-Match"] == etag
@@ -1346,6 +1347,70 @@ async def test_not_modified_refreshes_the_cached_etag(mock_get: MagicMock) -> No
 
 
 @patch("pyrail.irail.ClientSession.get")
+async def test_rejected_body_does_not_seed_the_etag_cache(mock_get: MagicMock) -> None:
+    """A response with a body the client rejects leaves no cache entry.
+
+    The next identical request must not carry If-None-Match, because the
+    caller never received usable data to compare against.
+    """
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=[1, 2, 3], headers={"Etag": '"etag"'})
+
+    async with iRail() as api:
+        with pytest.raises(InvalidResponseError, match="not a JSON object"):
+            await api.get_stations()
+
+    assert api._etag_cache == {}
+    assert "If-None-Match" not in mock_get.call_args_list[0].kwargs["headers"]
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_model_mismatch_does_not_seed_the_etag_cache(mock_get: MagicMock) -> None:
+    """A body that does not match the models leaves no cache entry either."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(
+        data={"unexpected": True}, headers={"Etag": '"etag"'}
+    )
+
+    async with iRail() as api:
+        with pytest.raises(InvalidResponseError, match="does not match the expected model"):
+            await api.get_stations()
+
+    assert api._etag_cache == {}
+
+
+def test_etag_cache_keeps_recently_used_entries() -> None:
+    """A refreshed entry is protected from eviction."""
+    api = iRail()
+    for index in range(_ETAG_CACHE_LIMIT):
+        api._store_etag(("stations", (("query", str(index)),)), f'"etag{index}"')
+    api._store_etag(("stations", (("query", "0"),)), '"refreshed"')
+    api._store_etag(("stations", (("query", "new"),)), '"new"')
+
+    assert len(api._etag_cache) == _ETAG_CACHE_LIMIT
+    assert api._etag_cache[("stations", (("query", "0"),))] == '"refreshed"'
+    assert ("stations", (("query", "1"),)) not in api._etag_cache
+    assert ("stations", (("query", "new"),)) in api._etag_cache
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_clear_etag_cache_stops_in_flight_responses(mock_get: MagicMock) -> None:
+    """A response that is in flight when the cache is cleared does not repopulate it."""
+    data = _load_example("stations.json")
+
+    async def json_that_clears(**kwargs: Any) -> dict[str, Any]:
+        api.clear_etag_cache()
+        return deepcopy(data)
+
+    response = _mock_response(data=data, headers={"Etag": '"etag"'})
+    response.json = AsyncMock(side_effect=json_that_clears)
+    mock_get.return_value.__aenter__.return_value = response
+
+    async with iRail() as api:
+        assert await api.get_stations() is not None
+
+    assert api._etag_cache == {}
+
+
+@patch("pyrail.irail.ClientSession.get")
 async def test_non_object_json_body_raises_invalid_response(mock_get: MagicMock) -> None:
     """Test that a 200 body that is not a JSON object raises InvalidResponseError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=[1, 2, 3])
@@ -1362,7 +1427,7 @@ async def test_handle_success_response_invalid_json(mock_get: MagicMock) -> None
     mock_get.return_value.__aenter__.return_value = response
     async with iRail() as api:
         with pytest.raises(InvalidResponseError, match="not valid JSON"):
-            await api._do_request("stations")
+            await api._do_request("stations", dict)
 
 
 def test_package_exposes_version() -> None:
