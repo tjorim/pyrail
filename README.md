@@ -5,7 +5,7 @@ Built with aiohttp, it provides non-blocking I/O operations for optimal performa
 
 ## Overview
 
-pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, connections, vehicle, composition, and disturbances. The library includes features like caching and rate limiting to optimize API usage.
+pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, connections, vehicle, composition, and disturbances. The library includes features like rate limiting to optimize API usage.
 
 ## Features
 
@@ -13,7 +13,6 @@ pyRail is a Python library that provides a convenient interface for interacting 
 - Retrieve real-time train information, including liveboards and vehicle details.
 - Access train station data, connections, and disturbances.
 - Supports API endpoints: stations, liveboard, connections, vehicle, composition, and disturbances.
-- Caching and conditional GET requests using ETags.
 - Rate limiting to handle API request limits efficiently.
 - Automatic retry with exponential backoff for network resilience.
 
@@ -107,6 +106,20 @@ if liveboard and liveboard.departures:
     print(departure.time.astimezone(ZoneInfo("Europe/Brussels")).strftime("%H:%M"))
 ```
 
+### Empty Liveboards
+
+A liveboard without departures (for example at night) is a valid answer, not an error. `departures` is then an empty list, so check for `None` explicitly if you need to tell the cases apart:
+
+```python
+liveboard = await api.get_liveboard(station="Brussels-South")
+if liveboard is None:
+    ...  # the request returned no usable data
+elif not liveboard.departures:
+    ...  # no departures right now
+```
+
+`liveboard` is `None` when the request failed validation or the response was unusable (an unparseable body or an unexpected status). `liveboard.departures` is `None` only when the response has no `departures` key, as on an arrival board (`arrdep="arrival"`).
+
 ### Language Selection
 
 You can configure the language for the API requests:
@@ -142,18 +155,6 @@ async def main():
     # Or let iRail manage its own session
     async with iRail() as api:
         stations = await api.get_stations()
-```
-
-### Cache Management
-
-You can clear the ETag cache when needed:
-
-```python
-async with iRail() as api:
-    # Clear the ETag cache
-    api.clear_etag_cache()
-    # Subsequent requests will fetch fresh data
-    stations = await api.get_stations()
 ```
 
 ### Rate Limiting
@@ -200,7 +201,7 @@ async with iRail() as api:
         print(f"Request failed: {err}")
 ```
 
-Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
+Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`.
 
 ### Network Resilience and Retry Logic
 
@@ -243,7 +244,7 @@ Alternatively, use the devcontainer, which has uv and all dependencies preinstal
 
 There are two test suites:
 
-- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, ETags, invalid JSON, ...) and runs on every pull request and on pushes to main.
+- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, invalid JSON, ...) and runs on every pull request and on pushes to main.
 - **Live smoke suite** (`tests/live`): calls all six endpoints of the real iRail API and checks that the responses still deserialize into the library models. It asserts only stable structure, never specific trains, times or disturbances. It catches upstream API changes that the recorded responses cannot.
 
 To run the offline suite:

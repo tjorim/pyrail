@@ -61,7 +61,6 @@ class LiveApi:
         logger = logging.getLogger("pyrail.irail")
         reason = "no response"
         for attempt in range(1, ATTEMPTS + 1):
-            self.client.clear_etag_cache()  # a 304 would come back as None
             collector = _ErrorLogCollector()
             logger.addHandler(collector)
             try:
