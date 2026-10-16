@@ -27,6 +27,7 @@ from pyrail.models import (
     Alert,
     ApiResponse,
     CompositionApiResponse,
+    ConnectionDeparture,
     ConnectionDetails,
     ConnectionsApiResponse,
     Disturbance,
@@ -37,6 +38,7 @@ from pyrail.models import (
     LiveboardDeparture,
     Occupancy,
     PlatformInfo,
+    SegmentComposition,
     StationDetails,
     StationsApiResponse,
     Unit,
@@ -54,9 +56,7 @@ def _load_example(name: str) -> dict[str, Any]:
     return json.loads((EXAMPLES_DIR / name).read_text())
 
 
-def _mock_response(
-    status: int = 200, data: dict[str, Any] | None = None, headers: dict[str, str] | None = None
-) -> AsyncMock:
+def _mock_response(status: int = 200, data: Any = None, headers: dict[str, str] | None = None) -> AsyncMock:
     """Build a mocked ClientResponse returning the given status, JSON body and headers.
 
     Each json() call returns a fresh copy of data, so deserialization hooks
@@ -65,7 +65,7 @@ def _mock_response(
     response = AsyncMock()
     response.status = status
     response.headers = CIMultiDict(headers or {})
-    response.json = AsyncMock(side_effect=lambda **kwargs: deepcopy(data))
+    response.json = AsyncMock(side_effect=lambda *, content_type: deepcopy(data))
     response.text = AsyncMock(return_value="")
     return response
 
@@ -215,9 +215,18 @@ async def test_get_liveboard_arrivals(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-@pytest.mark.parametrize("departures", [{"number": "0"}, {"number": "0", "departure": []}, [], "broken", None])
-async def test_get_liveboard_without_departures(mock_get, departures, caplog):
-    """A liveboard with no usable departures key is a valid answer: an empty list or None."""
+@pytest.mark.parametrize(
+    ("departures", "expected"),
+    [
+        ({"number": "0"}, []),
+        ({"number": "0", "departure": []}, []),
+        ([], None),
+        ("broken", None),
+        (None, None),
+    ],
+)
+async def test_get_liveboard_departures_wrapper_shapes(mock_get, departures, expected, caplog):
+    """A liveboard without a usable departures wrapper returns the wrapper default."""
     data = {**_load_example("liveboard.json"), "departures": departures}
     mock_get.return_value.__aenter__.return_value = _mock_response(data=data)
 
@@ -226,7 +235,7 @@ async def test_get_liveboard_without_departures(mock_get, departures, caplog):
             liveboard = await api.get_liveboard("Brussels-South")
 
     assert liveboard is not None
-    assert liveboard.departures == ([] if isinstance(departures, dict) else None)
+    assert liveboard.departures == expected
     assert not caplog.records
 
 
@@ -613,6 +622,35 @@ def test_str_to_bool():
         _str_to_bool("true")
 
 
+@pytest.mark.parametrize(
+    ("model", "key", "default"),
+    [
+        (ConnectionDeparture, "stops", []),
+        (ConnectionDetails, "remarks", []),
+        (ConnectionDetails, "alerts", []),
+        (ConnectionDetails, "vias", None),
+        (VehicleApiResponse, "stops", []),
+        (SegmentComposition, "units", []),
+        (CompositionApiResponse, "composition", []),
+        (Disturbance, "descriptionLinks", []),
+        (LiveboardApiResponse, "departures", None),
+        (LiveboardApiResponse, "arrivals", None),
+    ],
+)
+def test_pre_deserialize_hooks_honor_defaults(model, key, default):
+    """Every deserialization hook maps an absent, null or junk wrapper to the field default."""
+    assert model.__pre_deserialize__({})[key] == default
+    for wrapper in (None, [], "junk", 42):
+        assert model.__pre_deserialize__({key: deepcopy(wrapper)})[key] == default
+
+
+def test_composition_hook_guards_nested_segments():
+    """A composition wrapper with junk segments produces an empty segment list."""
+    for segments in (None, [], "junk"):
+        result = CompositionApiResponse.__pre_deserialize__({"composition": {"segments": deepcopy(segments)}})
+        assert result["composition"] == []
+
+
 def test_unit_optional_field_deserialization():
     """Test deserialization of the optional composition unit fields against the recorded example."""
     example = _load_example("composition.json")
@@ -733,12 +771,12 @@ def test_liveboard_arrival_boolean_deserialization():
 
 
 async def test_handle_success_response_empty():
-    """Test that empty response bodies raise InvalidResponseError."""
+    """Test that non-object and empty response bodies raise InvalidResponseError."""
     api = iRail()
     response = AsyncMock()
     response.headers = {}
     response.json = AsyncMock(return_value=None)
-    with pytest.raises(InvalidResponseError, match="empty") as exc_info:
+    with pytest.raises(InvalidResponseError, match="not a JSON object") as exc_info:
         await api._handle_success_response(response, "stations")
     assert exc_info.value.status == 200
     response.json = AsyncMock(return_value={})
@@ -1060,11 +1098,52 @@ async def test_etag_caching(mock_get):
     ]
     async with iRail() as api:
         assert await api._do_request("stations") == {"data": "some_data"}
-        assert api._etag_cache == {"stations": etag}
         assert await api._do_request("stations") is None
     assert mock_get.call_count == 2
     assert "If-None-Match" not in mock_get.call_args_list[0].kwargs["headers"]
     assert mock_get.call_args_list[1].kwargs["headers"]["If-None-Match"] == etag
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_etag_caching_through_public_method(mock_get):
+    """Test that a public method returns None when the API answers 304 for its ETag."""
+    etag = '"abc123"'
+    data = _load_example("stations.json")
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(data=data, headers={"Etag": etag}),
+        _mock_response(status=304),
+    ]
+    async with iRail() as api:
+        assert await api.get_stations() is not None
+        assert await api.get_stations() is None
+    assert mock_get.call_count == 2
+    assert mock_get.call_args_list[1].kwargs["headers"]["If-None-Match"] == etag
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_clear_etag_cache_drops_conditional_header(mock_get):
+    """Test that clearing the ETag cache removes the If-None-Match header from the next request."""
+    etag = '"abc123"'
+    data = _load_example("stations.json")
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(data=data, headers={"Etag": etag}),
+        _mock_response(data=data),
+    ]
+    async with iRail() as api:
+        assert await api.get_stations() is not None
+        api.clear_etag_cache()
+        assert await api.get_stations() is not None
+    assert mock_get.call_count == 2
+    assert "If-None-Match" not in mock_get.call_args_list[1].kwargs["headers"]
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_non_object_json_body_raises_invalid_response(mock_get):
+    """Test that a 200 body that is not a JSON object raises InvalidResponseError."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=[1, 2, 3])
+    async with iRail() as api:
+        with pytest.raises(InvalidResponseError, match="not a JSON object"):
+            await api.get_stations()
 
 
 @patch("pyrail.irail.ClientSession.get")

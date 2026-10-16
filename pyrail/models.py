@@ -1,9 +1,9 @@
 """Data models for the iRail API responses.
 
 Every list field has a default, and the deserialization hooks honor it: a wrapper
-key that is absent or null produces the default instead of an error. A wrapper key
-the hooks do not recognise is not detected here, so the live smoke suite is the
-detector for upstream shape changes.
+key that is absent, null or not a dict produces the default instead of an error.
+A wrapper key the hooks do not recognise is not detected here, so the live smoke
+suite detects upstream shape changes where it asserts data is present.
 """
 
 from dataclasses import dataclass, field
@@ -451,7 +451,8 @@ class CompositionApiResponse(ApiResponse):
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract the 'segment' list from 'composition' before deserialization, defaulting to an empty list."""
         composition = d.get("composition")
-        d["composition"] = composition.get("segments", {}).get("segment", []) if isinstance(composition, dict) else []
+        segments = composition.get("segments") if isinstance(composition, dict) else None
+        d["composition"] = segments.get("segment", []) if isinstance(segments, dict) else []
         return d
 
 

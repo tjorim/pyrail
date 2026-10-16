@@ -119,7 +119,7 @@ elif not liveboard.departures:
     ...  # no departures right now
 ```
 
-`liveboard` is `None` only when the data has not been modified since the previous request (HTTP 304). Invalid parameters raise a `ValueError` and an unusable response raises an `InvalidResponseError`. `liveboard.departures` is `None` only when the response has no `departures` key, as on an arrival board (`arrdep="arrival"`).
+`liveboard` is `None` only when the data has not been modified since the previous request (HTTP 304). Invalid parameters raise a `ValueError` and an unusable response raises an `InvalidResponseError`. `liveboard.departures` is `None` when the response carries no usable departures wrapper, as on an arrival board (`arrdep="arrival"`).
 
 ### Language Selection
 
@@ -208,7 +208,7 @@ pyRail raises exceptions for errors returned by the iRail API and for connection
 | `InvalidRequestError` | The API responds with HTTP 400 (invalid request)                                    |
 | `NotFoundError`       | The API responds with HTTP 404 (resource not found)                                 |
 | `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded); see `retry_after`             |
-| `InvalidResponseError` | The response body is empty, is not valid JSON, does not match the response models, or has a status outside 200, 304, 400, 404 and 429. Carries the status in `status` |
+| `InvalidResponseError` | The response body is empty, is not valid JSON, does not match the response models, or has a status outside 200, 304, 400, 404 and 429. Carries the HTTP status in `status` when the failure has one |
 | `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
@@ -323,7 +323,7 @@ ty runs every rule as an error. The settings live in `[tool.ty]` in pyproject.to
 
 ## Logging
 
-pyRail uses Python's built-in logging module and installs no handler of its own, so it stays silent until your application configures logging. You can set the logging level at runtime to get detailed logs.
+pyRail uses Python's built-in logging module and adds a NullHandler to its logger, so library logs stay silent until your application adds a handler. You can set the logging level at runtime to get detailed logs.
 
 ```python
 import logging

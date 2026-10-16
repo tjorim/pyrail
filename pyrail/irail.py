@@ -2,13 +2,13 @@
 
 import asyncio
 from asyncio import Lock
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import contextlib
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 import logging
 import time
-from types import TracebackType
+from types import MappingProxyType, TracebackType
 from typing import Any, Literal, TypedDict
 
 from aiohttp import ClientError, ClientResponse, ClientSession
@@ -52,22 +52,24 @@ _ALLOWED_VALUES: dict[str, frozenset[str]] = {
 
 
 class _EndpointSpec(TypedDict, total=False):
-    required: list[str]
-    optional: list[str]
-    xor: list[str]
+    required: tuple[str, ...]
+    optional: tuple[str, ...]
+    xor: tuple[str, ...]
 
 
-_ENDPOINTS: dict[str, _EndpointSpec] = {
-    "stations": {},
-    "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
-    "connections": {
-        "required": ["from", "to"],
-        "optional": ["date", "time", "timesel", "typeOfTransport"],
-    },
-    "vehicle": {"required": ["id"], "optional": ["date", "alerts"]},
-    "composition": {"required": ["id"], "optional": ["data"]},
-    "disturbances": {"optional": ["lineBreakCharacter"]},
-}
+_ENDPOINTS: Mapping[str, _EndpointSpec] = MappingProxyType(
+    {
+        "stations": {},
+        "liveboard": {"xor": ("station", "id"), "optional": ("date", "time", "arrdep", "alerts")},
+        "connections": {
+            "required": ("from", "to"),
+            "optional": ("date", "time", "timesel", "typeOfTransport"),
+        },
+        "vehicle": {"required": ("id",), "optional": ("date", "alerts")},
+        "composition": {"required": ("id",), "optional": ("data",)},
+        "disturbances": {"optional": ("lineBreakCharacter",)},
+    }
+)
 
 
 def _describe(error: BaseException) -> str:
@@ -108,8 +110,9 @@ class iRail:
 
     Attributes:
         lang (str): The language for API responses ('nl', 'fr', 'en', 'de').
-        session (ClientSession, optional): The HTTP session used for API requests. None until
-            the first request and after close().
+        session (ClientSession, optional): The HTTP session used for API requests. None until the
+            context manager is entered or the first request, and after close() of an owned session.
+            Remains set when the caller provided the session.
             If not provided, a new session will be created and managed internally.
             If provided, the session lifecycle must be managed externally.
         max_retries (int): How many times a request is retried after a network error, timeout or
@@ -182,7 +185,7 @@ class iRail:
 
         A session provided by the caller is never closed, so a client can be
         used without the async context manager and closed explicitly.
-        After close, the next request creates a fresh owned session.
+        After close of an owned session, the next request creates a fresh one.
         """
         if self.session and not self.session.closed and self._owns_session:
             logger.debug("Closing aiohttp session")
@@ -358,9 +361,9 @@ class iRail:
             raise ValueError(f"Unknown API endpoint: {method}")
 
         endpoint = _ENDPOINTS[method]
-        required = endpoint.get("required", [])
-        xor = endpoint.get("xor", [])
-        optional = endpoint.get("optional", [])
+        required = endpoint.get("required", ())
+        xor = endpoint.get("xor", ())
+        optional = endpoint.get("optional", ())
 
         params = params or {}
 
@@ -393,7 +396,9 @@ class iRail:
             json_data: dict[str, Any] | None = await response.json(content_type=None)
         except ValueError as e:
             raise InvalidResponseError(f"Response from {method} is not valid JSON: {_describe(e)}", status=200) from e
-        if json_data is None or not json_data:
+        if not isinstance(json_data, dict):
+            raise InvalidResponseError(f"Response from {method} is not a JSON object", status=200)
+        if not json_data:
             raise InvalidResponseError(f"Response body from {method} is empty", status=200)
         return json_data
 
