@@ -114,12 +114,12 @@ A liveboard without departures (for example at night) is a valid answer, not an 
 ```python
 liveboard = await api.get_liveboard(station="Brussels-South")
 if liveboard is None:
-    ...  # the request returned no usable data
+    ...  # the data was not modified since the previous request (HTTP 304)
 elif not liveboard.departures:
     ...  # no departures right now
 ```
 
-`liveboard` is `None` when the request failed validation or the response was unusable (an unparseable body or an unexpected status). `liveboard.departures` is `None` only when the response has no `departures` key, as on an arrival board (`arrdep="arrival"`).
+`liveboard` is `None` only when the data has not been modified since the previous request (HTTP 304). Invalid parameters raise a `ValueError` and an unusable response raises an `InvalidResponseError`. `liveboard.departures` is `None` when the response carries no usable departures wrapper, as on an arrival board (`arrdep="arrival"`).
 
 ### Language Selection
 
@@ -136,7 +136,7 @@ Supported languages are:
 - `de` (German)
 - `nl` (Dutch)
 
-If no language is specified or an invalid value is provided, English (`en`) will be used as the default language.
+An unsupported language raises a `ValueError`, both in the constructor and on the `lang` attribute.
 
 ### Session Management
 
@@ -157,6 +157,16 @@ async def main():
     async with iRail() as api:
         stations = await api.get_stations()
 ```
+
+Without the context manager, close the owned session yourself:
+
+```python
+api = iRail()
+stations = await api.get_stations()
+await api.close()
+```
+
+An externally provided session is never closed by pyRail, with or without the context manager.
 
 ### Cache Management
 
@@ -187,7 +197,7 @@ async with iRail() as api:
         liveboard = await api.get_liveboard(station=station)
 ```
 
-Exceeding the request limit will cause the server to return 429 responses, which raise a `RateLimitError` (see [Error Handling](#error-handling)). You can monitor rate limiting through debug logs.
+Exceeding the request limit will cause the server to return 429 responses, which raise a `RateLimitError` (see [Error Handling](#error-handling)). Rate limit waits and 429 answers are logged as warnings.
 
 ### Error Handling
 
@@ -198,6 +208,7 @@ pyRail raises exceptions for errors returned by the iRail API and for connection
 | `InvalidRequestError` | The API responds with HTTP 400 (invalid request)                                    |
 | `NotFoundError`       | The API responds with HTTP 404 (resource not found)                                 |
 | `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded); see `retry_after`             |
+| `InvalidResponseError` | The response body is empty, is not valid JSON, does not match the response models, or has a status outside 200, 304, 400, 404 and 429. Carries the HTTP status in `status` when the failure has one |
 | `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
@@ -214,13 +225,13 @@ async with iRail() as api:
         print(f"Request failed: {err}")
 ```
 
-Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
+Invalid parameters, including an unsupported language, raise a `ValueError` before any request is sent. A method returns `None` only when the data has not been modified since the previous request (HTTP 304).
 
 ### Network Resilience and Retry Logic
 
 pyRail automatically retries transient failures with exponential backoff:
 
-- **Network Errors and Timeouts**: Connection failures, DNS errors and request timeouts are retried.
+- **Network Errors and Timeouts**: Connection failures, DNS errors and request timeouts are retried. Each attempt is bounded by `request_timeout` (30 seconds by default, set it on the constructor), and a timed-out attempt counts as a failure and is retried like a network error.
 - **Server Errors**: HTTP 5xx responses are retried, allowing recovery from temporary server issues.
 - **Client Errors**: HTTP 4xx errors are never retried, as they indicate a problem with the request. This includes 429 rate limits, which raise a `RateLimitError` immediately; its `retry_after` attribute holds the server's `Retry-After` delay in seconds (or `None`), so you decide when to try again (see [Error Handling](#error-handling)).
 - **Rate Limiting**: Every attempt, including each retry, goes through the client's rate limiter.
@@ -235,7 +246,7 @@ async with iRail(max_retries=0) as api:  # fail fast, no retries
     stations = await api.get_stations()
 ```
 
-When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Each failed attempt is logged as a warning.
+When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Intermediate failures are logged as warnings. The final failure is not logged, its details travel in the raised exception.
 
 ## Development
 
@@ -266,6 +277,12 @@ To run the offline suite:
 uv run pytest
 ```
 
+CI also enforces a coverage threshold: branch coverage over `pyrail/` must stay at or above 92 percent. Run it locally with:
+
+```bash
+uv run coverage run -m pytest && uv run coverage report
+```
+
 To run the live suite, which needs network access:
 
 ```bash
@@ -274,9 +291,10 @@ uv run pytest -m live
 
 The live tests are excluded from a plain `pytest` run. Run them locally before a release. They also run daily and on demand through the *Live API Smoke Tests* workflow (Actions tab, *Run workflow*), where a failure notifies the maintainers.
 
-The vehicle and composition requests use a vehicle id taken from a Brussels-Central liveboard, as ids go stale with the timetable. A live test fails in one of two ways:
+The vehicle and composition requests use a vehicle id taken from a Brussels-Central liveboard, as ids go stale with the timetable. A live test fails in one of three ways:
 
 - `API UNAVAILABLE`: no usable response after 3 attempts, for example a network error, a timeout or an HTTP error. This is usually transient on the iRail side; re-run before investigating.
+- `API REJECTED REQUEST`: the API answered HTTP 400 or 404, for example an invalid parameter or a stale vehicle id. This is a request problem, not an outage.
 - `API INCOMPATIBLE`: iRail answered successfully but the response no longer deserializes. The message names the endpoint and the error, and the models in `pyrail/models.py` probably need updating.
 
 ### Code Style
@@ -305,7 +323,7 @@ ty runs every rule as an error. The settings live in `[tool.ty]` in pyproject.to
 
 ## Logging
 
-pyRail uses Python's built-in logging module. You can set the logging level at runtime to get detailed logs.
+pyRail uses Python's built-in logging module and adds a NullHandler to its logger, so library logs stay silent until your application adds a handler. You can set the logging level at runtime to get detailed logs.
 
 ```python
 import logging

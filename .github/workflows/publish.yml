@@ -3,7 +3,7 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - "v*"  # Trigger on tags starting with 'v' (e.g., v1.0.0, v1.2.3)
+      - "v*"
 
 permissions:
   contents: read
@@ -13,13 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      id-token: write  # Required for PyPI Trusted Publishing (OIDC)
+      id-token: write
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
       with:
-        fetch-depth: 0  # The package version is derived from the git tag (hatch-vcs)
+        fetch-depth: 0
 
     - name: Set up uv
       uses: astral-sh/setup-uv@v10.3.0
