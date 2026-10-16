@@ -166,7 +166,7 @@ stations = await api.get_stations()
 await api.close()
 ```
 
-An externally provided session is never closed by pyRail, with or without the context manager. Once you close that session yourself, the next request raises a `RuntimeError`.
+An externally provided session is never closed by pyRail, with or without the context manager. Once you close that session yourself, the next request or context manager entry raises a `RuntimeError`.
 
 ### Cache Management
 

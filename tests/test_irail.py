@@ -153,7 +153,7 @@ async def test_request_with_closed_provided_session_raises_runtime_error() -> No
     async with ClientSession() as session:
         api = iRail(session=session)
 
-    with pytest.raises(RuntimeError, match="The provided session is closed"):
+    with pytest.raises(RuntimeError, match="The session is closed"):
         await api.get_stations()
 
 
@@ -162,7 +162,7 @@ async def test_context_manager_entry_with_closed_provided_session_raises() -> No
     async with ClientSession() as session:
         api = iRail(session=session)
 
-    with pytest.raises(RuntimeError, match="The provided session is closed"):
+    with pytest.raises(RuntimeError, match="The session is closed"):
         async with api:
             pass
 

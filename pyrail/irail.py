@@ -127,7 +127,7 @@ class iRail:  # noqa: N801
             Remains set when the caller provided the session.
             If not provided, a new session will be created and managed internally.
             If provided, the session lifecycle must be managed externally, and a closed
-            session fails the next request with a RuntimeError.
+            session fails the next request or context manager entry with a RuntimeError.
         max_retries (int): How many times a request is retried after a network error, timeout or
             server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
         request_timeout (float): Timeout in seconds for each individual request attempt.
@@ -212,14 +212,14 @@ class iRail:  # noqa: N801
         """Return the active session, creating an owned one when none exists yet.
 
         Raises:
-            RuntimeError: If the session provided by the caller has been closed.
+            RuntimeError: If the active session has been closed.
 
         """
         if self.session is None:
             logger.debug("Creating new internal aiohttp session")
             self.session = ClientSession()
         if self.session.closed:
-            msg = "The provided session is closed, so no request can be sent"
+            msg = "The session is closed, so no request can be sent"
             raise RuntimeError(msg)
         return self.session
 
@@ -525,6 +525,7 @@ class iRail:  # noqa: N801
         Raises:
             ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
             TimeoutError: If the attempt exceeds ``request_timeout`` seconds.
+            RuntimeError: If the active session has been closed.
             InvalidResponseError: On an empty or unparseable body, a body that is
                 not a JSON object, or an unexpected status.
             RateLimitError: On HTTP 429.
@@ -564,6 +565,7 @@ class iRail:  # noqa: N801
 
         Raises:
             ValueError: If the method is not a known endpoint or the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API responds with HTTP 429. The exception's ``retry_after`` holds the
                 Retry-After delay in seconds, if given. The request is not retried.
             InvalidRequestError: If the API responds with HTTP 400.
