@@ -1,11 +1,8 @@
 name: Live API Smoke Tests
 
-# Calls the real iRail API to catch upstream changes the offline fixtures cannot detect.
-# Deliberately not run on push or pull_request, so ordinary CI stays offline.
-# A failed run notifies the maintainers through the usual GitHub Actions notifications.
 on:
   schedule:
-    - cron: "17 6 * * *"  # daily, off the hour to avoid the scheduler's busiest minutes
+    - cron: "17 6 * * *"
   workflow_dispatch:
 
 permissions:
