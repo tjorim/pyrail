@@ -197,7 +197,7 @@ async with iRail() as api:
         liveboard = await api.get_liveboard(station=station)
 ```
 
-Exceeding the request limit will cause the server to return 429 responses, which raise a `RateLimitError` (see [Error Handling](#error-handling)). You can monitor rate limiting through debug logs.
+Exceeding the request limit will cause the server to return 429 responses, which raise a `RateLimitError` (see [Error Handling](#error-handling)). Rate limit waits and 429 answers are logged as warnings.
 
 ### Error Handling
 
@@ -246,7 +246,7 @@ async with iRail(max_retries=0) as api:  # fail fast, no retries
     stations = await api.get_stations()
 ```
 
-When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Intermediate failures are logged as warnings, the final failure as an error.
+When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Intermediate failures are logged as warnings. The final failure is not logged, its details travel in the raised exception.
 
 ## Development
 
@@ -323,7 +323,7 @@ ty runs every rule as an error. The settings live in `[tool.ty]` in pyproject.to
 
 ## Logging
 
-pyRail uses Python's built-in logging module. You can set the logging level at runtime to get detailed logs.
+pyRail uses Python's built-in logging module and installs no handler of its own, so it stays silent until your application configures logging. You can set the logging level at runtime to get detailed logs.
 
 ```python
 import logging

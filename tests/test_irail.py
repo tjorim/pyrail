@@ -65,7 +65,7 @@ def _mock_response(
     response = AsyncMock()
     response.status = status
     response.headers = CIMultiDict(headers or {})
-    response.json = AsyncMock(side_effect=lambda: deepcopy(data))
+    response.json = AsyncMock(side_effect=lambda **kwargs: deepcopy(data))
     response.text = AsyncMock(return_value="")
     return response
 
@@ -215,9 +215,9 @@ async def test_get_liveboard_arrivals(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-@pytest.mark.parametrize("departures", [{"number": "0"}, {"number": "0", "departure": []}])
+@pytest.mark.parametrize("departures", [{"number": "0"}, {"number": "0", "departure": []}, [], "broken", None])
 async def test_get_liveboard_without_departures(mock_get, departures, caplog):
-    """A liveboard with no departures is a valid answer: an empty list, and no warning is logged."""
+    """A liveboard with no usable departures key is a valid answer: an empty list or None."""
     data = {**_load_example("liveboard.json"), "departures": departures}
     mock_get.return_value.__aenter__.return_value = _mock_response(data=data)
 
@@ -226,7 +226,7 @@ async def test_get_liveboard_without_departures(mock_get, departures, caplog):
             liveboard = await api.get_liveboard("Brussels-South")
 
     assert liveboard is not None
-    assert liveboard.departures == []
+    assert liveboard.departures == ([] if isinstance(departures, dict) else None)
     assert not caplog.records
 
 
@@ -990,8 +990,12 @@ def test_non_positive_request_timeout_rejected():
 async def test_request_timeout_is_retried_then_raises(mock_get, mock_sleep):
     """Test that an attempt exceeding request_timeout is retried and then raises ApiUnavailableError."""
     hang = asyncio.Event()
+
+    async def hanging_json(**kwargs):
+        await hang.wait()
+
     response = _mock_response()
-    response.json = AsyncMock(side_effect=hang.wait)
+    response.json = AsyncMock(side_effect=hanging_json)
     mock_get.return_value.__aenter__.return_value = response
     async with iRail(request_timeout=0.01) as api:
         with pytest.raises(ApiUnavailableError) as exc_info:
@@ -1007,6 +1011,18 @@ async def test_deserialization_failure_raises_invalid_response(mock_get):
     async with iRail() as api:
         with pytest.raises(InvalidResponseError, match="does not match the expected model"):
             await api.get_stations()
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_unexpected_flag_value_raises_invalid_response(mock_get):
+    """Test that a boolean flag holding a value other than '0' or '1' raises InvalidResponseError."""
+    data = deepcopy(_load_example("liveboard.json"))
+    data["departures"]["departure"][0]["canceled"] = "true"
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=data)
+
+    async with iRail() as api:
+        with pytest.raises(InvalidResponseError, match="does not match the expected model"):
+            await api.get_liveboard("Brussels-South")
 
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)

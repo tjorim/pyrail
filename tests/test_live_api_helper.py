@@ -54,3 +54,10 @@ async def test_unusable_response_fails_as_incompatible(error):
 async def test_successful_result_is_returned():
     """Test that a usable response is returned as is."""
     assert await LiveApi(MagicMock()).fetch("stations", AsyncMock(return_value="ok")) == "ok"
+
+
+async def test_non_pyrail_error_propagates():
+    """Test that an error that is not a PyRailError fails the test as an ordinary error."""
+    request = AsyncMock(side_effect=KeyError("missing"))
+    with pytest.raises(KeyError, match="missing"):
+        await LiveApi(MagicMock()).fetch("stations", request)

@@ -108,14 +108,15 @@ class iRail:
 
     Attributes:
         lang (str): The language for API responses ('nl', 'fr', 'en', 'de').
-        session (ClientSession, optional): The HTTP session used for API requests.
+        session (ClientSession, optional): The HTTP session used for API requests. None until
+            the first request and after close().
             If not provided, a new session will be created and managed internally.
             If provided, the session lifecycle must be managed externally.
         max_retries (int): How many times a request is retried after a network error, timeout or
             server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
         request_timeout (float): Timeout in seconds for each individual request attempt.
 
-    Endpoints:
+    Supported endpoints:
         stations: Retrieve all stations.
         liveboard: Retrieve a liveboard for a station or ID.
         connections: Retrieve connections between two stations.
@@ -181,6 +182,7 @@ class iRail:
 
         A session provided by the caller is never closed, so a client can be
         used without the async context manager and closed explicitly.
+        After close, the next request creates a fresh owned session.
         """
         if self.session and not self.session.closed and self._owns_session:
             logger.debug("Closing aiohttp session")
@@ -388,7 +390,7 @@ class iRail:
         if "Etag" in response.headers:
             self._etag_cache[method] = response.headers["Etag"]
         try:
-            json_data: dict[str, Any] | None = await response.json()
+            json_data: dict[str, Any] | None = await response.json(content_type=None)
         except ValueError as e:
             raise InvalidResponseError(f"Response from {method} is not valid JSON: {_describe(e)}", status=200) from e
         if json_data is None or not json_data:
@@ -416,7 +418,7 @@ class iRail:
         elif response.status == 400:
             error_message = await response.text()
             with contextlib.suppress(ValueError, AttributeError):
-                error_message = (await response.json()).get("error", error_message)
+                error_message = (await response.json(content_type=None)).get("error", error_message)
             raise InvalidRequestError(error_message)
         elif response.status == 404:
             raise NotFoundError(await response.text())

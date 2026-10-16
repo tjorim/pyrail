@@ -1,4 +1,10 @@
-"""Module defining data models for the pyrail application."""
+"""Data models for the iRail API responses.
+
+Every list field has a default, and the deserialization hooks honor it: a wrapper
+key that is absent or null produces the default instead of an error. A wrapper key
+the hooks do not recognise is not detected here, so the live smoke suite is the
+detector for upstream shape changes.
+"""
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -15,7 +21,12 @@ def _timestamp_to_datetime(timestamp: str) -> datetime:
 
 
 def _str_to_bool(strbool: str) -> bool:
-    """Convert a string ("0" or "1") to a boolean."""
+    """Convert a string ("0" or "1") to a boolean.
+
+    Raises:
+        ValueError: If the value is neither '0' nor '1'.
+
+    """
     if strbool not in ("0", "1"):
         raise ValueError(f"Expected '0' or '1', got: {strbool}")
     return strbool == "1"
@@ -151,17 +162,11 @@ class LiveboardApiResponse(ApiResponse):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Pre-deserialization hook to safely flatten departures and arrivals."""
-        if "departures" in d and d["departures"] is not None:
-            d["departures"] = d["departures"].get("departure", [])
-        else:
-            d["departures"] = None
-
-        if "arrivals" in d and d["arrivals"] is not None:
-            d["arrivals"] = d["arrivals"].get("arrival", [])
-        else:
-            d["arrivals"] = None
-
+        """Flatten departures and arrivals before deserialization, honoring the field defaults."""
+        departures = d.get("departures")
+        d["departures"] = departures.get("departure", []) if isinstance(departures, dict) else None
+        arrivals = d.get("arrivals")
+        d["arrivals"] = arrivals.get("arrival", []) if isinstance(arrivals, dict) else None
         return d
 
 
@@ -419,11 +424,9 @@ class SegmentComposition(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'unit' list from 'units' before deserialization."""
-        if "units" in d and isinstance(d["units"], dict):
-            d["units"] = d["units"].get("unit", [])
-        else:
-            d["units"] = []
+        """Extract the 'unit' list from 'units' before deserialization, defaulting to an empty list."""
+        units = d.get("units")
+        d["units"] = units.get("unit", []) if isinstance(units, dict) else []
         return d
 
 
