@@ -183,7 +183,12 @@ class iRail:  # noqa: N801
         self._etag_generation: int = 0
 
     async def __aenter__(self) -> Self:
-        """Initialize the aiohttp client session when entering the async context."""
+        """Initialize the aiohttp client session when entering the async context.
+
+        Raises:
+            RuntimeError: If the active session has been closed.
+
+        """
         self._ensure_session()
         return self
 
@@ -203,9 +208,10 @@ class iRail:  # noqa: N801
         used without the async context manager and closed explicitly.
         After close of an owned session, the next request creates a fresh one.
         """
-        if self.session and not self.session.closed and self._owns_session:
-            logger.debug("Closing aiohttp session")
-            await self.session.close()
+        if self.session and self._owns_session:
+            if not self.session.closed:
+                logger.debug("Closing aiohttp session")
+                await self.session.close()
             self.session = None
 
     def _ensure_session(self) -> ClientSession:
@@ -653,6 +659,7 @@ class iRail:  # noqa: N801
             StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified.
 
         Raises:
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -697,6 +704,7 @@ class iRail:  # noqa: N801
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -749,6 +757,7 @@ class iRail:  # noqa: N801
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -796,6 +805,7 @@ class iRail:  # noqa: N801
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -830,6 +840,7 @@ class iRail:  # noqa: N801
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -860,6 +871,7 @@ class iRail:  # noqa: N801
             DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified.
 
         Raises:
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.

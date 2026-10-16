@@ -167,6 +167,21 @@ async def test_context_manager_entry_with_closed_provided_session_raises() -> No
             pass
 
 
+async def test_close_resets_an_owned_session_closed_through_the_attribute() -> None:
+    """close() resets an owned session that was closed through the session attribute.
+
+    Without the reset, the documented recovery of creating a fresh session on
+    the next request never applied to this case and the client stayed broken.
+    """
+    async with iRail() as api:
+        assert api.session is not None
+        await api.session.close()
+
+        await api.close()
+
+        assert api.session is None
+
+
 @patch("pyrail.irail.ClientSession.get")
 async def test_close_allows_reuse(mock_get: MagicMock) -> None:
     """A closed client creates a fresh owned session on the next request."""
