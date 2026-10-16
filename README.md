@@ -5,7 +5,7 @@ Built with aiohttp, it provides non-blocking I/O operations for optimal performa
 
 ## Overview
 
-pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, connections, vehicle, composition, and disturbances. The library includes features like rate limiting to optimize API usage.
+pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, connections, vehicle, composition, and disturbances. The library includes features like caching and rate limiting to optimize API usage.
 
 ## Features
 
@@ -13,6 +13,7 @@ pyRail is a Python library that provides a convenient interface for interacting 
 - Retrieve real-time train information, including liveboards and vehicle details.
 - Access train station data, connections, and disturbances.
 - Supports API endpoints: stations, liveboard, connections, vehicle, composition, and disturbances.
+- Conditional GET requests using ETags, when the API sends them (see [Cache Management](#cache-management)).
 - Rate limiting to handle API request limits efficiently.
 - Automatic retry with exponential backoff for network resilience.
 
@@ -157,6 +158,18 @@ async def main():
         stations = await api.get_stations()
 ```
 
+### Cache Management
+
+pyRail sends `If-None-Match` for a method once the API has returned an `ETag` for it. The iRail API does not send ETags at the moment (checked October 2026), so for now this has no effect and every request returns fresh data. You can clear the ETag cache when needed:
+
+```python
+async with iRail() as api:
+    # Clear the ETag cache
+    api.clear_etag_cache()
+    # Subsequent requests will fetch fresh data
+    stations = await api.get_stations()
+```
+
 ### Rate Limiting
 
 pyRail implements rate limiting to comply with iRail API's guidelines:
@@ -201,7 +214,7 @@ async with iRail() as api:
         print(f"Request failed: {err}")
 ```
 
-Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`.
+Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
 
 ### Network Resilience and Retry Logic
 
@@ -244,7 +257,7 @@ Alternatively, use the devcontainer, which has uv and all dependencies preinstal
 
 There are two test suites:
 
-- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, invalid JSON, ...) and runs on every pull request and on pushes to main.
+- **Offline suite** (default): runs against the recorded API responses in examples/, no network needed. It covers field assertions, validation and error handling (HTTP 400, 404, 429, retries and outages, ETags, invalid JSON, ...) and runs on every pull request and on pushes to main.
 - **Live smoke suite** (`tests/live`): calls all six endpoints of the real iRail API and checks that the responses still deserialize into the library models. It asserts only stable structure, never specific trains, times or disturbances. It catches upstream API changes that the recorded responses cannot.
 
 To run the offline suite:

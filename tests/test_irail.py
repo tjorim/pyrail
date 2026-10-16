@@ -990,6 +990,24 @@ async def test_no_retry_on_client_error_status(mock_get, mock_sleep):
 
 @pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
+async def test_etag_caching(mock_get):
+    """Test that an ETag from a 200 response is cached and sent as If-None-Match, and a 304 returns None."""
+    etag = '"abc123"'
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(data={"data": "some_data"}, headers={"Etag": etag}),
+        _mock_response(status=304),
+    ]
+    async with iRail() as api:
+        assert await api._do_request("stations") == {"data": "some_data"}
+        assert api.etag_cache == {"stations": etag}
+        assert await api._do_request("stations") is None
+    assert mock_get.call_count == 2
+    assert "If-None-Match" not in mock_get.call_args_list[0].kwargs["headers"]
+    assert mock_get.call_args_list[1].kwargs["headers"]["If-None-Match"] == etag
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
 async def test_handle_success_response_invalid_json(mock_get):
     """Test that a body that fails to parse as JSON returns None."""
     response = _mock_response()

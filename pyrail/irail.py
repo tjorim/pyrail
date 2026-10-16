@@ -133,6 +133,7 @@ class iRail:
         self.lock: Lock = Lock()
         self.session: ClientSession | None = session
         self._owns_session = session is None  # Track ownership
+        self.etag_cache: dict[str, str] = {}
         logger.info("iRail instance created")
 
     async def __aenter__(self) -> "iRail":
@@ -184,6 +185,11 @@ class iRail:
         else:
             self.__lang = "en"
 
+    def clear_etag_cache(self) -> None:
+        """Clear the ETag cache."""
+        self.etag_cache.clear()
+        logger.info("ETag cache cleared")
+
     def _refill_tokens(self) -> None:
         """Refill tokens for rate limiting using a token bucket algorithm.
 
@@ -222,6 +228,23 @@ class iRail:
                 self.tokens -= 1
         else:
             self.tokens -= 1
+
+    def _add_etag_header(self, method: str) -> dict[str, str]:
+        """Add ETag header for the given method if a cached ETag is available.
+
+        Args:
+            method (str): The API endpoint for which the header is being generated.
+
+        Returns:
+            dict[str, str]: A dictionary containing HTTP headers, including the ETag header
+            if a cached value exists.
+
+        """
+        headers: dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
+        if method in self.etag_cache:
+            logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
+            headers["If-None-Match"] = self.etag_cache[method]
+        return headers
 
     def _validate_date(self, date: str | None) -> bool:
         """Validate the date format (DDMMYY).
@@ -346,6 +369,8 @@ class iRail:
 
     async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
         """Handle a successful API response."""
+        if "Etag" in response.headers:
+            self.etag_cache[method] = response.headers["Etag"]
         try:
             json_data: dict[str, Any] | None = await response.json()
             if json_data is None or not json_data:
@@ -375,6 +400,9 @@ class iRail:
             raise NotFoundError(error_message)
         elif response.status == 200:
             return await self._handle_success_response(response, method)
+        elif response.status == 304:
+            logger.info("Data not modified, using cached data for method %s", method)
+            return None
         else:
             logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
             return None
@@ -426,8 +454,9 @@ class iRail:
     async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
 
-        This method handles API requests with rate limiting and parameter validation
-        and manages various HTTP response scenarios. Network errors, timeouts and server errors (5xx)
+        This method handles API requests with rate limiting, parameter validation,
+        and ETag-based caching. It supports conditional requests and manages
+        various HTTP response scenarios. Network errors, timeouts and server errors (5xx)
         are retried up to ``max_retries`` times with exponential backoff.
 
         Args:
@@ -437,7 +466,8 @@ class iRail:
 
         Returns:
             dict or None: Parsed JSON response from the API if successful,
-                None if the server returns an unexpected status or the body cannot be parsed.
+                None if the data is not modified (304), the server returns an unexpected
+                status, or the body cannot be parsed.
 
         Raises:
             RateLimitError: If the API responds with HTTP 429. The exception's ``retry_after`` holds the
@@ -448,6 +478,7 @@ class iRail:
 
         Notes:
             - Implements rate limiting using a token-based mechanism
+            - Supports ETag-based conditional requests
             - Raises RateLimitError immediately on rate limit (429) responses, without waiting or retrying
             - Retries network failures, timeouts and server errors with exponential backoff;
               every attempt, including retries, goes through the rate limiter
@@ -474,9 +505,7 @@ class iRail:
             async with self.lock:
                 await self._handle_rate_limit()
 
-            request_headers: dict[str, str] = {
-                "User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"
-            }
+            request_headers: dict[str, str] = self._add_etag_header(method)
             try:
                 return await self._execute_http_request(url, params, request_headers, method, args)
             except (ClientError, TimeoutError) as e:
@@ -503,7 +532,7 @@ class iRail:
         This method fetches the complete list of available train stations without any additional filtering parameters.
 
         Returns:
-            StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details.
+            StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
@@ -547,7 +576,7 @@ class iRail:
                 ignores this for liveboards: the response has the same shape either way and carries no alerts.
 
         Returns:
-            LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information.
+            LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
@@ -598,7 +627,7 @@ class iRail:
                 or 'all' (default: 'automatic')
 
         Returns:
-            ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details.
+            ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
@@ -638,7 +667,7 @@ class iRail:
                 ignores this for vehicles: the response has the same shape either way and carries no alerts.
 
         Returns:
-            VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details.
+            VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
@@ -667,7 +696,7 @@ class iRail:
             data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to None, which requests the filtered data.
 
         Returns:
-            CompositionApiResponse or None: A CompositionApiResponse object containing train composition details.
+            CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
@@ -695,7 +724,7 @@ class iRail:
             line_break_character (str, optional): A custom character to use for line breaks in the disturbance description. Defaults to ''.
 
         Returns:
-            DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information.
+            DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified.
 
         Raises:
             RateLimitError: If the API rate limit is exceeded.
