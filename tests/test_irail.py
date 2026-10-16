@@ -88,6 +88,32 @@ async def test_irail_context_manager():
 
 
 @patch("pyrail.irail.ClientSession.get")
+async def test_client_without_context_manager(mock_get):
+    """A client used without the context manager creates a session lazily and close() closes it."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("stations.json"))
+
+    api = iRail()
+    stations = await api.get_stations()
+    await api.close()
+
+    assert stations is not None
+    assert api.session is not None
+    assert api.session.closed
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_close_leaves_external_session_open(mock_get):
+    """close() never closes a session provided by the caller."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("stations.json"))
+
+    async with ClientSession() as session:
+        api = iRail(session=session)
+        assert await api.get_stations() is not None
+        await api.close()
+        assert not session.closed
+
+
+@patch("pyrail.irail.ClientSession.get")
 async def test_get_stations(mock_get):
     """Test the get_stations endpoint.
 
@@ -102,13 +128,10 @@ async def test_get_stations(mock_get):
     async with iRail() as api:
         stations = await api.get_stations()
 
-        # Ensure the response is not None
         assert stations is not None, "The response should not be None"
 
-        # Validate that the response is a StationsApiResponse object
         assert isinstance(stations, StationsApiResponse), "Expected the response to be a StationsApiResponse object"
 
-        # Validate the structure of station data
         station_list = stations.stations
         assert isinstance(station_list, list), "Expected 'station' to be a list"
         assert len(station_list) > 0, "Expected at least one station in the response"
@@ -130,20 +153,16 @@ async def test_get_liveboard(mock_get):
     async with iRail() as api:
         liveboard = await api.get_liveboard("Brussels-Central")
 
-        # Ensure the response is not None
         assert liveboard is not None, "The response should not be None"
 
-        # Validate that the response is a LiveboardApiResponse object
         assert isinstance(liveboard, LiveboardApiResponse), "Expected response to be a LiveboardApiResponse object"
 
-        # Validate the structure of departure data
         departure_list = liveboard.departures
         assert isinstance(departure_list, list), "Expected 'departure' to be a list"
         assert len(departure_list) > 0, "Expected at least one departure in the response"
         assert isinstance(departure_list[0], LiveboardDeparture), (
             "Expected the first departure to be a LiveboardDeparture object"
         )
-        # Test VehicleInfo dataclass
         assert isinstance(departure_list[0].vehicle_info, VehicleInfo), (
             "Expected vehicle_info to be a VehicleInfo object"
         )
@@ -226,15 +245,12 @@ async def test_get_connections(mock_get):
     async with iRail() as api:
         connections = await api.get_connections("Antwerpen-Centraal", "Brussel-Centraal")
 
-        # Ensure the response is not None
         assert connections is not None, "The response should not be None"
 
-        # Validate that the response is a ConnectionsApiResponse object
         assert isinstance(connections, ConnectionsApiResponse), (
             "Expected response to be a ConnectionsApiResponse object"
         )
 
-        # Validate the structure of connection data
         connection_list = connections.connections
         assert isinstance(connection_list, list), "Expected 'connection' to be a list"
         assert len(connection_list) > 0, "Expected at least one connection in the response"
@@ -265,7 +281,6 @@ async def test_fixed_value_parameters_reject_unknown_values(mock_get):
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
 
     async with iRail() as api:
-        # 'nointernationaltrains' was once documented, but the API only knows 'no_international_trains'
         assert await api.get_connections("A", "B", type_of_transport="nointernationaltrains") is None  # ty: ignore[invalid-argument-type]
         assert await api.get_connections("A", "B", type_of_transport="Trains") is None  # ty: ignore[invalid-argument-type]
         assert await api.get_connections("A", "B", timesel="arrivals") is None  # ty: ignore[invalid-argument-type]
@@ -323,7 +338,6 @@ async def test_get_composition(mock_get):
             "Expected response to be a CompositionApiResponse object"
         )
 
-        # Test segments structure
         segments = composition.composition
         assert isinstance(segments, list), "Expected 'segments' to be a list"
         assert len(segments) > 0, "Expected at least one segment"
@@ -332,7 +346,6 @@ async def test_get_composition(mock_get):
         assert isinstance(segment.origin, StationDetails), "Expected origin to be a StationDetails object"
         assert isinstance(segment.destination, StationDetails), "Expected destination to be a StationDetails object"
 
-        # Test units in composition
         units = segment.composition.units
         assert len(units) > 0, "Expected at least one unit"
 
@@ -372,7 +385,6 @@ async def test_get_disturbances(mock_get):
         )
         assert isinstance(disturbances.disturbances, list), "Expected 'disturbances' to be a list"
 
-        # Test disturbance attributes
         if len(disturbances.disturbances) > 0:
             disturbance = disturbances.disturbances[0]
             assert isinstance(disturbance.title, str), "Expected 'title' to be a string"
@@ -383,34 +395,30 @@ async def test_get_disturbances(mock_get):
 async def test_date_time_validation():
     """Test date and time format validation."""
     async with iRail() as api:
-        # Valid date examples
-        assert api._validate_date("150923")  # September 15, 2023
-        assert api._validate_date("010124")  # January 1, 2024
-        assert api._validate_date(None)  # None is valid (uses current date)
-        assert api._validate_date("290224")  # Leap year 2024
+        assert api._validate_date("150923")
+        assert api._validate_date("010124")
+        assert api._validate_date(None)
+        assert api._validate_date("290224")
 
-        # Invalid date examples
-        assert not api._validate_date("320923")  # Invalid day
-        assert not api._validate_date("151323")  # Invalid month
-        assert not api._validate_date("abcdef")  # Not numeric
-        assert not api._validate_date("15092023")  # Too long
-        assert not api._validate_date("0")  # Too short
-        assert not api._validate_date("290223")  # Invalid leap year 2023
+        assert not api._validate_date("320923")
+        assert not api._validate_date("151323")
+        assert not api._validate_date("abcdef")
+        assert not api._validate_date("15092023")
+        assert not api._validate_date("0")
+        assert not api._validate_date("290223")
         assert not api._validate_date("")
 
-        # Valid time examples
-        assert api._validate_time("1430")  # 2:30 PM
-        assert api._validate_time("0000")  # Midnight
-        assert api._validate_time("2359")  # 11:59 PM
-        assert api._validate_time(None)  # None is valid (uses current time)
-        assert api._validate_time("0001")  # 12:01 AM
+        assert api._validate_time("1430")
+        assert api._validate_time("0000")
+        assert api._validate_time("2359")
+        assert api._validate_time(None)
+        assert api._validate_time("0001")
 
-        # Invalid time examples
-        assert not api._validate_time("2460")  # Invalid hour
-        assert not api._validate_time("2361")  # Invalid minute
-        assert not api._validate_time("abcd")  # Not numeric
-        assert not api._validate_time("143000")  # Too long
-        assert not api._validate_time("1")  # Too short
+        assert not api._validate_time("2460")
+        assert not api._validate_time("2361")
+        assert not api._validate_time("abcd")
+        assert not api._validate_time("143000")
+        assert not api._validate_time("1")
         assert not api._validate_time("")
 
 
@@ -419,32 +427,28 @@ async def test_liveboard_with_date_time(mock_get):
     """Test liveboard request with date and time parameters."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
     async with iRail() as api:
-        # Valid date/time
         result = await api.get_liveboard(
             station="Brussels-Central",
             date=datetime.now().strftime("%d%m%y"),
-            time="1430",  # 2:30 PM
+            time="1430",
         )
         assert result is not None
 
-        # Test with future date
         result = await api.get_liveboard(
             station="Brussels-Central",
             date=(datetime.now() + timedelta(days=1)).strftime("%d%m%y"),
         )
         assert result is not None
 
-        # Invalid date
         result = await api.get_liveboard(
             station="Brussels-Central",
-            date="320923",  # Invalid day 32
+            date="320923",
         )
         assert result is None
 
-        # Invalid time
         result = await api.get_liveboard(
             station="Brussels-Central",
-            time="2460",  # Invalid hour 24
+            time="2460",
         )
         assert result is None
 
@@ -474,18 +478,15 @@ async def test_error_handling(mock_get):
 
 def test_timestamp_to_datetime():
     """Test the timestamp_to_datetime function."""
-    # Test valid timestamps
-    assert _timestamp_to_datetime("1705593600") == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)  # 2024-01-18 16:00:00
-    assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 0, 0, tzinfo=UTC)  # Unix epoch
+    assert _timestamp_to_datetime("1705593600") == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
+    assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 0, 0, tzinfo=UTC)
 
 
 def test_timestamp_field_deserialization():
     """Test timestamp field deserialization in various models."""
-    # Test ApiResponse timestamp
     api_response = ApiResponse.from_dict({"version": "1.0", "timestamp": "1705593600"})
     assert api_response.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
 
-    # Test LiveboardDeparture time
     departure = LiveboardDeparture.from_dict(
         {
             "id": "0",
@@ -521,7 +522,6 @@ def test_timestamp_field_deserialization():
     )
     assert departure.time == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
 
-    # Test Alert start_time and end_time
     alert = Alert.from_dict(
         {
             "id": "0",
@@ -535,7 +535,6 @@ def test_timestamp_field_deserialization():
     assert alert.start_time == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
     assert alert.end_time == datetime(2024, 1, 18, 17, 0, tzinfo=UTC)
 
-    # Test Disturbance timestamp
     disturbance = Disturbance.from_dict(
         {
             "id": "1",
@@ -577,7 +576,6 @@ def test_timestamp_field_deserialization():
 
 def test_str_to_bool():
     """Test the str_to_bool function that converts string values to boolean."""
-    # Test valid inputs
     assert _str_to_bool("1") is True, "String '1' should convert to True"
     assert _str_to_bool("0") is False, "String '0' should convert to False"
 
@@ -610,14 +608,12 @@ def test_unit_optional_field_deserialization():
 
 def test_boolean_field_deserialization():
     """Test the deserialization of boolean fields in models."""
-    # Test PlatformInfo boolean field
     platform = PlatformInfo.from_dict({"name": "1", "normal": "1"})
     assert platform.normal is True, "Platform normal field should be True when '1'"
 
     platform = PlatformInfo.from_dict({"name": "1", "normal": "0"})
     assert platform.normal is False, "Platform normal field should be False when '0'"
 
-    # Test LiveboardDeparture multiple boolean fields
     departure = LiveboardDeparture.from_dict(
         {
             "id": "1",
@@ -630,7 +626,7 @@ def test_boolean_field_deserialization():
                 "locationY": 50.8503,
                 "standardname": "Brussels-Central",
             },
-            "time": "1705593600",  # Example timestamp
+            "time": "1705593600",
             "delay": 0,
             "canceled": "1",
             "left": "0",
@@ -652,7 +648,6 @@ def test_boolean_field_deserialization():
         }
     )
 
-    # Verify boolean fields are correctly deserialized
     assert departure.canceled is True, "Departure canceled field should be True when '1'"
     assert departure.left is False, "Departure left field should be False when '0'"
     assert departure.is_extra is True, "Departure is_extra field should be True when '1'"

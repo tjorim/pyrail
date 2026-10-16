@@ -158,6 +158,16 @@ async def main():
         stations = await api.get_stations()
 ```
 
+Without the context manager, close the owned session yourself:
+
+```python
+api = iRail()
+stations = await api.get_stations()
+await api.close()
+```
+
+An externally provided session is never closed by pyRail, with or without the context manager.
+
 ### Cache Management
 
 pyRail sends `If-None-Match` for a method once the API has returned an `ETag` for it. The iRail API does not send ETags at the moment (checked October 2026), so for now this has no effect and every request returns fresh data. You can clear the ETag cache when needed:
