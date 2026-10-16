@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, override
 
 from mashumaro import field_options
@@ -19,14 +19,14 @@ def _str_to_bool(strbool: str) -> bool:
     return strbool == "1"
 
 
-class DisturbanceType(Enum):
+class DisturbanceType(StrEnum):
     """Enum for the type of disturbance, either 'disturbance' or 'planned'."""
 
     DISTURBANCE = "disturbance"
     PLANNED = "planned"
 
 
-class OccupancyName(Enum):
+class OccupancyName(StrEnum):
     """Enum for the occupancy, either 'low', 'medium', 'high', or 'unknown'."""
 
     LOW = "low"
@@ -35,14 +35,14 @@ class OccupancyName(Enum):
     UNKNOWN = "unknown"
 
 
-class Orientation(Enum):
+class Orientation(StrEnum):
     """Enum for the orientation of the material type of a train unit, either 'LEFT' or 'RIGHT'."""
 
     LEFT = "LEFT"
     RIGHT = "RIGHT"
 
 
-@dataclass
+@dataclass(slots=True)
 class ApiResponse(DataClassORJSONMixin):
     """Base class for API responses, including schema version and timestamp."""
 
@@ -50,7 +50,7 @@ class ApiResponse(DataClassORJSONMixin):
     timestamp: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))
 
 
-@dataclass
+@dataclass(slots=True)
 class StationDetails(DataClassORJSONMixin):
     """Represents a single railway station with location and naming attributes."""
 
@@ -62,14 +62,14 @@ class StationDetails(DataClassORJSONMixin):
     standard_name: str = field(metadata=field_options(alias="standardname"))
 
 
-@dataclass
+@dataclass(slots=True)
 class StationsApiResponse(ApiResponse):
     """Holds a list of station objects returned by the 'stations' endpoint."""
 
     stations: list[StationDetails] = field(metadata=field_options(alias="station"), default_factory=list)
 
 
-@dataclass
+@dataclass(slots=True)
 class VehicleInfo(DataClassORJSONMixin):
     """Represents information about a specific vehicle, including name and location."""
 
@@ -82,7 +82,7 @@ class VehicleInfo(DataClassORJSONMixin):
     at_id: str = field(metadata=field_options(alias="@id"))
 
 
-@dataclass
+@dataclass(slots=True)
 class PlatformInfo(DataClassORJSONMixin):
     """Details about the platform, such as name and whether it is the normal one."""
 
@@ -90,7 +90,7 @@ class PlatformInfo(DataClassORJSONMixin):
     normal: bool = field(metadata=field_options(deserialize=_str_to_bool))
 
 
-@dataclass
+@dataclass(slots=True)
 class Occupancy(DataClassORJSONMixin):
     """Represents occupancy details for a specific departure."""
 
@@ -98,7 +98,7 @@ class Occupancy(DataClassORJSONMixin):
     name: OccupancyName
 
 
-@dataclass
+@dataclass(slots=True)
 class LiveboardDeparture(DataClassORJSONMixin):
     """Details of a single departure in the liveboard response. The delay is in seconds."""
 
@@ -118,7 +118,7 @@ class LiveboardDeparture(DataClassORJSONMixin):
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))
 
 
-@dataclass
+@dataclass(slots=True)
 class LiveboardArrival(DataClassORJSONMixin):
     """Details of a single arrival in the liveboard response. The delay is in seconds."""
 
@@ -137,7 +137,7 @@ class LiveboardArrival(DataClassORJSONMixin):
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))
 
 
-@dataclass
+@dataclass(slots=True)
 class LiveboardApiResponse(ApiResponse):
     """Represents a liveboard response containing station details and departure/arrival information."""
 
@@ -163,7 +163,7 @@ class LiveboardApiResponse(ApiResponse):
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class ConnectionStop(DataClassORJSONMixin):
     """Represents a single stop in a journey for connections."""
 
@@ -187,14 +187,14 @@ class ConnectionStop(DataClassORJSONMixin):
     platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
 
 
-@dataclass
+@dataclass(slots=True)
 class Direction(DataClassORJSONMixin):
     """Represents the direction of a train connection."""
 
     name: str
 
 
-@dataclass
+@dataclass(slots=True)
 class ConnectionDeparture(DataClassORJSONMixin):
     """Details of a single departure in the connections response. The delay is in seconds."""
 
@@ -222,7 +222,7 @@ class ConnectionDeparture(DataClassORJSONMixin):
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class ConnectionArrival(DataClassORJSONMixin):
     """Details of a single arrival, including timing, delay, and vehicle information. The delay is in seconds."""
 
@@ -241,7 +241,7 @@ class ConnectionArrival(DataClassORJSONMixin):
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))
 
 
-@dataclass
+@dataclass(slots=True)
 class Via(DataClassORJSONMixin):
     """Represents a single via station in a train connection. The time between the arrival and the departure is in seconds."""
 
@@ -255,7 +255,7 @@ class Via(DataClassORJSONMixin):
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))
 
 
-@dataclass
+@dataclass(slots=True)
 class Remark(DataClassORJSONMixin):
     """Represents a single remark for a train connection, including type and content.
 
@@ -266,7 +266,7 @@ class Remark(DataClassORJSONMixin):
     content: str
 
 
-@dataclass
+@dataclass(slots=True)
 class Alert(DataClassORJSONMixin):
     """Represents a single alert for a train connection, including type and content."""
 
@@ -279,7 +279,7 @@ class Alert(DataClassORJSONMixin):
     link: str | None = field(default=None)
 
 
-@dataclass
+@dataclass(slots=True)
 class ConnectionDetails(DataClassORJSONMixin):
     """Details of a single connection, including departure and arrival information. The duration is in minutes."""
 
@@ -306,14 +306,14 @@ class ConnectionDetails(DataClassORJSONMixin):
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class ConnectionsApiResponse(ApiResponse):
     """Holds a list of connections returned by the connections endpoint."""
 
     connections: list[ConnectionDetails] = field(metadata=field_options(alias="connection"), default_factory=list)
 
 
-@dataclass
+@dataclass(slots=True)
 class VehicleStop(DataClassORJSONMixin):
     """Represents a single stop in a journey for vehicles. Delays are in seconds."""
 
@@ -342,7 +342,7 @@ class VehicleStop(DataClassORJSONMixin):
     departure_connection: str | None = field(default=None, metadata=field_options(alias="departureConnection"))
 
 
-@dataclass
+@dataclass(slots=True)
 class VehicleApiResponse(ApiResponse):
     """Provides detailed data about a particular vehicle, including a list of its stops."""
 
@@ -358,7 +358,7 @@ class VehicleApiResponse(ApiResponse):
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class MaterialType(DataClassORJSONMixin):
     """Represents the material type of a train unit."""
 
@@ -367,7 +367,7 @@ class MaterialType(DataClassORJSONMixin):
     orientation: Orientation
 
 
-@dataclass
+@dataclass(slots=True)
 class Unit(DataClassORJSONMixin):
     """Represents a single train unit, including its type and location."""
 
@@ -407,7 +407,7 @@ class Unit(DataClassORJSONMixin):
     )
 
 
-@dataclass
+@dataclass(slots=True)
 class SegmentComposition(DataClassORJSONMixin):
     """Describes a collection of train units and related metadata."""
 
@@ -425,7 +425,7 @@ class SegmentComposition(DataClassORJSONMixin):
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class Segment(DataClassORJSONMixin):
     """Defines a single segment within a journey, including composition details."""
 
@@ -435,7 +435,7 @@ class Segment(DataClassORJSONMixin):
     composition: SegmentComposition
 
 
-@dataclass
+@dataclass(slots=True)
 class CompositionApiResponse(ApiResponse):
     """Encapsulates the response containing composition details of a specific train."""
 
@@ -449,7 +449,7 @@ class CompositionApiResponse(ApiResponse):
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class DescriptionLink(DataClassORJSONMixin):
     """Represents a single link within a disturbance description."""
 
@@ -458,7 +458,7 @@ class DescriptionLink(DataClassORJSONMixin):
     text: str
 
 
-@dataclass
+@dataclass(slots=True)
 class Disturbance(DataClassORJSONMixin):
     """Represents a railway system disturbance, including description and metadata."""
 
@@ -481,7 +481,7 @@ class Disturbance(DataClassORJSONMixin):
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class DisturbancesApiResponse(ApiResponse):
     """Encapsulates multiple disturbances returned by the disturbances endpoint."""
 
