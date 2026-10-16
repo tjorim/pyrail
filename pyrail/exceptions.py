@@ -17,7 +17,7 @@ class RateLimitError(PyRailError):
 
     """
 
-    def __init__(self, message: str = "API rate limit exceeded", retry_after: int | None = None) -> None:
+    def __init__(self, message: str = "API rate limit exceeded", *, retry_after: int | None = None) -> None:
         """Initialize the exception with a message and the optional Retry-After delay in seconds."""
         super().__init__(message)
         self.retry_after: int | None = retry_after
