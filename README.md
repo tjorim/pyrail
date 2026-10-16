@@ -210,7 +210,7 @@ pyRail raises exceptions for errors returned by the iRail API and for connection
 | `InvalidRequestError` | The API responds with HTTP 400 (invalid request)                                    |
 | `NotFoundError`       | The API responds with HTTP 404 (resource not found)                                 |
 | `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded); see `retry_after`             |
-| `InvalidResponseError` | The response body is empty, is not valid JSON, does not match the response models, or has a status outside 200, 304, 400, 404 and 429. Carries the HTTP status in `status` when the failure has one |
+| `InvalidResponseError` | The response body is empty, is not valid JSON, is not a JSON object, does not match the response models, or has a status outside 200, 304, 400, 404 and 429. Carries the HTTP status in `status` when the failure has one |
 | `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
@@ -279,7 +279,7 @@ To run the offline suite:
 uv run pytest
 ```
 
-CI also enforces a coverage threshold: branch coverage over `pyrail/` must stay at or above 92 percent. Run it locally with:
+CI also enforces a coverage threshold: coverage over `pyrail/`, statements and branches together, must stay at or above 92 percent. Run it locally with:
 
 ```bash
 uv run coverage run -m pytest && uv run coverage report
@@ -291,7 +291,7 @@ To run the live suite, which needs network access:
 uv run pytest -m live
 ```
 
-The live tests are excluded from a plain `pytest` run. Run them locally before a release. They also run daily and on demand through the *Live API Smoke Tests* workflow (Actions tab, *Run workflow*), where a failure notifies the maintainers.
+The live tests are excluded from a plain `pytest` run. Run them locally before a release. They also run daily and on demand through the *Live API Smoke Tests* workflow (Actions tab, *Run workflow*), where a failure notifies the maintainers. They never run on pull requests, because they call the real API.
 
 The vehicle and composition requests use a vehicle id taken from a Brussels-Central liveboard, as ids go stale with the timetable. A live test fails in one of three ways:
 
@@ -322,6 +322,10 @@ uv run ty check .
 ```
 
 ty runs every rule as an error. The settings live in `[tool.ty]` in pyproject.toml.
+
+### Releases
+
+Releases publish to PyPI automatically from a pushed `v*` tag. The version number comes from the git history through hatch-vcs, so the release build checks out the full history.
 
 ## Logging
 

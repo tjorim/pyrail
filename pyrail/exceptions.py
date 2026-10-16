@@ -50,9 +50,9 @@ class ApiUnavailableError(PyRailError):
 class InvalidResponseError(PyRailError):
     """Raised when a response arrives but the client cannot use it.
 
-    This exception indicates that the body is empty, is not valid JSON, does not
-    match the response models, or that the status is outside the set the client
-    handles (200, 304, 400, 404, 429).
+    This exception indicates that the body is empty, is not valid JSON, is not
+    a JSON object, does not match the response models, or that the status is
+    outside the set the client handles (200, 304, 400, 404, 429).
 
     Attributes:
         status: The HTTP status of the response, or None when the failure is

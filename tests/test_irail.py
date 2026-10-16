@@ -1,6 +1,7 @@
 """Unit tests for the iRail API wrapper."""
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
@@ -58,6 +59,27 @@ def _load_example(name: str) -> dict[str, Any]:
     return json.loads((EXAMPLES_DIR / name).read_text())
 
 
+class _FakeClock:
+    """A monotonic clock double that advances only when its fake sleep runs.
+
+    Tests patch time.monotonic with ``monotonic`` and asyncio.sleep with
+    ``sleep`` and read the recorded wait durations from ``waits``.
+    """
+
+    def __init__(self) -> None:
+        self.now = 1000.0
+        self.waits: list[float] = []
+
+    def monotonic(self) -> float:
+        """Return the current fake time."""
+        return self.now
+
+    async def sleep(self, seconds: float) -> None:
+        """Record the wait and advance the fake time by it."""
+        self.waits.append(seconds)
+        self.now += seconds
+
+
 def _mock_response(status: int = 200, data: Any = None, headers: dict[str, str] | None = None) -> AsyncMock:
     """Build a mocked ClientResponse returning the given status, JSON body and headers.
 
@@ -67,7 +89,7 @@ def _mock_response(status: int = 200, data: Any = None, headers: dict[str, str] 
     response = AsyncMock()
     response.status = status
     response.headers = CIMultiDict(headers or {})
-    response.json = AsyncMock(side_effect=lambda *, content_type: deepcopy(data))
+    response.json = AsyncMock(side_effect=lambda **kwargs: deepcopy(data))
     response.text = AsyncMock(return_value="")
     return response
 
@@ -196,27 +218,42 @@ async def test_saturated_requests_are_paced_smoothly(mock_get: MagicMock) -> Non
     without waiting, later requests are paced one per third of a second instead
     of arriving in clumps separated by one second freezes.
     """
-    clock: list[float] = [1000.0]
-    waits: list[float] = []
-
-    def fake_monotonic() -> float:
-        return clock[0]
-
-    async def fake_sleep(seconds: float) -> None:
-        waits.append(seconds)
-        clock[0] += seconds
-
+    clock = _FakeClock()
     with (
-        patch("pyrail.irail.time.monotonic", side_effect=fake_monotonic),
-        patch("pyrail.irail.asyncio.sleep", new=fake_sleep),
+        patch("pyrail.irail.time.monotonic", side_effect=clock.monotonic),
+        patch("pyrail.irail.asyncio.sleep", new=clock.sleep),
     ):
         mock_get.return_value.__aenter__.return_value = _mock_response(data={"data": "ok"})
         async with iRail() as api:
             for _ in range(20):
                 await api._do_request("stations")
 
-    assert len(waits) == 12
-    assert all(wait == pytest.approx(1 / 3, rel=0.01) for wait in waits)
+    assert len(clock.waits) == 12
+    assert all(wait == pytest.approx(1 / 3, rel=0.01) for wait in clock.waits)
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_concurrent_requests_share_the_rate_limit_budget(mock_get: MagicMock) -> None:
+    """Concurrent requests queue on the limiter and each waits only for its own token.
+
+    Twelve concurrent requests through a budget of 3 standard plus 5 burst tokens
+    leave 4 requests waiting, one after the other, each for one token refill.
+    """
+    clock = _FakeClock()
+    with (
+        patch("pyrail.irail.time.monotonic", side_effect=clock.monotonic),
+        patch("pyrail.irail.asyncio.sleep", new=clock.sleep),
+    ):
+        mock_get.return_value.__aenter__.return_value = _mock_response(data={"data": "ok"})
+        async with iRail() as api:
+            start = clock.now
+            results = await asyncio.gather(*(api._do_request("stations") for _ in range(12)))
+            elapsed = clock.now - start
+
+    assert all(result == {"data": "ok"} for result in results)
+    assert len(clock.waits) == 4
+    assert all(wait == pytest.approx(1 / 3, rel=0.01) for wait in clock.waits)
+    assert elapsed == pytest.approx(4 / 3, rel=0.01)
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -932,13 +969,14 @@ async def test_handle_response_rate_limited_without_retry_after(mock_get: MagicM
 
 
 def test_parse_retry_after() -> None:
-    """Test parsing Retry-After given as seconds, as an HTTP date, and as invalid input."""
+    """Test parsing Retry-After given as seconds, as an HTTP date with and without a timezone, and as invalid input."""
     in_30s = format_datetime(datetime.now(UTC) + timedelta(seconds=30), usegmt=True)
     in_the_past = format_datetime(datetime.now(UTC) - timedelta(seconds=30), usegmt=True)
     assert _parse_retry_after("5") == 5
     assert _parse_retry_after("-3") == 0
     assert _parse_retry_after(in_30s) in range(28, 31)
     assert _parse_retry_after(in_the_past) == 0
+    assert _parse_retry_after("Mon, 01 Jan 2024 00:00:00 -0000") == 0
     assert _parse_retry_after("soon") is None
     assert _parse_retry_after(None) is None
 
@@ -1218,6 +1256,36 @@ async def test_clear_etag_cache_drops_conditional_header(mock_get: MagicMock) ->
         assert await api.get_stations() is not None
     assert mock_get.call_count == 2
     assert "If-None-Match" not in mock_get.call_args_list[1].kwargs["headers"]
+
+
+@patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize(
+    ("fixture", "call"),
+    [
+        pytest.param("liveboard.json", lambda api: api.get_liveboard("Brussels-South"), id="liveboard"),
+        pytest.param(
+            "connections.json",
+            lambda api: api.get_connections("Antwerpen-Centraal", "Brussel-Centraal"),
+            id="connections",
+        ),
+        pytest.param("vehicle.json", lambda api: api.get_vehicle("IC538"), id="vehicle"),
+        pytest.param("composition.json", lambda api: api.get_composition("S102092"), id="composition"),
+        pytest.param("disturbances.json", lambda api: api.get_disturbances(), id="disturbances"),
+    ],
+)
+async def test_public_methods_return_none_after_not_modified(
+    mock_get: MagicMock, fixture: str, call: Callable[[iRail], Awaitable[object]]
+) -> None:
+    """Every public method returns None when the API answers 304 for its ETag."""
+    etag = '"abc123"'
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(data=_load_example(fixture), headers={"Etag": etag}),
+        _mock_response(status=304),
+    ]
+    async with iRail() as api:
+        assert await call(api) is not None
+        assert await call(api) is None
+    assert mock_get.call_count == 2
 
 
 @patch("pyrail.irail.ClientSession.get")

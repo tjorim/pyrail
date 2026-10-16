@@ -47,11 +47,13 @@ _BURST_CAPACITY = 5
 
 _LANGUAGES: frozenset[str] = frozenset({"en", "nl", "fr", "de"})
 
-_ALLOWED_VALUES: dict[str, frozenset[str]] = {
-    "arrdep": frozenset({"departure", "arrival"}),
-    "timesel": frozenset({"departure", "arrival"}),
-    "typeOfTransport": frozenset({"automatic", "trains", "no_international_trains", "all"}),
-}
+_ALLOWED_VALUES: Mapping[str, frozenset[str]] = MappingProxyType(
+    {
+        "arrdep": frozenset({"departure", "arrival"}),
+        "timesel": frozenset({"departure", "arrival"}),
+        "typeOfTransport": frozenset({"automatic", "trains", "no_international_trains", "all"}),
+    }
+)
 
 
 class _EndpointSpec(TypedDict, total=False):
@@ -251,7 +253,7 @@ class iRail:  # noqa: N801
         used_for_tokens: float = max(0.0, min(credit, _TOKEN_CAPACITY - self._tokens))
         self._tokens = min(_TOKEN_CAPACITY, self._tokens + used_for_tokens)
         overflow: float = credit - used_for_tokens
-        if overflow > 0 and self._tokens == _TOKEN_CAPACITY:
+        if overflow > 0:
             self._burst_tokens = min(_BURST_CAPACITY, self._burst_tokens + overflow)
 
     async def _handle_rate_limit(self) -> None:
@@ -399,13 +401,14 @@ class iRail:  # noqa: N801
         """Handle a successful API response.
 
         Raises:
-            InvalidResponseError: If the body is empty or is not valid JSON.
+            InvalidResponseError: If the body is empty, is not valid JSON or is
+                not a JSON object.
 
         """
         if "Etag" in response.headers:
             self._etag_cache[method] = response.headers["Etag"]
         try:
-            json_data: dict[str, Any] | None = await response.json(content_type=None)
+            json_data: Any = await response.json(content_type=None)
         except ValueError as e:
             msg = f"Response from {method} is not valid JSON: {_describe(e)}"
             raise InvalidResponseError(msg, status=200) from e
@@ -480,7 +483,8 @@ class iRail:  # noqa: N801
         Raises:
             ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
             TimeoutError: If the attempt exceeds ``request_timeout`` seconds.
-            InvalidResponseError: On an empty or unparseable body, or an unexpected status.
+            InvalidResponseError: On an empty or unparseable body, a body that is
+                not a JSON object, or an unexpected status.
             RateLimitError: On HTTP 429.
             InvalidRequestError: On HTTP 400.
             NotFoundError: On HTTP 404.
@@ -517,8 +521,9 @@ class iRail:  # noqa: N801
                 Retry-After delay in seconds, if given. The request is not retried.
             InvalidRequestError: If the API responds with HTTP 400.
             NotFoundError: If the API responds with HTTP 404.
-            InvalidResponseError: If the response body is empty, is not valid JSON, or the
-                status is outside the set the client handles (200, 304, 400, 404, 429).
+            InvalidResponseError: If the response body is empty, is not valid JSON,
+                is not a JSON object, or the status is outside the set the client
+                handles (200, 304, 400, 404, 429).
             ApiUnavailableError: If the request still fails after all retries (network error,
                 timeout or HTTP 5xx).
 
