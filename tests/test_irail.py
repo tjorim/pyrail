@@ -894,12 +894,13 @@ async def test_handle_success_response_empty() -> None:
     response = AsyncMock()
     response.headers = {}
     response.json = AsyncMock(return_value=None)
+    request_key = ("stations", (("format", "json"),))
     with pytest.raises(InvalidResponseError, match="not a JSON object") as exc_info:
-        await api._handle_success_response(response, "stations")
+        await api._handle_success_response(response, "stations", request_key)
     assert exc_info.value.status == 200
     response.json = AsyncMock(return_value={})
     with pytest.raises(InvalidResponseError, match="empty"):
-        await api._handle_success_response(response, "stations")
+        await api._handle_success_response(response, "stations", request_key)
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -1295,6 +1296,26 @@ async def test_public_methods_return_none_after_not_modified(
         assert await call(api) is not None
         assert await call(api) is None
     assert mock_get.call_count == 2
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_etag_cache_is_keyed_by_query(mock_get: MagicMock) -> None:
+    """A conditional header is only sent for a repeat of the exact request it was cached for."""
+    liveboard = _load_example("liveboard.json")
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(data=liveboard, headers={"Etag": '"etag-south"'}),
+        _mock_response(data=liveboard, headers={"Etag": '"etag-central"'}),
+        _mock_response(status=304),
+    ]
+    async with iRail() as api:
+        assert await api.get_liveboard(station="Brussels-South") is not None
+        assert await api.get_liveboard(station="Brussels-Central") is not None
+        assert await api.get_liveboard(station="Brussels-South") is None
+
+    assert "If-None-Match" not in mock_get.call_args_list[0].kwargs["headers"]
+    assert "If-None-Match" not in mock_get.call_args_list[1].kwargs["headers"]
+    assert mock_get.call_args_list[2].kwargs["headers"]["If-None-Match"] == '"etag-south"'
+    assert len(api._etag_cache) == 2
 
 
 @patch("pyrail.irail.ClientSession.get")

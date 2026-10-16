@@ -170,7 +170,7 @@ An externally provided session is never closed by pyRail, with or without the co
 
 ### Cache Management
 
-pyRail sends `If-None-Match` for a method once the API has returned an `ETag` for it. The iRail API does not send ETags at the moment (checked October 2026), so for now this has no effect and every request returns fresh data. You can clear the ETag cache when needed:
+pyRail sends `If-None-Match` for a request once the API has returned an `ETag` for that same request, so the endpoint and the parameters must match. The iRail API does not send ETags at the moment (checked October 2026), so for now this has no effect and every request returns fresh data. You can clear the ETag cache when needed:
 
 ```python
 async with iRail() as api:

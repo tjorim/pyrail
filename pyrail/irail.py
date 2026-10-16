@@ -111,6 +111,9 @@ class _ServerError(ClientError):
         self.status = status
 
 
+type _RequestKey = tuple[str, tuple[tuple[str, Any], ...]]
+
+
 class iRail:  # noqa: N801
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
 
@@ -172,7 +175,7 @@ class iRail:  # noqa: N801
         self._lock: Lock = Lock()
         self.session: ClientSession | None = session
         self._owns_session = session is None
-        self._etag_cache: dict[str, str] = {}
+        self._etag_cache: dict[_RequestKey, str] = {}
 
     async def __aenter__(self) -> Self:
         """Initialize the aiohttp client session when entering the async context."""
@@ -277,21 +280,16 @@ class iRail:  # noqa: N801
             self._refill_tokens()
             self._tokens -= 1
 
-    def _add_etag_header(self, method: str) -> dict[str, str]:
-        """Add ETag header for the given method if a cached ETag is available.
+    def _build_request_headers(self, request_key: _RequestKey) -> dict[str, str]:
+        """Build the request headers, adding If-None-Match for a cached ETag.
 
-        Args:
-            method (str): The API endpoint for which the header is being generated.
-
-        Returns:
-            dict[str, str]: A dictionary containing HTTP headers, including the ETag header
-            if a cached value exists.
-
+        The cache is keyed by the endpoint and its full query, so the header
+        is only sent for a repeat of the exact request the ETag came from.
         """
         headers: dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
-        if method in self._etag_cache:
-            logger.debug("Adding If-None-Match header with value: %s", self._etag_cache[method])
-            headers["If-None-Match"] = self._etag_cache[method]
+        if request_key in self._etag_cache:
+            logger.debug("Adding If-None-Match header with value: %s", self._etag_cache[request_key])
+            headers["If-None-Match"] = self._etag_cache[request_key]
         return headers
 
     def _validate_date(self, date: str | None) -> None:
@@ -398,8 +396,13 @@ class iRail:  # noqa: N801
                 msg = f"Unexpected parameter: {param} for endpoint: {method}"
                 raise ValueError(msg)
 
-    async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any]:
+    async def _handle_success_response(
+        self, response: ClientResponse, method: str, request_key: _RequestKey
+    ) -> dict[str, Any]:
         """Handle a successful API response.
+
+        Stores the response ETag under the request key, so the next identical
+        request can be conditional.
 
         Raises:
             InvalidResponseError: If the body is empty, is not valid JSON or is
@@ -407,7 +410,7 @@ class iRail:  # noqa: N801
 
         """
         if "Etag" in response.headers:
-            self._etag_cache[method] = response.headers["Etag"]
+            self._etag_cache[request_key] = response.headers["Etag"]
         try:
             json_data: Any = await response.json(content_type=None)
         except ValueError as e:
@@ -421,11 +424,13 @@ class iRail:  # noqa: N801
             raise InvalidResponseError(msg, status=200)
         return json_data
 
-    async def _handle_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
+    async def _handle_response(
+        self, response: ClientResponse, method: str, request_key: _RequestKey
+    ) -> dict[str, Any] | None:
         """Handle the API response based on status code.
 
         Returns None for a 304 response, when the data has not been modified
-        since the previous request for the same method.
+        since the previous identical request.
 
         Raises:
             RateLimitError: On HTTP 429.
@@ -449,7 +454,7 @@ class iRail:  # noqa: N801
         if response.status == HTTPStatus.NOT_FOUND:
             raise NotFoundError(await response.text())
         if response.status == HTTPStatus.OK:
-            return await self._handle_success_response(response, method)
+            return await self._handle_success_response(response, method, request_key)
         if response.status == HTTPStatus.NOT_MODIFIED:
             logger.debug("Data not modified for method %s", method)
             return None
@@ -469,7 +474,12 @@ class iRail:  # noqa: N801
         return response.status in _SERVER_ERROR_STATUSES
 
     async def _execute_http_request(
-        self, url: str, params: dict[str, Any], headers: dict[str, str], method: str
+        self,
+        url: str,
+        params: dict[str, Any],
+        headers: dict[str, str],
+        method: str,
+        request_key: _RequestKey,
     ) -> dict[str, Any] | None:
         """Perform a single HTTP request attempt.
 
@@ -478,6 +488,7 @@ class iRail:  # noqa: N801
             params: Query parameters
             headers: Request headers
             method: API method name for logging
+            request_key: Request identity used to store the response ETag
 
         Returns:
             dict or None: Parsed response, or None if the data is not modified (304)
@@ -498,7 +509,7 @@ class iRail:  # noqa: N801
                 if self._should_retry_on_status(response):
                     raise _ServerError(response.status)
 
-                return await self._handle_response(response, method)
+                return await self._handle_response(response, method, request_key)
 
     async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
@@ -544,6 +555,7 @@ class iRail:  # noqa: N801
         params = {"format": "json", "lang": self.lang}
         if args is not None:
             params.update(args)
+        request_key: _RequestKey = (method, tuple(sorted(params.items())))
 
         max_attempts = self.max_retries + 1
         attempt = 1
@@ -551,9 +563,9 @@ class iRail:  # noqa: N801
             async with self._lock:
                 await self._handle_rate_limit()
 
-            request_headers: dict[str, str] = self._add_etag_header(method)
+            request_headers: dict[str, str] = self._build_request_headers(request_key)
             try:
-                return await self._execute_http_request(url, params, request_headers, method)
+                return await self._execute_http_request(url, params, request_headers, method, request_key)
             except (ClientError, TimeoutError) as e:
                 if attempt == max_attempts:
                     msg = f"Request to {method} failed after {attempt} attempt(s): {_describe(e)}"
