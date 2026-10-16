@@ -1391,6 +1391,21 @@ def test_etag_cache_keeps_recently_used_entries() -> None:
     assert ("stations", (("query", "new"),)) in api._etag_cache
 
 
+def test_etag_cache_marks_read_entries_as_recently_used() -> None:
+    """Building the request headers for a cached entry protects it from eviction."""
+    api = iRail()
+    for index in range(_ETAG_CACHE_LIMIT):
+        api._store_etag(("stations", (("query", str(index)),)), f'"etag{index}"')
+
+    headers = api._build_request_headers(("stations", (("query", "0"),)))
+
+    assert headers["If-None-Match"] == '"etag0"'
+    api._store_etag(("stations", (("query", "new"),)), '"new"')
+    assert len(api._etag_cache) == _ETAG_CACHE_LIMIT
+    assert ("stations", (("query", "0"),)) in api._etag_cache
+    assert ("stations", (("query", "1"),)) not in api._etag_cache
+
+
 @patch("pyrail.irail.ClientSession.get")
 async def test_clear_etag_cache_stops_in_flight_responses(mock_get: MagicMock) -> None:
     """A response that is in flight when the cache is cleared does not repopulate it."""
