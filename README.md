@@ -13,7 +13,7 @@ pyRail is a Python library that provides a convenient interface for interacting 
 - Retrieve real-time train information, including liveboards and vehicle details.
 - Access train station data, connections, and disturbances.
 - Supports API endpoints: stations, liveboard, connections, vehicle, composition, and disturbances.
-- Caching and conditional GET requests using ETags.
+- Conditional GET requests using ETags, when the API sends them (see [Cache Management](#cache-management)).
 - Rate limiting to handle API request limits efficiently.
 - Automatic retry with exponential backoff for network resilience.
 
@@ -107,6 +107,20 @@ if liveboard and liveboard.departures:
     print(departure.time.astimezone(ZoneInfo("Europe/Brussels")).strftime("%H:%M"))
 ```
 
+### Empty Liveboards
+
+A liveboard without departures (for example at night) is a valid answer, not an error. `departures` is then an empty list, so check for `None` explicitly if you need to tell the cases apart:
+
+```python
+liveboard = await api.get_liveboard(station="Brussels-South")
+if liveboard is None:
+    ...  # the request returned no usable data
+elif not liveboard.departures:
+    ...  # no departures right now
+```
+
+`liveboard` is `None` when the request failed validation or the response was unusable (an unparseable body or an unexpected status). `liveboard.departures` is `None` only when the response has no `departures` key, as on an arrival board (`arrdep="arrival"`).
+
 ### Language Selection
 
 You can configure the language for the API requests:
@@ -146,7 +160,7 @@ async def main():
 
 ### Cache Management
 
-You can clear the ETag cache when needed:
+pyRail sends `If-None-Match` for a method once the API has returned an `ETag` for it. The iRail API does not send ETags at the moment (checked October 2026), so for now this has no effect and every request returns fresh data. You can clear the ETag cache when needed:
 
 ```python
 async with iRail() as api:

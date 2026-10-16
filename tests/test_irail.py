@@ -172,6 +172,23 @@ async def test_get_liveboard_arrivals(mock_get):
 
 @pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize("departures", [{"number": "0"}, {"number": "0", "departure": []}])
+async def test_get_liveboard_without_departures(mock_get, departures, caplog):
+    """A liveboard with no departures is a valid answer: an empty list, and no warning is logged."""
+    data = {**_load_example("liveboard.json"), "departures": departures}
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=data)
+
+    async with iRail() as api:
+        with caplog.at_level("WARNING", logger="pyrail.irail"):
+            liveboard = await api.get_liveboard("Brussels-South")
+
+    assert liveboard is not None
+    assert liveboard.departures == []
+    assert not caplog.records
+
+
+@pytest.mark.asyncio
+@patch("pyrail.irail.ClientSession.get")
 async def test_get_liveboard_by_id(mock_get):
     """A liveboard can be requested by station id instead of name, but not both."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
