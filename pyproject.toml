@@ -31,7 +31,6 @@ Changelog = "https://github.com/tjorim/pyrail/releases"
 [dependency-groups]
 test = [
     "pytest>=9.1.1",
-    "pytest-mock>=3.16.0",
     "pytest-asyncio>=1.4.0",
     "coverage[toml]>=7.16.2",
 ]
@@ -53,7 +52,8 @@ ignore = [
     "ANN401",
     "COM812",
     "CPY001",
-    "D",
+    "D203",
+    "D213",
     "E501",
     "ISC001",
     "PLR0913",
