@@ -10,7 +10,6 @@ from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession
 import pytest
-import pytest_asyncio
 
 from pyrail.irail import iRail
 from tests.live.live_api import REQUEST_TIMEOUT, LiveApi
@@ -23,7 +22,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.live)
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def live() -> AsyncIterator[LiveApi]:
     """Provide a LiveApi backed by a session with a bounded request timeout.
 
