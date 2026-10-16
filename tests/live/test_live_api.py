@@ -59,11 +59,13 @@ async def test_live_liveboard(live: LiveApi, travel_date: tuple[str, str]) -> No
 
     assert isinstance(departures, LiveboardApiResponse)
     assert departures.station_info.id == BRUSSELS_CENTRAL_ID
-    assert departures.departures is not None and len(departures.departures) > 0
+    assert departures.departures is not None
+    assert len(departures.departures) > 0
     assert all(d.vehicle and d.vehicle_info.name for d in departures.departures)
 
     assert isinstance(arrivals, LiveboardApiResponse)
-    assert arrivals.arrivals is not None and len(arrivals.arrivals) > 0
+    assert arrivals.arrivals is not None
+    assert len(arrivals.arrivals) > 0
     assert all(a.vehicle and a.vehicle_info.name for a in arrivals.arrivals)
 
 
@@ -82,7 +84,8 @@ async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tupl
             assert isinstance(response, LiveboardApiResponse)
             assert response.station_info.id == BRUSSELS_CENTRAL_ID
             board = response.arrivals if arrdep == "arrival" else response.departures
-            assert board is not None and len(board) > 0
+            assert board is not None
+            assert len(board) > 0
 
 
 async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> None:
@@ -143,7 +146,8 @@ async def test_live_no_international_trains_filter(live: LiveApi, travel_date: t
     automatic = await vehicle_types("automatic")
     filtered = await vehicle_types("no_international_trains")
 
-    assert automatic and filtered
+    assert automatic
+    assert filtered
     assert filtered != automatic
 
 

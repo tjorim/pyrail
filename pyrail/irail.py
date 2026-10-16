@@ -6,10 +6,11 @@ from collections.abc import Callable, Mapping
 import contextlib
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from http import HTTPStatus
 import logging
 import time
 from types import MappingProxyType, TracebackType
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, Self, TypedDict
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -37,6 +38,8 @@ _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
 
 _DEFAULT_REQUEST_TIMEOUT = 30.0
+
+_SERVER_ERROR_STATUSES = range(500, 600)
 
 _TOKEN_CAPACITY = 3
 _TOKEN_REFILLS_PER_SECOND = 3
@@ -105,7 +108,7 @@ class _ServerError(ClientError):
         self.status = status
 
 
-class iRail:
+class iRail:  # noqa: N801
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
 
     Attributes:
@@ -152,9 +155,11 @@ class iRail:
 
         """
         if max_retries < 0:
-            raise ValueError("max_retries must be 0 or greater")
+            msg = "max_retries must be 0 or greater"
+            raise ValueError(msg)
         if request_timeout <= 0:
-            raise ValueError("request_timeout must be greater than 0")
+            msg = "request_timeout must be greater than 0"
+            raise ValueError(msg)
         self.max_retries: int = max_retries
         self.request_timeout: float = request_timeout
         self.lang: str = lang
@@ -166,7 +171,7 @@ class iRail:
         self._owns_session = session is None
         self._etag_cache: dict[str, str] = {}
 
-    async def __aenter__(self) -> "iRail":
+    async def __aenter__(self) -> Self:
         """Initialize the aiohttp client session when entering the async context."""
         self._ensure_session()
         return self
@@ -221,7 +226,8 @@ class iRail:
 
         """
         if value not in _LANGUAGES:
-            raise ValueError(f"Invalid language: {value}. Expected one of {sorted(_LANGUAGES)}")
+            msg = f"Invalid language: {value}. Expected one of {sorted(_LANGUAGES)}"
+            raise ValueError(msg)
         self._lang = value
 
     def clear_etag_cache(self) -> None:
@@ -298,29 +304,29 @@ class iRail:
         if date is None:
             return
         try:
-            datetime.strptime(date, "%d%m%y")
+            time.strptime(date, "%d%m%y")
         except ValueError:
-            raise ValueError(
-                f"Invalid date format: {date}. Expected DDMMYY (e.g., 150923 for September 15, 2023)"
-            ) from None
+            msg = f"Invalid date format: {date}. Expected DDMMYY (e.g., 150923 for September 15, 2023)"
+            raise ValueError(msg) from None
 
-    def _validate_time(self, time: str | None) -> None:
+    def _validate_time(self, time_str: str | None) -> None:
         """Validate the time format (HHMM).
 
         Args:
-            time (str, optional): The time string to validate. Expected format is HHMM,
+            time_str (str, optional): The time string to validate. Expected format is HHMM,
             e.g., '1430' for 2:30 PM.
 
         Raises:
             ValueError: If the time is not in HHMM format.
 
         """
-        if time is None:
+        if time_str is None:
             return
         try:
-            datetime.strptime(time, "%H%M")
+            time.strptime(time_str, "%H%M")
         except ValueError:
-            raise ValueError(f"Invalid time format: {time}. Expected HHMM (e.g., 1430 for 2:30 PM)") from None
+            msg = f"Invalid time format: {time_str}. Expected HHMM (e.g., 1430 for 2:30 PM)"
+            raise ValueError(msg) from None
 
     def _validate_values(self, params: dict[str, Any]) -> None:
         """Validate the date, the time and the parameters that only accept a fixed set of values.
@@ -340,7 +346,8 @@ class iRail:
         self._validate_time(params.get("time"))
         for name, allowed in _ALLOWED_VALUES.items():
             if name in params and params[name] not in allowed:
-                raise ValueError(f"Invalid {name}: expected one of {sorted(allowed)}, got: {params[name]}")
+                msg = f"Invalid {name}: expected one of {sorted(allowed)}, got: {params[name]}"
+                raise ValueError(msg)
 
     def _validate_params(self, method: str, params: dict[str, Any] | None = None) -> None:
         """Validate parameters for a specific iRail API endpoint based on predefined requirements.
@@ -358,7 +365,8 @@ class iRail:
 
         """
         if method not in _ENDPOINTS:
-            raise ValueError(f"Unknown API endpoint: {method}")
+            msg = f"Unknown API endpoint: {method}"
+            raise ValueError(msg)
 
         endpoint = _ENDPOINTS[method]
         required = endpoint.get("required", ())
@@ -371,17 +379,20 @@ class iRail:
 
         for param in required:
             if param not in params or params[param] is None:
-                raise ValueError(f"Missing required parameter: {param} for endpoint: {method}")
+                msg = f"Missing required parameter: {param} for endpoint: {method}"
+                raise ValueError(msg)
 
         if xor:
             xor_values = [params.get(param) is not None for param in xor]
             if sum(xor_values) != 1:
-                raise ValueError(f"Exactly one of the XOR parameters {xor} must be provided for endpoint: {method}")
+                msg = f"Exactly one of the XOR parameters {xor} must be provided for endpoint: {method}"
+                raise ValueError(msg)
 
         all_params = required + xor + optional
         for param in params:
             if param not in all_params:
-                raise ValueError(f"Unexpected parameter: {param} for endpoint: {method}")
+                msg = f"Unexpected parameter: {param} for endpoint: {method}"
+                raise ValueError(msg)
 
     async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any]:
         """Handle a successful API response.
@@ -395,11 +406,14 @@ class iRail:
         try:
             json_data: dict[str, Any] | None = await response.json(content_type=None)
         except ValueError as e:
-            raise InvalidResponseError(f"Response from {method} is not valid JSON: {_describe(e)}", status=200) from e
+            msg = f"Response from {method} is not valid JSON: {_describe(e)}"
+            raise InvalidResponseError(msg, status=200) from e
         if not isinstance(json_data, dict):
-            raise InvalidResponseError(f"Response from {method} is not a JSON object", status=200)
+            msg = f"Response from {method} is not a JSON object"
+            raise InvalidResponseError(msg, status=200)
         if not json_data:
-            raise InvalidResponseError(f"Response body from {method} is empty", status=200)
+            msg = f"Response body from {method} is empty"
+            raise InvalidResponseError(msg, status=200)
         return json_data
 
     async def _handle_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
@@ -416,26 +430,25 @@ class iRail:
                 outside the set the client handles (200, 304, 400, 404, 429).
 
         """
-        if response.status == 429:
+        if response.status == HTTPStatus.TOO_MANY_REQUESTS:
             retry_after = _parse_retry_after(response.headers.get("Retry-After"))
             logger.warning("Rate limited on %s, the API asks to retry after %s seconds", method, retry_after)
-            raise RateLimitError(f"Rate limit exceeded for method {method}", retry_after=retry_after)
-        elif response.status == 400:
+            msg = f"Rate limit exceeded for method {method}"
+            raise RateLimitError(msg, retry_after=retry_after)
+        if response.status == HTTPStatus.BAD_REQUEST:
             error_message = await response.text()
             with contextlib.suppress(ValueError, AttributeError):
                 error_message = (await response.json(content_type=None)).get("error", error_message)
             raise InvalidRequestError(error_message)
-        elif response.status == 404:
+        if response.status == HTTPStatus.NOT_FOUND:
             raise NotFoundError(await response.text())
-        elif response.status == 200:
+        if response.status == HTTPStatus.OK:
             return await self._handle_success_response(response, method)
-        elif response.status == 304:
+        if response.status == HTTPStatus.NOT_MODIFIED:
             logger.debug("Data not modified for method %s", method)
             return None
-        else:
-            raise InvalidResponseError(
-                f"Request to {method} returned an unexpected status {response.status}", status=response.status
-            )
+        msg = f"Request to {method} returned an unexpected status {response.status}"
+        raise InvalidResponseError(msg, status=response.status)
 
     def _should_retry_on_status(self, response: ClientResponse) -> bool:
         """Determine if a response status code should trigger a retry.
@@ -447,7 +460,7 @@ class iRail:
             bool: True if the status should trigger a retry, False otherwise
 
         """
-        return 500 <= response.status < 600
+        return response.status in _SERVER_ERROR_STATUSES
 
     async def _execute_http_request(
         self, url: str, params: dict[str, Any], headers: dict[str, str], method: str
@@ -534,9 +547,8 @@ class iRail:
                 return await self._execute_http_request(url, params, request_headers, method)
             except (ClientError, TimeoutError) as e:
                 if attempt == max_attempts:
-                    raise ApiUnavailableError(
-                        f"Request to {method} failed after {attempt} attempt(s): {_describe(e)}"
-                    ) from e
+                    msg = f"Request to {method} failed after {attempt} attempt(s): {_describe(e)}"
+                    raise ApiUnavailableError(msg) from e
                 delay = min(_RETRY_BASE_DELAY * 2 ** (attempt - 1), _RETRY_MAX_DELAY)
                 logger.warning(
                     "Request to %s failed (%s), retrying in %.1f seconds (attempt %d of %d)",
@@ -559,9 +571,8 @@ class iRail:
         try:
             return from_dict(data)
         except (LookupError, ValueError, OverflowError) as e:
-            raise InvalidResponseError(
-                f"Response from {method} does not match the expected model: {_describe(e)}"
-            ) from e
+            msg = f"Response from {method} does not match the expected model: {_describe(e)}"
+            raise InvalidResponseError(msg) from e
 
     async def get_stations(self) -> StationsApiResponse | None:
         """Retrieve a list of all train stations from the iRail API.
@@ -593,10 +604,11 @@ class iRail:
     async def get_liveboard(
         self,
         station: str | None = None,
-        id: str | None = None,
+        id: str | None = None,  # noqa: A002
         date: str | None = None,
         time: str | None = None,
         arrdep: Literal["departure", "arrival"] = "departure",
+        *,
         alerts: bool = False,
     ) -> LiveboardApiResponse | None:
         """Retrieve a liveboard for a specific train station.
@@ -699,7 +711,13 @@ class iRail:
             return None
         return self._parse_response("connections", connections_response_dict, ConnectionsApiResponse.from_dict)
 
-    async def get_vehicle(self, id: str, date: str | None = None, alerts: bool = False) -> VehicleApiResponse | None:
+    async def get_vehicle(
+        self,
+        id: str,  # noqa: A002
+        date: str | None = None,
+        *,
+        alerts: bool = False,
+    ) -> VehicleApiResponse | None:
         """Retrieve detailed information about a specific train vehicle.
 
         Args:
@@ -732,7 +750,11 @@ class iRail:
             return None
         return self._parse_response("vehicle", vehicle_response_dict, VehicleApiResponse.from_dict)
 
-    async def get_composition(self, id: str, data: str | None = None) -> CompositionApiResponse | None:
+    async def get_composition(
+        self,
+        id: str,  # noqa: A002
+        data: str | None = None,
+    ) -> CompositionApiResponse | None:
         """Retrieve the composition details of a specific train.
 
         Args:

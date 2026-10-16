@@ -8,12 +8,14 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientError, ClientSession
+from mashumaro.mixins.orjson import DataClassORJSONMixin
 from multidict import CIMultiDict
 import pytest
 
+import pyrail
 from pyrail.exceptions import (
     ApiUnavailableError,
     InvalidRequestError,
@@ -71,7 +73,7 @@ def _mock_response(status: int = 200, data: Any = None, headers: dict[str, str] 
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_successful_request(mock_get):
+async def test_successful_request(mock_get: MagicMock) -> None:
     """Test a successful API request by mocking the iRail response."""
     mock_response = _mock_response(data={"data": "some_data"})
     mock_get.return_value.__aenter__.return_value = mock_response
@@ -88,7 +90,7 @@ async def test_successful_request(mock_get):
         assert mock_response.status == 200
 
 
-async def test_irail_context_manager():
+async def test_irail_context_manager() -> None:
     """The async context manager creates the session on entry and closes it on exit."""
     async with iRail() as irail:
         assert irail.session is not None
@@ -96,7 +98,7 @@ async def test_irail_context_manager():
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_client_without_context_manager(mock_get):
+async def test_client_without_context_manager(mock_get: MagicMock) -> None:
     """A client used without the context manager creates a session lazily and close() closes it."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("stations.json"))
 
@@ -109,7 +111,7 @@ async def test_client_without_context_manager(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_close_leaves_external_session_open(mock_get):
+async def test_close_leaves_external_session_open(mock_get: MagicMock) -> None:
     """close() never closes a session provided by the caller."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("stations.json"))
 
@@ -121,7 +123,7 @@ async def test_close_leaves_external_session_open(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_close_allows_reuse(mock_get):
+async def test_close_allows_reuse(mock_get: MagicMock) -> None:
     """A closed client creates a fresh owned session on the next request."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("stations.json"))
 
@@ -133,7 +135,7 @@ async def test_close_allows_reuse(mock_get):
     await api.close()
 
 
-async def test_rate_limit_waits_when_tokens_run_out():
+async def test_rate_limit_waits_when_tokens_run_out() -> None:
     """Exhausting both token buckets waits for a refill before the request continues."""
     api = iRail()
     api._tokens = 0
@@ -144,7 +146,7 @@ async def test_rate_limit_waits_when_tokens_run_out():
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_stations(mock_get):
+async def test_get_stations(mock_get: MagicMock) -> None:
     """Test the get_stations endpoint.
 
     Verifies that:
@@ -169,7 +171,7 @@ async def test_get_stations(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_liveboard(mock_get):
+async def test_get_liveboard(mock_get: MagicMock) -> None:
     """Test the get_liveboard endpoint.
 
     Verifies that:
@@ -199,7 +201,7 @@ async def test_get_liveboard(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_liveboard_arrivals(mock_get):
+async def test_get_liveboard_arrivals(mock_get: MagicMock) -> None:
     """An arrival board has arrivals but no departures, and its arrivals carry no occupancy."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard_arrivals.json"))
 
@@ -208,7 +210,8 @@ async def test_get_liveboard_arrivals(mock_get):
 
     assert liveboard is not None
     assert liveboard.departures is None
-    assert liveboard.arrivals is not None and len(liveboard.arrivals) > 0
+    assert liveboard.arrivals is not None
+    assert len(liveboard.arrivals) > 0
     assert all(isinstance(arrival, LiveboardArrival) for arrival in liveboard.arrivals)
     assert not hasattr(liveboard.arrivals[0], "occupancy")
     assert mock_get.call_args.kwargs["params"]["arrdep"] == "arrival"
@@ -225,7 +228,9 @@ async def test_get_liveboard_arrivals(mock_get):
         (None, None),
     ],
 )
-async def test_get_liveboard_departures_wrapper_shapes(mock_get, departures, expected, caplog):
+async def test_get_liveboard_departures_wrapper_shapes(
+    mock_get: MagicMock, departures: Any, expected: list[Any] | None, caplog: pytest.LogCaptureFixture
+) -> None:
     """A liveboard without a usable departures wrapper returns the wrapper default."""
     data = {**_load_example("liveboard.json"), "departures": departures}
     mock_get.return_value.__aenter__.return_value = _mock_response(data=data)
@@ -240,7 +245,7 @@ async def test_get_liveboard_departures_wrapper_shapes(mock_get, departures, exp
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_liveboard_by_id(mock_get):
+async def test_get_liveboard_by_id(mock_get: MagicMock) -> None:
     """A liveboard can be requested by station id instead of name, but not both."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
 
@@ -258,7 +263,7 @@ async def test_get_liveboard_by_id(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_liveboard_alerts_parameter(mock_get):
+async def test_get_liveboard_alerts_parameter(mock_get: MagicMock) -> None:
     """The alerts flag is sent as 'true' or 'false' and does not change how the response is read."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
 
@@ -272,7 +277,7 @@ async def test_get_liveboard_alerts_parameter(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_connections(mock_get):
+async def test_get_connections(mock_get: MagicMock) -> None:
     """Test the get_connections endpoint.
 
     Verifies that:
@@ -301,7 +306,7 @@ async def test_get_connections(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_connections_timesel_and_type_of_transport(mock_get):
+async def test_get_connections_timesel_and_type_of_transport(mock_get: MagicMock) -> None:
     """The time selection and transport filter are sent to the API as given."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
 
@@ -317,7 +322,7 @@ async def test_get_connections_timesel_and_type_of_transport(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_fixed_value_parameters_reject_unknown_values(mock_get):
+async def test_fixed_value_parameters_reject_unknown_values(mock_get: MagicMock) -> None:
     """Values the API would silently replace by a default are rejected before any request is sent."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
 
@@ -335,7 +340,7 @@ async def test_fixed_value_parameters_reject_unknown_values(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_vehicle(mock_get):
+async def test_get_vehicle(mock_get: MagicMock) -> None:
     """Test the get_vehicle endpoint.
 
     Verifies that:
@@ -361,7 +366,7 @@ async def test_get_vehicle(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_composition(mock_get):
+async def test_get_composition(mock_get: MagicMock) -> None:
     """Test the get_composition endpoint.
 
     Verifies that:
@@ -409,7 +414,7 @@ async def test_get_composition(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_disturbances(mock_get):
+async def test_get_disturbances(mock_get: MagicMock) -> None:
     """Test the get_disturbances endpoint.
 
     Verifies that:
@@ -437,7 +442,7 @@ async def test_get_disturbances(mock_get):
             assert disturbance.type in DisturbanceType, "Expected 'type' to be 'disturbance' or 'planned'"
 
 
-async def test_date_time_validation():
+async def test_date_time_validation() -> None:
     """Test that accepted dates and times pass validation and invalid ones raise ValueError."""
     async with iRail() as api:
         api._validate_date("150923")
@@ -461,20 +466,20 @@ async def test_date_time_validation():
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_liveboard_with_date_time(mock_get):
+async def test_liveboard_with_date_time(mock_get: MagicMock) -> None:
     """Test liveboard request with date and time parameters."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
     async with iRail() as api:
         result = await api.get_liveboard(
             station="Brussels-Central",
-            date=datetime.now().strftime("%d%m%y"),
+            date=datetime.now(UTC).strftime("%d%m%y"),
             time="1430",
         )
         assert result is not None
 
         result = await api.get_liveboard(
             station="Brussels-Central",
-            date=(datetime.now() + timedelta(days=1)).strftime("%d%m%y"),
+            date=(datetime.now(UTC) + timedelta(days=1)).strftime("%d%m%y"),
         )
         assert result is not None
 
@@ -494,7 +499,7 @@ async def test_liveboard_with_date_time(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_error_handling(mock_get):
+async def test_error_handling(mock_get: MagicMock) -> None:
     """Test error handling for various API endpoints.
 
     Verifies that:
@@ -516,13 +521,13 @@ async def test_error_handling(mock_get):
             await api.get_connections("InvalidStation1", "InvalidStation2")
 
 
-def test_timestamp_to_datetime():
+def test_timestamp_to_datetime() -> None:
     """Test the timestamp_to_datetime function."""
     assert _timestamp_to_datetime("1705593600") == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
     assert _timestamp_to_datetime("0") == datetime(1970, 1, 1, 0, 0, tzinfo=UTC)
 
 
-def test_timestamp_field_deserialization():
+def test_timestamp_field_deserialization() -> None:
     """Test timestamp field deserialization in various models."""
     api_response = ApiResponse.from_dict({"version": "1.0", "timestamp": "1705593600"})
     assert api_response.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
@@ -614,7 +619,7 @@ def test_timestamp_field_deserialization():
     assert disturbance.timestamp == datetime(2024, 1, 18, 16, 0, tzinfo=UTC)
 
 
-def test_str_to_bool():
+def test_str_to_bool() -> None:
     """Test the str_to_bool function that converts string values to boolean."""
     assert _str_to_bool("1") is True, "String '1' should convert to True"
     assert _str_to_bool("0") is False, "String '0' should convert to False"
@@ -637,21 +642,23 @@ def test_str_to_bool():
         (LiveboardApiResponse, "arrivals", None),
     ],
 )
-def test_pre_deserialize_hooks_honor_defaults(model, key, default):
+def test_pre_deserialize_hooks_honor_defaults(
+    model: type[DataClassORJSONMixin], key: str, default: list[Any] | None
+) -> None:
     """Every deserialization hook maps an absent, null or junk wrapper to the field default."""
     assert model.__pre_deserialize__({})[key] == default
     for wrapper in (None, [], "junk", 42):
         assert model.__pre_deserialize__({key: deepcopy(wrapper)})[key] == default
 
 
-def test_composition_hook_guards_nested_segments():
+def test_composition_hook_guards_nested_segments() -> None:
     """A composition wrapper with junk segments produces an empty segment list."""
     for segments in (None, [], "junk"):
         result = CompositionApiResponse.__pre_deserialize__({"composition": {"segments": deepcopy(segments)}})
         assert result["composition"] == []
 
 
-def test_unit_optional_field_deserialization():
+def test_unit_optional_field_deserialization() -> None:
     """Test deserialization of the optional composition unit fields against the recorded example."""
     example = _load_example("composition.json")
     segment = example["composition"]["segments"]["segment"][0]
@@ -677,7 +684,7 @@ def test_unit_optional_field_deserialization():
     assert unit.has_luggage_section is False, "Expected 'has_luggage_section' to be False when '0'"
 
 
-def test_boolean_field_deserialization():
+def test_boolean_field_deserialization() -> None:
     """Test the deserialization of boolean fields in models."""
     platform = PlatformInfo.from_dict({"name": "1", "normal": "1"})
     assert platform.normal is True, "Platform normal field should be True when '1'"
@@ -725,7 +732,7 @@ def test_boolean_field_deserialization():
     assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
 
 
-def test_liveboard_arrival_boolean_deserialization():
+def test_liveboard_arrival_boolean_deserialization() -> None:
     """Test that LiveboardArrival boolean fields convert '0' and '1' strings."""
     arrival_data = {
         "id": "1",
@@ -770,7 +777,7 @@ def test_liveboard_arrival_boolean_deserialization():
     assert arrival.is_extra is True
 
 
-async def test_handle_success_response_empty():
+async def test_handle_success_response_empty() -> None:
     """Test that non-object and empty response bodies raise InvalidResponseError."""
     api = iRail()
     response = AsyncMock()
@@ -785,7 +792,7 @@ async def test_handle_success_response_empty():
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_response_bad_request(mock_get):
+async def test_handle_response_bad_request(mock_get: MagicMock) -> None:
     """Test that a 400 response raises an InvalidRequestError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=400)
     async with iRail() as api:
@@ -794,7 +801,7 @@ async def test_handle_response_bad_request(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_bad_request_uses_error_field_from_json_body(mock_get):
+async def test_bad_request_uses_error_field_from_json_body(mock_get: MagicMock) -> None:
     """Test that the InvalidRequestError message is the 'error' field of a JSON error body."""
     mock_get.return_value.__aenter__.return_value = _mock_response(
         status=400, data={"error": "Missing required parameter: station"}
@@ -805,7 +812,7 @@ async def test_bad_request_uses_error_field_from_json_body(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_bad_request_falls_back_to_response_text(mock_get):
+async def test_bad_request_falls_back_to_response_text(mock_get: MagicMock) -> None:
     """Test that the InvalidRequestError message falls back to the raw text when the body is not JSON."""
     response = _mock_response(status=400)
     response.text.return_value = "Bad Request"
@@ -817,7 +824,7 @@ async def test_bad_request_falls_back_to_response_text(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_not_found_uses_response_text_as_message(mock_get):
+async def test_not_found_uses_response_text_as_message(mock_get: MagicMock) -> None:
     """Test that the NotFoundError message is the response text."""
     response = _mock_response(status=404)
     response.text.return_value = "Station not found"
@@ -829,7 +836,7 @@ async def test_not_found_uses_response_text_as_message(mock_get):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_response_rate_limited(mock_get, mock_sleep):
+async def test_handle_response_rate_limited(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that a 429 response raises a RateLimitError immediately, carrying Retry-After."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "7"})
     async with iRail() as api:
@@ -841,7 +848,7 @@ async def test_handle_response_rate_limited(mock_get, mock_sleep):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_response_rate_limited_without_retry_after(mock_get):
+async def test_handle_response_rate_limited_without_retry_after(mock_get: MagicMock) -> None:
     """Test that a 429 without a usable Retry-After header leaves retry_after unset."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=429, headers={"Retry-After": "soon"})
     async with iRail() as api:
@@ -850,7 +857,7 @@ async def test_handle_response_rate_limited_without_retry_after(mock_get):
     assert exc_info.value.retry_after is None
 
 
-def test_parse_retry_after():
+def test_parse_retry_after() -> None:
     """Test parsing Retry-After given as seconds, as an HTTP date, and as invalid input."""
     in_30s = format_datetime(datetime.now(UTC) + timedelta(seconds=30), usegmt=True)
     in_the_past = format_datetime(datetime.now(UTC) - timedelta(seconds=30), usegmt=True)
@@ -864,7 +871,7 @@ def test_parse_retry_after():
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_response_server_error(mock_get, mock_sleep):
+async def test_handle_response_server_error(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that a persistent 5xx response is retried and then raises ApiUnavailableError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=500)
     async with iRail() as api:
@@ -875,7 +882,7 @@ async def test_handle_response_server_error(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_response_unexpected_status(mock_get, mock_sleep):
+async def test_handle_response_unexpected_status(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that an unexpected non-5xx status code raises InvalidResponseError without retrying."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=403)
     async with iRail() as api:
@@ -888,7 +895,7 @@ async def test_handle_response_unexpected_status(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_request_client_error(mock_get, mock_sleep):
+async def test_request_client_error(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that a persistent client error is retried and then raises ApiUnavailableError."""
     mock_get.side_effect = ClientError("connection failed")
     async with iRail() as api:
@@ -899,7 +906,7 @@ async def test_request_client_error(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_retry_on_network_error(mock_get, mock_sleep):
+async def test_retry_on_network_error(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that network errors are retried until the request succeeds."""
     mock_get.side_effect = [
         ClientError("Connection failed"),
@@ -914,7 +921,7 @@ async def test_retry_on_network_error(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_retry_on_server_error(mock_get, mock_sleep):
+async def test_retry_on_server_error(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that a 5xx response is retried until the request succeeds."""
     mock_get.return_value.__aenter__.side_effect = [
         _mock_response(status=500),
@@ -927,7 +934,9 @@ async def test_retry_on_server_error(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
+async def test_retry_logs_each_failed_attempt(
+    mock_get: MagicMock, mock_sleep: AsyncMock, caplog: pytest.LogCaptureFixture
+) -> None:
     """Test that every retried attempt logs a warning and the final failure raises."""
     mock_get.side_effect = ClientError("Persistent network error")
     async with iRail() as api:
@@ -939,7 +948,7 @@ async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_api_unavailable_error_is_chained(mock_get, mock_sleep):
+async def test_api_unavailable_error_is_chained(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that ApiUnavailableError is a PyRailError chained to the underlying failure."""
     mock_get.side_effect = TimeoutError("too slow")
     async with iRail() as api:
@@ -953,7 +962,7 @@ async def test_api_unavailable_error_is_chained(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_retry_backoff_delays(mock_get, mock_sleep):
+async def test_retry_backoff_delays(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that the delay doubles between attempts and is capped."""
     mock_get.side_effect = ClientError("down")
     async with iRail(max_retries=6) as api:
@@ -965,7 +974,7 @@ async def test_retry_backoff_delays(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_retry_on_timeout(mock_get, mock_sleep):
+async def test_retry_on_timeout(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that a request timeout is retried like a network error."""
     mock_get.side_effect = [
         TimeoutError(),
@@ -978,7 +987,7 @@ async def test_retry_on_timeout(mock_get, mock_sleep):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_max_retries_zero_disables_retrying(mock_get, mock_sleep):
+async def test_max_retries_zero_disables_retrying(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that max_retries=0 makes a single attempt."""
     mock_get.side_effect = ClientError("down")
     async with iRail(max_retries=0) as api:
@@ -988,13 +997,13 @@ async def test_max_retries_zero_disables_retrying(mock_get, mock_sleep):
     mock_sleep.assert_not_called()
 
 
-def test_negative_max_retries_rejected():
+def test_negative_max_retries_rejected() -> None:
     """Test that a negative max_retries is rejected."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="max_retries"):
         iRail(max_retries=-1)
 
 
-def test_invalid_language_rejected():
+def test_invalid_language_rejected() -> None:
     """Test that an unsupported language raises ValueError instead of falling back to English."""
     with pytest.raises(ValueError, match="Invalid language"):
         iRail(lang="xx")
@@ -1004,7 +1013,7 @@ def test_invalid_language_rejected():
     assert api.lang == "nl"
 
 
-def test_validate_params_rejects_bad_requests():
+def test_validate_params_rejects_bad_requests() -> None:
     """Test that unknown endpoints, missing required parameters and unexpected parameters raise ValueError."""
     api = iRail()
     with pytest.raises(ValueError, match="Unknown API endpoint"):
@@ -1015,7 +1024,7 @@ def test_validate_params_rejects_bad_requests():
         api._validate_params("disturbances", {"unexpected": True})
 
 
-def test_non_positive_request_timeout_rejected():
+def test_non_positive_request_timeout_rejected() -> None:
     """Test that a request_timeout of zero or less is rejected."""
     with pytest.raises(ValueError, match="request_timeout"):
         iRail(request_timeout=0)
@@ -1025,11 +1034,11 @@ def test_non_positive_request_timeout_rejected():
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_request_timeout_is_retried_then_raises(mock_get, mock_sleep):
+async def test_request_timeout_is_retried_then_raises(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that an attempt exceeding request_timeout is retried and then raises ApiUnavailableError."""
     hang = asyncio.Event()
 
-    async def hanging_json(**kwargs):
+    async def hanging_json(**kwargs: Any) -> None:
         await hang.wait()
 
     response = _mock_response()
@@ -1043,7 +1052,7 @@ async def test_request_timeout_is_retried_then_raises(mock_get, mock_sleep):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_deserialization_failure_raises_invalid_response(mock_get):
+async def test_deserialization_failure_raises_invalid_response(mock_get: MagicMock) -> None:
     """Test that a body that does not match the models raises InvalidResponseError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data={"unexpected": True})
     async with iRail() as api:
@@ -1052,7 +1061,7 @@ async def test_deserialization_failure_raises_invalid_response(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_unexpected_flag_value_raises_invalid_response(mock_get):
+async def test_unexpected_flag_value_raises_invalid_response(mock_get: MagicMock) -> None:
     """Test that a boolean flag holding a value other than '0' or '1' raises InvalidResponseError."""
     data = deepcopy(_load_example("liveboard.json"))
     data["departures"]["departure"][0]["canceled"] = "true"
@@ -1065,7 +1074,7 @@ async def test_unexpected_flag_value_raises_invalid_response(mock_get):
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get, mock_sleep):
+async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that retries pass through the rate limiter instead of bypassing it."""
     mock_get.side_effect = ClientError("down")
     async with iRail() as api:
@@ -1079,7 +1088,7 @@ async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get, mock_sleep)
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
-async def test_no_retry_on_client_error_status(mock_get, mock_sleep):
+async def test_no_retry_on_client_error_status(mock_get: MagicMock, mock_sleep: AsyncMock) -> None:
     """Test that 4xx responses are raised immediately without retrying."""
     mock_get.return_value.__aenter__.return_value = _mock_response(status=404)
     async with iRail() as api:
@@ -1089,7 +1098,7 @@ async def test_no_retry_on_client_error_status(mock_get, mock_sleep):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_etag_caching(mock_get):
+async def test_etag_caching(mock_get: MagicMock) -> None:
     """Test that an ETag from a 200 response is cached and sent as If-None-Match, and a 304 returns None."""
     etag = '"abc123"'
     mock_get.return_value.__aenter__.side_effect = [
@@ -1105,7 +1114,7 @@ async def test_etag_caching(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_etag_caching_through_public_method(mock_get):
+async def test_etag_caching_through_public_method(mock_get: MagicMock) -> None:
     """Test that a public method returns None when the API answers 304 for its ETag."""
     etag = '"abc123"'
     data = _load_example("stations.json")
@@ -1121,7 +1130,7 @@ async def test_etag_caching_through_public_method(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_clear_etag_cache_drops_conditional_header(mock_get):
+async def test_clear_etag_cache_drops_conditional_header(mock_get: MagicMock) -> None:
     """Test that clearing the ETag cache removes the If-None-Match header from the next request."""
     etag = '"abc123"'
     data = _load_example("stations.json")
@@ -1138,7 +1147,7 @@ async def test_clear_etag_cache_drops_conditional_header(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_non_object_json_body_raises_invalid_response(mock_get):
+async def test_non_object_json_body_raises_invalid_response(mock_get: MagicMock) -> None:
     """Test that a 200 body that is not a JSON object raises InvalidResponseError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=[1, 2, 3])
     async with iRail() as api:
@@ -1147,7 +1156,7 @@ async def test_non_object_json_body_raises_invalid_response(mock_get):
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_handle_success_response_invalid_json(mock_get):
+async def test_handle_success_response_invalid_json(mock_get: MagicMock) -> None:
     """Test that a body that fails to parse as JSON raises InvalidResponseError."""
     response = _mock_response()
     response.json.side_effect = ValueError("invalid json")
@@ -1159,7 +1168,5 @@ async def test_handle_success_response_invalid_json(mock_get):
 
 def test_package_exposes_version() -> None:
     """The package exposes its installed version as a string."""
-    import pyrail
-
     assert isinstance(pyrail.__version__, str)
     assert pyrail.__version__

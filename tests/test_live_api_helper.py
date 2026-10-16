@@ -13,7 +13,7 @@ from tests.live.live_api import ATTEMPTS, INCOMPATIBLE, REJECTED, UNAVAILABLE, L
 
 @pytest.mark.parametrize("error", [NotFoundError("no such station"), InvalidRequestError("bad parameter")])
 @patch("tests.live.live_api.asyncio.sleep", new_callable=AsyncMock)
-async def test_rejected_request_fails_fast(mock_sleep, error):
+async def test_rejected_request_fails_fast(mock_sleep: AsyncMock, error: Exception) -> None:
     """Test that a 400 or 404 fails immediately as rejected instead of retrying as unavailable."""
     request = AsyncMock(side_effect=error)
     with pytest.raises(pytest.fail.Exception) as exc_info:
@@ -25,7 +25,7 @@ async def test_rejected_request_fails_fast(mock_sleep, error):
 
 
 @patch("tests.live.live_api.asyncio.sleep", new_callable=AsyncMock)
-async def test_unavailable_api_is_retried_then_fails(mock_sleep):
+async def test_unavailable_api_is_retried_then_fails(mock_sleep: AsyncMock) -> None:
     """Test that an ApiUnavailableError is retried with a pause and then reported as unavailable."""
     request = AsyncMock(side_effect=ApiUnavailableError("down"))
     with pytest.raises(pytest.fail.Exception) as exc_info:
@@ -42,7 +42,7 @@ async def test_unavailable_api_is_retried_then_fails(mock_sleep):
         InvalidResponseError("Response from stations does not match the expected model: MissingField: version"),
     ],
 )
-async def test_unusable_response_fails_as_incompatible(error):
+async def test_unusable_response_fails_as_incompatible(error: Exception) -> None:
     """Test that an unusable response is reported as incompatible without retrying."""
     request = AsyncMock(side_effect=error)
     with pytest.raises(pytest.fail.Exception) as exc_info:
@@ -51,12 +51,12 @@ async def test_unusable_response_fails_as_incompatible(error):
     assert request.call_count == 1
 
 
-async def test_successful_result_is_returned():
+async def test_successful_result_is_returned() -> None:
     """Test that a usable response is returned as is."""
     assert await LiveApi(MagicMock()).fetch("stations", AsyncMock(return_value="ok")) == "ok"
 
 
-async def test_non_pyrail_error_propagates():
+async def test_non_pyrail_error_propagates() -> None:
     """Test that an error that is not a PyRailError fails the test as an ordinary error."""
     request = AsyncMock(side_effect=KeyError("missing"))
     with pytest.raises(KeyError, match="missing"):

@@ -1,6 +1,5 @@
 version: 2
 updates:
-  # Monitor Python dependencies (uv project, uv.lock)
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
@@ -18,22 +17,18 @@ updates:
       - "uv"
     versioning-strategy: "increase"
     groups:
-      # Group data serialization libraries (tightly coupled via extras)
       serialization:
         patterns:
           - "mashumaro"
           - "orjson"
-      # Group testing tools together (all test dependencies)
       testing:
         patterns:
           - "pytest*"
-      # Group linting and type checking tools (all dev dependencies)
       linting:
         patterns:
           - "ruff"
           - "ty"
 
-  # Monitor GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

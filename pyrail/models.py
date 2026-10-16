@@ -28,7 +28,8 @@ def _str_to_bool(strbool: str) -> bool:
 
     """
     if strbool not in ("0", "1"):
-        raise ValueError(f"Expected '0' or '1', got: {strbool}")
+        msg = f"Expected '0' or '1', got: {strbool}"
+        raise ValueError(msg)
     return strbool == "1"
 
 
