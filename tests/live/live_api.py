@@ -18,9 +18,6 @@ import pytest
 from pyrail.exceptions import InvalidRequestError, NotFoundError, PyRailError
 from pyrail.irail import iRail
 
-# Bounded retry policy: 3 attempts with a growing pause. The client is created with
-# max_retries=0 (see conftest.py), so this is the only retry layer; the client still
-# applies its own rate limiting.
 ATTEMPTS = 3
 BACKOFF_SECONDS = (5, 15)
 REQUEST_TIMEOUT = ClientTimeout(total=30)
@@ -31,7 +28,10 @@ INCOMPATIBLE = "API INCOMPATIBLE"
 
 
 class _ErrorLogCollector(logging.Handler):
-    """Collect the error messages pyRail logs while a request fails."""
+    """Collect the error messages pyRail logs while a request fails.
+
+    Messages are truncated because an error body can include a long server stack trace.
+    """
 
     def __init__(self) -> None:
         super().__init__(level=logging.ERROR)
@@ -39,7 +39,6 @@ class _ErrorLogCollector(logging.Handler):
 
     @override
     def emit(self, record: logging.LogRecord) -> None:
-        # iRail error bodies can include a long server stack trace, keep the head only
         self.messages.append(record.getMessage()[:300])
 
 
@@ -57,11 +56,12 @@ class LiveApi:
         ``API REJECTED REQUEST`` when the API answers HTTP 400 or 404, and with
         ``API INCOMPATIBLE`` when a response arrives but cannot be deserialized.
         Rejections and deserialization failures are not retried, as they are deterministic.
+        The ETag cache is cleared before every attempt so a 304 answer cannot come back as None.
         """
         logger = logging.getLogger("pyrail.irail")
         reason = "no response"
         for attempt in range(1, ATTEMPTS + 1):
-            self.client.clear_etag_cache()  # a 304 would come back as None
+            self.client.clear_etag_cache()
             collector = _ErrorLogCollector()
             logger.addHandler(collector)
             try:
