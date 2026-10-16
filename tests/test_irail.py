@@ -1320,7 +1320,7 @@ async def test_etag_cache_is_keyed_by_query(mock_get: MagicMock) -> None:
 
 
 def test_etag_cache_is_capped() -> None:
-    """The ETag cache drops its oldest entries above the limit."""
+    """The ETag cache stays within its limit by dropping its least recently used entries."""
     api = iRail()
     for index in range(_ETAG_CACHE_LIMIT + 5):
         api._store_etag(("stations", (("query", str(index)),)), f'"etag{index}"')

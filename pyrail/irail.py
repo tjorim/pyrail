@@ -179,7 +179,7 @@ class iRail:  # noqa: N801
         self.session: ClientSession | None = session
         self._owns_session = session is None
         self._etag_cache: OrderedDict[_RequestKey, str] = OrderedDict()
-        self._etag_generation = 0
+        self._etag_generation: int = 0
 
     async def __aenter__(self) -> Self:
         """Initialize the aiohttp client session when entering the async context."""
@@ -302,9 +302,11 @@ class iRail:  # noqa: N801
 
         The cache is keyed by the endpoint and its full query, so the header
         is only sent for a repeat of the exact request the ETag came from.
+        A hit marks the entry as recently used, which protects it from eviction.
         """
         headers: dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
         if request_key in self._etag_cache:
+            self._etag_cache.move_to_end(request_key)
             logger.debug("Adding If-None-Match header with value: %s", self._etag_cache[request_key])
             headers["If-None-Match"] = self._etag_cache[request_key]
         return headers
