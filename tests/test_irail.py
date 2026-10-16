@@ -62,7 +62,6 @@ def _mock_response(
     return response
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_successful_request(mock_get):
     """Test a successful API request by mocking the iRail response."""
@@ -81,7 +80,6 @@ async def test_successful_request(mock_get):
         assert mock_response.status == 200
 
 
-@pytest.mark.asyncio
 async def test_irail_context_manager():
     """Ensure that the async context manager sets up and tears down the session properly."""
     async with iRail() as irail:
@@ -89,7 +87,6 @@ async def test_irail_context_manager():
         assert isinstance(irail.session, ClientSession)
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_stations(mock_get):
     """Test the get_stations endpoint.
@@ -118,7 +115,6 @@ async def test_get_stations(mock_get):
         assert isinstance(station_list[0], StationDetails), "Expected the first station to be a StationDetails object"
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_liveboard(mock_get):
     """Test the get_liveboard endpoint.
@@ -153,7 +149,6 @@ async def test_get_liveboard(mock_get):
         )
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_liveboard_arrivals(mock_get):
     """An arrival board has arrivals but no departures, and its arrivals carry no occupancy."""
@@ -170,7 +165,6 @@ async def test_get_liveboard_arrivals(mock_get):
     assert mock_get.call_args.kwargs["params"]["arrdep"] == "arrival"
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 @pytest.mark.parametrize("departures", [{"number": "0"}, {"number": "0", "departure": []}])
 async def test_get_liveboard_without_departures(mock_get, departures, caplog):
@@ -187,7 +181,6 @@ async def test_get_liveboard_without_departures(mock_get, departures, caplog):
     assert not caplog.records
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_liveboard_by_id(mock_get):
     """A liveboard can be requested by station id instead of name, but not both."""
@@ -204,7 +197,6 @@ async def test_get_liveboard_by_id(mock_get):
         assert await api.get_liveboard() is None
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_liveboard_alerts_parameter(mock_get):
     """The alerts flag is sent as 'true' or 'false' and does not change how the response is read."""
@@ -219,7 +211,6 @@ async def test_get_liveboard_alerts_parameter(mock_get):
     assert default == with_alerts
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_connections(mock_get):
     """Test the get_connections endpoint.
@@ -252,7 +243,6 @@ async def test_get_connections(mock_get):
         )
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_connections_timesel_and_type_of_transport(mock_get):
     """The time selection and transport filter are sent to the API as given."""
@@ -269,7 +259,6 @@ async def test_get_connections_timesel_and_type_of_transport(mock_get):
             assert mock_get.call_args.kwargs["params"]["typeOfTransport"] == type_of_transport
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_fixed_value_parameters_reject_unknown_values(mock_get):
     """Values the API would silently replace by a default are rejected before any request is sent."""
@@ -285,7 +274,6 @@ async def test_fixed_value_parameters_reject_unknown_values(mock_get):
     mock_get.assert_not_called()
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_vehicle(mock_get):
     """Test the get_vehicle endpoint.
@@ -312,7 +300,6 @@ async def test_get_vehicle(mock_get):
             assert isinstance(stop.occupancy, Occupancy), "Expected occupancy to be an Occupancy object"
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_composition(mock_get):
     """Test the get_composition endpoint.
@@ -363,7 +350,6 @@ async def test_get_composition(mock_get):
         )
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_disturbances(mock_get):
     """Test the get_disturbances endpoint.
@@ -394,7 +380,6 @@ async def test_get_disturbances(mock_get):
             assert disturbance.type in DisturbanceType, "Expected 'type' to be 'disturbance' or 'planned'"
 
 
-@pytest.mark.asyncio
 async def test_date_time_validation():
     """Test date and time format validation."""
     async with iRail() as api:
@@ -429,7 +414,6 @@ async def test_date_time_validation():
         assert not api._validate_time("")
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_liveboard_with_date_time(mock_get):
     """Test liveboard request with date and time parameters."""
@@ -465,7 +449,6 @@ async def test_liveboard_with_date_time(mock_get):
         assert result is None
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_error_handling(mock_get):
     """Test error handling for various API endpoints.
@@ -721,7 +704,6 @@ def test_liveboard_arrival_boolean_deserialization():
     assert arrival.is_extra is True
 
 
-@pytest.mark.asyncio
 async def test_handle_success_response_empty(caplog):
     """Test that empty response bodies log a warning and return unchanged."""
     api = iRail()
@@ -736,7 +718,6 @@ async def test_handle_success_response_empty(caplog):
     assert "Empty response received" in caplog.text
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_bad_request(mock_get):
     """Test that a 400 response raises an InvalidRequestError."""
@@ -746,7 +727,6 @@ async def test_handle_response_bad_request(mock_get):
             await api._do_request("stations")
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_bad_request_uses_error_field_from_json_body(mock_get):
     """Test that the InvalidRequestError message is the 'error' field of a JSON error body."""
@@ -758,7 +738,6 @@ async def test_bad_request_uses_error_field_from_json_body(mock_get):
             await api._do_request("stations")
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_bad_request_falls_back_to_response_text(mock_get):
     """Test that the InvalidRequestError message falls back to the raw text when the body is not JSON."""
@@ -771,7 +750,6 @@ async def test_bad_request_falls_back_to_response_text(mock_get):
             await api._do_request("stations")
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_not_found_uses_response_text_as_message(mock_get):
     """Test that the NotFoundError message is the response text."""
@@ -783,7 +761,6 @@ async def test_not_found_uses_response_text_as_message(mock_get):
             await api._do_request("stations")
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_rate_limited(mock_get, mock_sleep):
@@ -797,7 +774,6 @@ async def test_handle_response_rate_limited(mock_get, mock_sleep):
     assert mock_get.call_count == 1
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_rate_limited_without_retry_after(mock_get):
     """Test that a 429 without a usable Retry-After header leaves retry_after unset."""
@@ -820,7 +796,6 @@ def test_parse_retry_after():
     assert _parse_retry_after(None) is None
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_server_error(mock_get, mock_sleep):
@@ -832,7 +807,6 @@ async def test_handle_response_server_error(mock_get, mock_sleep):
     assert mock_get.call_count == 3
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_response_unexpected_status(mock_get, mock_sleep):
@@ -844,7 +818,6 @@ async def test_handle_response_unexpected_status(mock_get, mock_sleep):
     mock_sleep.assert_not_called()
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_request_client_error(mock_get, mock_sleep):
@@ -856,7 +829,6 @@ async def test_request_client_error(mock_get, mock_sleep):
     assert mock_get.call_count == 3
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_retry_on_network_error(mock_get, mock_sleep):
@@ -872,7 +844,6 @@ async def test_retry_on_network_error(mock_get, mock_sleep):
     assert mock_sleep.call_count == 2
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_retry_on_server_error(mock_get, mock_sleep):
@@ -886,7 +857,6 @@ async def test_retry_on_server_error(mock_get, mock_sleep):
     assert mock_get.call_count == 2
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
@@ -900,7 +870,6 @@ async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
     assert "failed after 3 attempt(s)" in caplog.text
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_api_unavailable_error_is_chained(mock_get, mock_sleep):
@@ -915,7 +884,6 @@ async def test_api_unavailable_error_is_chained(mock_get, mock_sleep):
     assert "TimeoutError: too slow" in str(exc_info.value)
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_retry_backoff_delays(mock_get, mock_sleep):
@@ -928,7 +896,6 @@ async def test_retry_backoff_delays(mock_get, mock_sleep):
     assert [call.args[0] for call in mock_sleep.call_args_list] == [1.0, 2.0, 4.0, 8.0, 10.0, 10.0]
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_retry_on_timeout(mock_get, mock_sleep):
@@ -942,7 +909,6 @@ async def test_retry_on_timeout(mock_get, mock_sleep):
     assert mock_get.call_count == 2
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_max_retries_zero_disables_retrying(mock_get, mock_sleep):
@@ -961,7 +927,6 @@ def test_negative_max_retries_rejected():
         iRail(max_retries=-1)
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get, mock_sleep):
@@ -976,7 +941,6 @@ async def test_every_retry_attempt_uses_a_rate_limit_token(mock_get, mock_sleep)
     assert mock_rate_limit.call_count == 3
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_no_retry_on_client_error_status(mock_get, mock_sleep):
@@ -988,7 +952,6 @@ async def test_no_retry_on_client_error_status(mock_get, mock_sleep):
     assert mock_get.call_count == 1
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_etag_caching(mock_get):
     """Test that an ETag from a 200 response is cached and sent as If-None-Match, and a 304 returns None."""
@@ -1006,7 +969,6 @@ async def test_etag_caching(mock_get):
     assert mock_get.call_args_list[1].kwargs["headers"]["If-None-Match"] == etag
 
 
-@pytest.mark.asyncio
 @patch("pyrail.irail.ClientSession.get")
 async def test_handle_success_response_invalid_json(mock_get):
     """Test that a body that fails to parse as JSON returns None."""
