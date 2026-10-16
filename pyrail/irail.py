@@ -126,7 +126,8 @@ class iRail:  # noqa: N801
             context manager is entered or the first request, and after close() of an owned session.
             Remains set when the caller provided the session.
             If not provided, a new session will be created and managed internally.
-            If provided, the session lifecycle must be managed externally.
+            If provided, the session lifecycle must be managed externally, and a closed
+            session fails the next request with a RuntimeError.
         max_retries (int): How many times a request is retried after a network error, timeout or
             server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
         request_timeout (float): Timeout in seconds for each individual request attempt.
@@ -208,10 +209,18 @@ class iRail:  # noqa: N801
             self.session = None
 
     def _ensure_session(self) -> ClientSession:
-        """Return the active session, creating an owned one when none exists yet."""
+        """Return the active session, creating an owned one when none exists yet.
+
+        Raises:
+            RuntimeError: If the session provided by the caller has been closed.
+
+        """
         if self.session is None:
             logger.debug("Creating new internal aiohttp session")
             self.session = ClientSession()
+        if self.session.closed:
+            msg = "The provided session is closed, so no request can be sent"
+            raise RuntimeError(msg)
         return self.session
 
     @property

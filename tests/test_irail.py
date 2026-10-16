@@ -144,6 +144,29 @@ async def test_close_leaves_external_session_open(mock_get: MagicMock) -> None:
         assert not session.closed
 
 
+async def test_request_with_closed_provided_session_raises_runtime_error() -> None:
+    """A request on a closed caller-provided session fails with a clear RuntimeError.
+
+    Without the check, aiohttp's own RuntimeError leaks out with no hint that the
+    caller-provided session is the cause.
+    """
+    async with ClientSession() as session:
+        api = iRail(session=session)
+
+    with pytest.raises(RuntimeError, match="The provided session is closed"):
+        await api.get_stations()
+
+
+async def test_context_manager_entry_with_closed_provided_session_raises() -> None:
+    """Entering the context manager with a closed provided session fails before any request."""
+    async with ClientSession() as session:
+        api = iRail(session=session)
+
+    with pytest.raises(RuntimeError, match="The provided session is closed"):
+        async with api:
+            pass
+
+
 @patch("pyrail.irail.ClientSession.get")
 async def test_close_allows_reuse(mock_get: MagicMock) -> None:
     """A closed client creates a fresh owned session on the next request."""
