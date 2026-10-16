@@ -8,7 +8,7 @@ from email.utils import format_datetime
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientError, ClientSession
@@ -25,7 +25,7 @@ from pyrail.exceptions import (
     PyRailError,
     RateLimitError,
 )
-from pyrail.irail import _parse_retry_after, iRail
+from pyrail.irail import _ENDPOINTS, _parse_retry_after, iRail
 from pyrail.models import (
     Alert,
     ApiResponse,
@@ -198,16 +198,16 @@ def test_refill_tokens_fills_burst_only_with_overflow() -> None:
 
 async def test_rate_limit_waits_only_until_the_next_token() -> None:
     """An empty bucket waits the time one token takes to refill, not a fixed second."""
+    clock = _FakeClock()
     with (
-        patch("time.monotonic", side_effect=[1000.0, 1000.0, 1000.34]),
-        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch("time.monotonic", side_effect=clock.monotonic),
+        patch("asyncio.sleep", new=clock.sleep),
     ):
         api = iRail()
         api._tokens = 0
         api._burst_tokens = 0
         await api._handle_rate_limit()
-    assert mock_sleep.await_args is not None
-    assert mock_sleep.await_args.args[0] == pytest.approx(1 / 3)
+    assert clock.waits == [pytest.approx(1 / 3)]
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -1134,6 +1134,15 @@ def test_validate_params_rejects_bad_requests() -> None:
         api._validate_params("connections", {"from": "A"})
     with pytest.raises(ValueError, match="Unexpected parameter"):
         api._validate_params("disturbances", {"unexpected": True})
+
+
+def test_endpoint_table_is_frozen() -> None:
+    """The endpoint table rejects mutation at both levels."""
+    endpoints = cast("Any", _ENDPOINTS)
+    with pytest.raises(TypeError):
+        endpoints["liveboard"]["optional"] = ()
+    with pytest.raises(TypeError):
+        endpoints["new"] = {}
 
 
 def test_non_positive_request_timeout_rejected() -> None:

@@ -10,7 +10,7 @@ from http import HTTPStatus
 import logging
 import time
 from types import MappingProxyType, TracebackType
-from typing import Any, Literal, Self, TypedDict
+from typing import Any, Literal, Self
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -56,23 +56,24 @@ _ALLOWED_VALUES: Mapping[str, frozenset[str]] = MappingProxyType(
 )
 
 
-class _EndpointSpec(TypedDict, total=False):
-    required: tuple[str, ...]
-    optional: tuple[str, ...]
-    xor: tuple[str, ...]
+type _EndpointSpec = Mapping[str, tuple[str, ...]]
+
+
+def _frozen_spec(spec: dict[str, tuple[str, ...]]) -> _EndpointSpec:
+    """Freeze one endpoint spec, so the endpoint table cannot be mutated at any level."""
+    return MappingProxyType(spec)
 
 
 _ENDPOINTS: Mapping[str, _EndpointSpec] = MappingProxyType(
     {
-        "stations": {},
-        "liveboard": {"xor": ("station", "id"), "optional": ("date", "time", "arrdep", "alerts")},
-        "connections": {
-            "required": ("from", "to"),
-            "optional": ("date", "time", "timesel", "typeOfTransport"),
-        },
-        "vehicle": {"required": ("id",), "optional": ("date", "alerts")},
-        "composition": {"required": ("id",), "optional": ("data",)},
-        "disturbances": {"optional": ("lineBreakCharacter",)},
+        "stations": _frozen_spec({}),
+        "liveboard": _frozen_spec({"xor": ("station", "id"), "optional": ("date", "time", "arrdep", "alerts")}),
+        "connections": _frozen_spec(
+            {"required": ("from", "to"), "optional": ("date", "time", "timesel", "typeOfTransport")}
+        ),
+        "vehicle": _frozen_spec({"required": ("id",), "optional": ("date", "alerts")}),
+        "composition": _frozen_spec({"required": ("id",), "optional": ("data",)}),
+        "disturbances": _frozen_spec({"optional": ("lineBreakCharacter",)}),
     }
 )
 
@@ -431,7 +432,7 @@ class iRail:  # noqa: N801
             InvalidRequestError: On HTTP 400.
             NotFoundError: On HTTP 404.
             InvalidResponseError: On an empty or unparseable body, a body that
-                is not a JSON object, or a status outside the set the client
+                is not a JSON object, or a status outside the set this method
                 handles (200, 304, 400, 404, 429).
 
         """
@@ -545,7 +546,8 @@ class iRail:  # noqa: N801
             params.update(args)
 
         max_attempts = self.max_retries + 1
-        for attempt in range(1, max_attempts + 1):
+        attempt = 1
+        while True:
             async with self._lock:
                 await self._handle_rate_limit()
 
@@ -566,7 +568,7 @@ class iRail:  # noqa: N801
                     max_attempts,
                 )
                 await asyncio.sleep(delay)
-        return None  # pragma: no cover
+                attempt += 1
 
     def _parse_response[T](self, method: str, data: dict[str, Any], from_dict: Callable[[dict[str, Any]], T]) -> T:
         """Deserialize a response with the given deserialization function.
