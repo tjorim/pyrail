@@ -114,12 +114,12 @@ A liveboard without departures (for example at night) is a valid answer, not an 
 ```python
 liveboard = await api.get_liveboard(station="Brussels-South")
 if liveboard is None:
-    ...  # the request returned no usable data
+    ...  # the data was not modified since the previous request (HTTP 304)
 elif not liveboard.departures:
     ...  # no departures right now
 ```
 
-`liveboard` is `None` when the request failed validation or the response was unusable (an unparseable body or an unexpected status). `liveboard.departures` is `None` only when the response has no `departures` key, as on an arrival board (`arrdep="arrival"`).
+`liveboard` is `None` only when the data has not been modified since the previous request (HTTP 304). Invalid parameters raise a `ValueError` and an unusable response raises an `InvalidResponseError`. `liveboard.departures` is `None` only when the response has no `departures` key, as on an arrival board (`arrdep="arrival"`).
 
 ### Language Selection
 
@@ -136,7 +136,7 @@ Supported languages are:
 - `de` (German)
 - `nl` (Dutch)
 
-If no language is specified or an invalid value is provided, English (`en`) will be used as the default language.
+An unsupported language raises a `ValueError`, both in the constructor and on the `lang` attribute.
 
 ### Session Management
 
@@ -208,6 +208,7 @@ pyRail raises exceptions for errors returned by the iRail API and for connection
 | `InvalidRequestError` | The API responds with HTTP 400 (invalid request)                                    |
 | `NotFoundError`       | The API responds with HTTP 404 (resource not found)                                 |
 | `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded); see `retry_after`             |
+| `InvalidResponseError` | The response body is empty, is not valid JSON, does not match the response models, or has a status outside 200, 304, 400, 404 and 429. Carries the status in `status` |
 | `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
@@ -224,13 +225,13 @@ async with iRail() as api:
         print(f"Request failed: {err}")
 ```
 
-Other failures (unparseable responses, unexpected status codes) are logged and the method returns `None`. A `None` is also returned when the data has not been modified since the previous request (HTTP 304).
+Invalid parameters, including an unsupported language, raise a `ValueError` before any request is sent. A method returns `None` only when the data has not been modified since the previous request (HTTP 304).
 
 ### Network Resilience and Retry Logic
 
 pyRail automatically retries transient failures with exponential backoff:
 
-- **Network Errors and Timeouts**: Connection failures, DNS errors and request timeouts are retried.
+- **Network Errors and Timeouts**: Connection failures, DNS errors and request timeouts are retried. Each attempt is bounded by `request_timeout` (30 seconds by default, set it on the constructor), and a timed-out attempt counts as a failure and is retried like a network error.
 - **Server Errors**: HTTP 5xx responses are retried, allowing recovery from temporary server issues.
 - **Client Errors**: HTTP 4xx errors are never retried, as they indicate a problem with the request. This includes 429 rate limits, which raise a `RateLimitError` immediately; its `retry_after` attribute holds the server's `Retry-After` delay in seconds (or `None`), so you decide when to try again (see [Error Handling](#error-handling)).
 - **Rate Limiting**: Every attempt, including each retry, goes through the client's rate limiter.

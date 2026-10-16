@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from pyrail.exceptions import ApiUnavailableError, InvalidRequestError, NotFoundError
+from pyrail.exceptions import ApiUnavailableError, InvalidRequestError, InvalidResponseError, NotFoundError
 from tests.live.live_api import ATTEMPTS, INCOMPATIBLE, REJECTED, UNAVAILABLE, LiveApi
 
 
@@ -35,9 +35,17 @@ async def test_unavailable_api_is_retried_then_fails(mock_sleep):
     assert mock_sleep.call_count == ATTEMPTS - 1
 
 
-async def test_unparseable_success_fails_as_incompatible():
-    """Test that a deserialization failure is reported as incompatible without retrying."""
-    request = AsyncMock(side_effect=KeyError("missing"))
+@pytest.mark.parametrize(
+    "error",
+    [
+        KeyError("missing"),
+        InvalidResponseError("Response body from stations is empty", status=200),
+        InvalidResponseError("Response from stations does not match the expected model: MissingField: version"),
+    ],
+)
+async def test_unusable_response_fails_as_incompatible(error):
+    """Test that an unusable or undeserializable response is reported as incompatible without retrying."""
+    request = AsyncMock(side_effect=error)
     with pytest.raises(pytest.fail.Exception) as exc_info:
         await LiveApi(MagicMock()).fetch("stations", request)
     assert INCOMPATIBLE in str(exc_info.value)

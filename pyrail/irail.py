@@ -2,6 +2,7 @@
 
 import asyncio
 from asyncio import Lock
+from collections.abc import Callable
 import contextlib
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
@@ -12,7 +13,13 @@ from typing import Any, Literal
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
-from pyrail.exceptions import ApiUnavailableError, InvalidRequestError, NotFoundError, RateLimitError
+from pyrail.exceptions import (
+    ApiUnavailableError,
+    InvalidRequestError,
+    InvalidResponseError,
+    NotFoundError,
+    RateLimitError,
+)
 from pyrail.models import (
     CompositionApiResponse,
     ConnectionsApiResponse,
@@ -28,6 +35,10 @@ _API_BASE_URL = "https://api.irail.be/v1"
 
 _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
+
+_DEFAULT_REQUEST_TIMEOUT = 30.0
+
+_LANGUAGES: frozenset[str] = frozenset({"en", "nl", "fr", "de"})
 
 _ALLOWED_VALUES: dict[str, frozenset[str]] = {
     "arrdep": frozenset({"departure", "arrival"}),
@@ -79,6 +90,8 @@ class iRail:
             If provided, the session lifecycle must be managed externally.
         max_retries (int): How many times a request is retried after a network error, timeout or
             server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
+        request_timeout (float): Timeout in seconds for each request attempt, including retries
+            of the same request.
 
     Endpoints:
         stations: Retrieve all stations.
@@ -102,7 +115,13 @@ class iRail:
         "disturbances": {"optional": ["lineBreakCharacter"]},
     }
 
-    def __init__(self, lang: str = "en", session: ClientSession | None = None, max_retries: int = 2) -> None:
+    def __init__(
+        self,
+        lang: str = "en",
+        session: ClientSession | None = None,
+        max_retries: int = 2,
+        request_timeout: float = _DEFAULT_REQUEST_TIMEOUT,
+    ) -> None:
         """Initialize the iRail API client.
 
         Args:
@@ -110,18 +129,23 @@ class iRail:
             session (ClientSession, optional): An existing aiohttp session. Defaults to None.
             max_retries (int): Number of retries after a transient failure. Default is 2 (3 attempts in total).
                 Use 0 to disable retrying.
+            request_timeout (float): Timeout in seconds for each request attempt, including retries of the
+                same request. Default is 30 seconds.
 
         Raises:
-            ValueError: If max_retries is negative.
+            ValueError: If max_retries is negative or request_timeout is not positive.
 
         """
         if max_retries < 0:
             raise ValueError("max_retries must be 0 or greater")
+        if request_timeout <= 0:
+            raise ValueError("request_timeout must be greater than 0")
         self.max_retries: int = max_retries
+        self.request_timeout: float = request_timeout
         self.lang: str = lang
         self.tokens: int = 3
         self.burst_tokens: int = 5
-        self.last_request_time: float = time.time()
+        self.last_request_time: float = time.monotonic()
         self.lock: Lock = Lock()
         self.session: ClientSession | None = session
         self._owns_session = session is None
@@ -146,10 +170,7 @@ class iRail:
         """
         if self.session and not self.session.closed and self._owns_session:
             logger.debug("Closing aiohttp session")
-            try:
-                await self.session.close()
-            except Exception as e:
-                logger.error("Error while closing aiohttp session: %s", e)
+            await self.session.close()
 
     def _ensure_session(self) -> ClientSession:
         """Return the active session, creating an owned one when none exists yet."""
@@ -166,7 +187,7 @@ class iRail:
             str: The current language setting ('nl', 'fr', 'en', 'de').
 
         """
-        return self.__lang
+        return self._lang
 
     @lang.setter
     def lang(self, value: str) -> None:
@@ -174,13 +195,14 @@ class iRail:
 
         Args:
             value (str): The language to use. Must be one of: 'nl', 'fr', 'en', 'de'.
-                        If an invalid value is provided, defaults to 'en'.
+
+        Raises:
+            ValueError: If the value is not one of the supported languages.
 
         """
-        if value in ["nl", "fr", "en", "de"]:
-            self.__lang = value
-        else:
-            self.__lang = "en"
+        if value not in _LANGUAGES:
+            raise ValueError(f"Invalid language: {value}. Expected one of {sorted(_LANGUAGES)}")
+        self._lang = value
 
     def clear_etag_cache(self) -> None:
         """Clear the ETag cache."""
@@ -194,7 +216,7 @@ class iRail:
         - Burst tokens: Refilled only when standard tokens are full, max 5 tokens.
         """
         logger.debug("Refilling tokens")
-        current_time: float = time.time()
+        current_time: float = time.monotonic()
         elapsed: float = current_time - self.last_request_time
         self.last_request_time = current_time
 
@@ -217,7 +239,7 @@ class iRail:
                 self.burst_tokens -= 1
             else:
                 logger.warning("Rate limiting active, waiting for tokens")
-                wait_time = max(0, 1 - (time.time() - self.last_request_time))
+                wait_time = max(0, 1 - (time.monotonic() - self.last_request_time))
                 await asyncio.sleep(wait_time)
                 self._refill_tokens()
                 self.tokens -= 1
@@ -241,47 +263,45 @@ class iRail:
             headers["If-None-Match"] = self.etag_cache[method]
         return headers
 
-    def _validate_date(self, date: str | None) -> bool:
+    def _validate_date(self, date: str | None) -> None:
         """Validate the date format (DDMMYY).
 
         Args:
             date (str, optional): The date string to validate. Expected format is DDMMYY,
             e.g., '150923' for September 15, 2023.
 
-        Returns:
-            bool: True if the date is valid or None is provided, False otherwise.
+        Raises:
+            ValueError: If the date is not in DDMMYY format.
 
         """
         if date is None:
-            return True
+            return
         try:
             datetime.strptime(date, "%d%m%y")
-            return True
         except ValueError:
-            logger.error("Invalid date format. Expected DDMMYY (e.g., 150923 for September 15, 2023), got: %s", date)
-            return False
+            raise ValueError(
+                f"Invalid date format: {date}. Expected DDMMYY (e.g., 150923 for September 15, 2023)"
+            ) from None
 
-    def _validate_time(self, time: str | None) -> bool:
+    def _validate_time(self, time: str | None) -> None:
         """Validate the time format (HHMM).
 
         Args:
             time (str, optional): The time string to validate. Expected format is HHMM,
             e.g., '1430' for 2:30 PM.
 
-        Returns:
-            bool: True if the time is valid or None is provided, False otherwise.
+        Raises:
+            ValueError: If the time is not in HHMM format.
 
         """
         if time is None:
-            return True
+            return
         try:
             datetime.strptime(time, "%H%M")
-            return True
         except ValueError:
-            logger.error("Invalid time format. Expected HHMM (e.g., 1430 for 2:30 PM), got: %s", time)
-            return False
+            raise ValueError(f"Invalid time format: {time}. Expected HHMM (e.g., 1430 for 2:30 PM)") from None
 
-    def _validate_values(self, params: dict[str, Any]) -> bool:
+    def _validate_values(self, params: dict[str, Any]) -> None:
         """Validate the date, the time and the parameters that only accept a fixed set of values.
 
         The API silently replaces a value it does not recognise with a default
@@ -291,32 +311,27 @@ class iRail:
         Args:
             params (dict[str, Any]): The request parameters.
 
-        Returns:
-            bool: True if every such parameter present holds an accepted value, False otherwise.
+        Raises:
+            ValueError: If a parameter present in the request holds an unaccepted value.
 
         """
-        if "date" in params and not self._validate_date(params["date"]):
-            return False
-        if "time" in params and not self._validate_time(params["time"]):
-            return False
+        self._validate_date(params.get("date"))
+        self._validate_time(params.get("time"))
         for name, allowed in _ALLOWED_VALUES.items():
             if name in params and params[name] not in allowed:
-                logger.error("Invalid %s: expected one of %s, got: %s", name, sorted(allowed), params[name])
-                return False
-        return True
+                raise ValueError(f"Invalid {name}: expected one of {sorted(allowed)}, got: {params[name]}")
 
-    def _validate_params(self, method: str, params: dict[str, Any] | None = None) -> bool:
+    def _validate_params(self, method: str, params: dict[str, Any] | None = None) -> None:
         """Validate parameters for a specific iRail API endpoint based on predefined requirements.
 
         Args:
             method (str): The API endpoint method to validate parameters for.
             params (dict[str, Any], optional): Dictionary of parameters to validate. Defaults to None.
 
-        Returns:
-            bool: True if parameters are valid, False otherwise.
-
         Raises:
-            No explicit exceptions raised. Uses logging to report validation errors.
+            ValueError: If the method is not a known endpoint, a required parameter is missing,
+                the XOR parameter logic is violated, an unexpected parameter is given, or a
+                parameter holds an unaccepted value.
 
         Validates the following conditions:
             1. Checks if the method is a known endpoint
@@ -325,12 +340,11 @@ class iRail:
             4. Prevents unexpected parameters from being included
 
         Example:
-            is_valid = self._validate_params('liveboard', {'station': 'Brussels', 'date': '150923'})
+            self._validate_params('liveboard', {'station': 'Brussels', 'date': '150923'})
 
         """
         if method not in self.endpoints:
-            logger.error("Unknown API endpoint: %s", method)
-            return False
+            raise ValueError(f"Unknown API endpoint: {method}")
 
         endpoint = self.endpoints[method]
         required = endpoint.get("required", [])
@@ -339,43 +353,53 @@ class iRail:
 
         params = params or {}
 
-        if not self._validate_values(params):
-            return False
+        self._validate_values(params)
 
         for param in required:
             if param not in params or params[param] is None:
-                logger.error("Missing required parameter: %s for endpoint: %s", param, method)
-                return False
+                raise ValueError(f"Missing required parameter: {param} for endpoint: {method}")
 
         if xor:
             xor_values = [params.get(param) is not None for param in xor]
             if sum(xor_values) != 1:
-                logger.error("Exactly one of the XOR parameters %s must be provided for endpoint: %s", xor, method)
-                return False
+                raise ValueError(f"Exactly one of the XOR parameters {xor} must be provided for endpoint: {method}")
 
         all_params = required + xor + optional
         for param in params:
             if param not in all_params:
-                logger.error("Unexpected parameter: %s for endpoint: %s", param, method)
-                return False
+                raise ValueError(f"Unexpected parameter: {param} for endpoint: {method}")
 
-        return True
+    async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any]:
+        """Handle a successful API response.
 
-    async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
-        """Handle a successful API response."""
+        Raises:
+            InvalidResponseError: If the body is empty or is not valid JSON.
+
+        """
         if "Etag" in response.headers:
             self.etag_cache[method] = response.headers["Etag"]
         try:
             json_data: dict[str, Any] | None = await response.json()
-            if json_data is None or not json_data:
-                logger.warning("Empty response received")
-            return json_data
-        except ValueError:
-            logger.error("Failed to parse JSON response")
-            return None
+        except ValueError as e:
+            raise InvalidResponseError(f"Response from {method} is not valid JSON: {_describe(e)}", status=200) from e
+        if json_data is None or not json_data:
+            raise InvalidResponseError(f"Response body from {method} is empty", status=200)
+        return json_data
 
     async def _handle_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
-        """Handle the API response based on status code."""
+        """Handle the API response based on status code.
+
+        Returns None for a 304 response, when the data has not been modified
+        since the previous request for the same method.
+
+        Raises:
+            RateLimitError: On HTTP 429.
+            InvalidRequestError: On HTTP 400.
+            NotFoundError: On HTTP 404.
+            InvalidResponseError: On an empty or unparseable body, or a status
+                outside the set the client handles (200, 304, 400, 404, 429).
+
+        """
         if response.status == 429:
             retry_after = _parse_retry_after(response.headers.get("Retry-After"))
             logger.warning("Rate limited on %s, the API asks to retry after %s seconds", method, retry_after)
@@ -393,11 +417,13 @@ class iRail:
         elif response.status == 200:
             return await self._handle_success_response(response, method)
         elif response.status == 304:
-            logger.info("Data not modified, using cached data for method %s", method)
+            logger.debug("Data not modified for method %s", method)
             return None
         else:
             logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
-            return None
+            raise InvalidResponseError(
+                f"Request to {method} returned an unexpected status {response.status}", status=response.status
+            )
 
     def _should_retry_on_status(self, response: ClientResponse) -> bool:
         """Determine if a response status code should trigger a retry.
@@ -423,19 +449,24 @@ class iRail:
             method: API method name for logging
 
         Returns:
-            dict or None: Parsed response, or None if the response is not usable
+            dict or None: Parsed response, or None if the data is not modified (304)
 
         Raises:
             ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
-            TimeoutError: If the request times out.
+            TimeoutError: If the attempt exceeds ``request_timeout`` seconds.
+            InvalidResponseError: On an empty or unparseable body, or an unexpected status.
+            RateLimitError: On HTTP 429.
+            InvalidRequestError: On HTTP 400.
+            NotFoundError: On HTTP 404.
 
         """
         session = self._ensure_session()
-        async with session.get(url, params=params, headers=headers) as response:
-            if self._should_retry_on_status(response):
-                raise _ServerError(response.status)
+        async with asyncio.timeout(self.request_timeout):
+            async with session.get(url, params=params, headers=headers) as response:
+                if self._should_retry_on_status(response):
+                    raise _ServerError(response.status)
 
-            return await self._handle_response(response, method)
+                return await self._handle_response(response, method)
 
     async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
@@ -452,29 +483,29 @@ class iRail:
 
         Returns:
             dict or None: Parsed JSON response from the API if successful,
-                None if the data is not modified (304), the server returns an unexpected
-                status, or the body cannot be parsed.
+                None if the data is not modified (304).
 
         Raises:
+            ValueError: If the method is not a known endpoint or the parameters are invalid.
             RateLimitError: If the API responds with HTTP 429. The exception's ``retry_after`` holds the
                 Retry-After delay in seconds, if given. The request is not retried.
             InvalidRequestError: If the API responds with HTTP 400.
             NotFoundError: If the API responds with HTTP 404.
-            ApiUnavailableError: If the request still fails after all retries (network error, timeout or HTTP 5xx).
+            InvalidResponseError: If the response body is empty, is not valid JSON, or the
+                status is outside the set the client handles (200, 304, 400, 404, 429).
+            ApiUnavailableError: If the request still fails after all retries (network error,
+                timeout or HTTP 5xx).
 
         Notes:
             - Implements rate limiting using a token-based mechanism
             - Supports ETag-based conditional requests
             - Raises RateLimitError immediately on rate limit (429) responses, without waiting or retrying
-            - Retries network failures, timeouts and server errors with exponential backoff;
-              every attempt, including retries, goes through the rate limiter
-            - Logs detailed information about request processing
+            - Retries network failures, timeouts and server errors with exponential backoff.
+              Every attempt, including retries, goes through the rate limiter and the request timeout
 
         """
-        logger.info("Starting request to endpoint: %s", method)
-        if not self._validate_params(method, args or {}):
-            logger.error("Validation failed for method: %s with args: %s", method, args)
-            return None
+        logger.debug("Starting request to endpoint: %s", method)
+        self._validate_params(method, args or {})
 
         url: str = f"{_API_BASE_URL}/{method}/"
         params = {"format": "json", "lang": self.lang}
@@ -507,6 +538,20 @@ class iRail:
                 await asyncio.sleep(delay)
         return None  # pragma: no cover - the loop always returns or raises
 
+    def _parse_response[T](self, method: str, data: dict[str, Any], from_dict: Callable[[dict[str, Any]], T]) -> T:
+        """Deserialize a response with the given deserialization function.
+
+        Raises:
+            InvalidResponseError: If the data does not match the response model.
+
+        """
+        try:
+            return from_dict(data)
+        except (LookupError, ValueError, OverflowError) as e:
+            raise InvalidResponseError(
+                f"Response from {method} does not match the expected model: {_describe(e)}"
+            ) from e
+
     async def get_stations(self) -> StationsApiResponse | None:
         """Retrieve a list of all train stations from the iRail API.
 
@@ -516,9 +561,11 @@ class iRail:
             StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified.
 
         Raises:
+            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            InvalidResponseError: If the response body cannot be used or does not match the response model.
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
@@ -531,7 +578,7 @@ class iRail:
         stations_response_dict = await self._do_request("stations")
         if stations_response_dict is None:
             return None
-        return StationsApiResponse.from_dict(stations_response_dict)
+        return self._parse_response("stations", stations_response_dict, StationsApiResponse.from_dict)
 
     async def get_liveboard(
         self,
@@ -560,9 +607,11 @@ class iRail:
             LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified.
 
         Raises:
+            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            InvalidResponseError: If the response body cannot be used or does not match the response model.
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
@@ -585,7 +634,7 @@ class iRail:
         )
         if liveboard_response_dict is None:
             return None
-        return LiveboardApiResponse.from_dict(liveboard_response_dict)
+        return self._parse_response("liveboard", liveboard_response_dict, LiveboardApiResponse.from_dict)
 
     async def get_connections(
         self,
@@ -611,9 +660,11 @@ class iRail:
             ConnectionsApiResponse or None: A ConnectionsApiResponse object containing connection details, or None if the data is not modified.
 
         Raises:
+            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            InvalidResponseError: If the response body cannot be used or does not match the response model.
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
@@ -636,7 +687,7 @@ class iRail:
         )
         if connections_response_dict is None:
             return None
-        return ConnectionsApiResponse.from_dict(connections_response_dict)
+        return self._parse_response("connections", connections_response_dict, ConnectionsApiResponse.from_dict)
 
     async def get_vehicle(self, id: str, date: str | None = None, alerts: bool = False) -> VehicleApiResponse | None:
         """Retrieve detailed information about a specific train vehicle.
@@ -651,9 +702,11 @@ class iRail:
             VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the data is not modified.
 
         Raises:
+            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            InvalidResponseError: If the response body cannot be used or does not match the response model.
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
@@ -667,7 +720,7 @@ class iRail:
         )
         if vehicle_response_dict is None:
             return None
-        return VehicleApiResponse.from_dict(vehicle_response_dict)
+        return self._parse_response("vehicle", vehicle_response_dict, VehicleApiResponse.from_dict)
 
     async def get_composition(self, id: str, data: str | None = None) -> CompositionApiResponse | None:
         """Retrieve the composition details of a specific train.
@@ -680,9 +733,11 @@ class iRail:
             CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the data is not modified.
 
         Raises:
+            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            InvalidResponseError: If the response body cannot be used or does not match the response model.
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
@@ -696,7 +751,7 @@ class iRail:
         )
         if composition_response_dict is None:
             return None
-        return CompositionApiResponse.from_dict(composition_response_dict)
+        return self._parse_response("composition", composition_response_dict, CompositionApiResponse.from_dict)
 
     async def get_disturbances(self, line_break_character: str | None = None) -> DisturbancesApiResponse | None:
         """Retrieve information about current disturbances on the rail network.
@@ -708,9 +763,11 @@ class iRail:
             DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified.
 
         Raises:
+            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
+            InvalidResponseError: If the response body cannot be used or does not match the response model.
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
@@ -726,4 +783,4 @@ class iRail:
         )
         if disturbances_response_dict is None:
             return None
-        return DisturbancesApiResponse.from_dict(disturbances_response_dict)
+        return self._parse_response("disturbances", disturbances_response_dict, DisturbancesApiResponse.from_dict)

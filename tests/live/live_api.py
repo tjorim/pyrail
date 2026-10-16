@@ -1,21 +1,19 @@
 """Retrying, failure-classifying client wrapper for the live smoke tests.
 
-pyRail reports unavailable endpoints by raising a ``PyRailError`` (HTTP 400, 404 and
-429, or ``ApiUnavailableError`` for network errors, timeouts and HTTP 5xx) or by logging
-an error and returning None (unparseable bodies, unexpected statuses), while a
-successful response that no longer matches the models raises during deserialization. ``LiveApi`` uses that difference to fail with one
-of two clearly distinct messages.
+pyRail reports failures by raising: ``InvalidRequestError``, ``NotFoundError`` and
+``RateLimitError`` for HTTP 400, 404 and 429, ``ApiUnavailableError`` for network errors,
+timeouts and HTTP 5xx, and ``InvalidResponseError`` for unusable bodies and for responses
+that no longer match the models. ``LiveApi`` uses those types to fail with one of three
+clearly distinct messages.
 """
 
 import asyncio
 from collections.abc import Awaitable, Callable
-import logging
-from typing import override
 
 from aiohttp import ClientTimeout
 import pytest
 
-from pyrail.exceptions import InvalidRequestError, NotFoundError, PyRailError
+from pyrail.exceptions import InvalidRequestError, InvalidResponseError, NotFoundError, PyRailError
 from pyrail.irail import iRail
 
 ATTEMPTS = 3
@@ -25,21 +23,6 @@ REQUEST_TIMEOUT = ClientTimeout(total=30)
 UNAVAILABLE = "API UNAVAILABLE"
 REJECTED = "API REJECTED REQUEST"
 INCOMPATIBLE = "API INCOMPATIBLE"
-
-
-class _ErrorLogCollector(logging.Handler):
-    """Collect the error messages pyRail logs while a request fails.
-
-    Messages are truncated because an error body can include a long server stack trace.
-    """
-
-    def __init__(self) -> None:
-        super().__init__(level=logging.ERROR)
-        self.messages: list[str] = []
-
-    @override
-    def emit(self, record: logging.LogRecord) -> None:
-        self.messages.append(record.getMessage()[:300])
 
 
 class LiveApi:
@@ -52,22 +35,25 @@ class LiveApi:
     async def fetch[T](self, endpoint: str, request: Callable[[iRail], Awaitable[T | None]]) -> T:
         """Call an endpoint, retrying when no usable response arrives.
 
-        Fails with ``API UNAVAILABLE`` when every attempt gets no response, with
-        ``API REJECTED REQUEST`` when the API answers HTTP 400 or 404, and with
-        ``API INCOMPATIBLE`` when a response arrives but cannot be deserialized.
-        Rejections and deserialization failures are not retried, as they are deterministic.
-        The ETag cache is cleared before every attempt so a 304 answer cannot come back as None.
+        Fails with ``API UNAVAILABLE`` when every attempt fails with a transient ``PyRailError``,
+        with ``API REJECTED REQUEST`` when the API answers HTTP 400 or 404, and with
+        ``API INCOMPATIBLE`` when the response is unusable or cannot be deserialized.
+        Rejections, unusable responses and deserialization failures are not retried, as they
+        are deterministic. The ETag cache is cleared before every attempt so a 304 answer
+        cannot come back as None.
         """
-        logger = logging.getLogger("pyrail.irail")
         reason = "no response"
         for attempt in range(1, ATTEMPTS + 1):
             self.client.clear_etag_cache()
-            collector = _ErrorLogCollector()
-            logger.addHandler(collector)
             try:
                 result = await request(self.client)
             except (InvalidRequestError, NotFoundError) as err:
                 pytest.fail(f"{REJECTED}: '{endpoint}' answered {type(err).__name__}: {str(err)[:300]}", pytrace=False)
+            except InvalidResponseError as err:
+                pytest.fail(
+                    f"{INCOMPATIBLE}: '{endpoint}' answered but the response cannot be used: {str(err)[:300]}",
+                    pytrace=False,
+                )
             except PyRailError as err:
                 reason = f"{type(err).__name__}: {str(err)[:300]}"
             except Exception as err:
@@ -79,9 +65,7 @@ class LiveApi:
             else:
                 if result is not None:
                     return result
-                reason = "; ".join(collector.messages) or "no response"
-            finally:
-                logger.removeHandler(collector)
+                reason = "no usable response"
             if attempt < ATTEMPTS:
                 await asyncio.sleep(BACKOFF_SECONDS[attempt - 1])
         pytest.fail(

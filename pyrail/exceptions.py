@@ -57,3 +57,22 @@ class ApiUnavailableError(PyRailError):
     def __init__(self, message: str = "API unavailable") -> None:
         """Initialize the exception with a message."""
         super().__init__(message)
+
+
+class InvalidResponseError(PyRailError):
+    """Raised when a response arrives but the client cannot use it.
+
+    This exception indicates that the body is empty, is not valid JSON, does not
+    match the response models, or that the status is outside the set the client
+    handles (200, 304, 400, 404, 429).
+
+    Attributes:
+        status: The HTTP status of the response, or None when the failure is
+            not tied to a status.
+
+    """
+
+    def __init__(self, message: str = "Invalid API response", *, status: int | None = None) -> None:
+        """Initialize the exception with a message and the optional HTTP status of the response."""
+        super().__init__(message)
+        self.status: int | None = status

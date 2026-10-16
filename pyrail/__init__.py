@@ -2,7 +2,14 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
-from .exceptions import ApiUnavailableError, InvalidRequestError, NotFoundError, PyRailError, RateLimitError
+from .exceptions import (
+    ApiUnavailableError,
+    InvalidRequestError,
+    InvalidResponseError,
+    NotFoundError,
+    PyRailError,
+    RateLimitError,
+)
 from .irail import iRail
 
 try:
@@ -13,6 +20,7 @@ except PackageNotFoundError:  # pragma: no cover
 __all__ = [
     "ApiUnavailableError",
     "InvalidRequestError",
+    "InvalidResponseError",
     "NotFoundError",
     "PyRailError",
     "RateLimitError",
