@@ -145,6 +145,80 @@ async def test_rate_limit_waits_when_tokens_run_out() -> None:
     mock_sleep.assert_awaited_once()
 
 
+def test_refill_tokens_keeps_fractional_credit() -> None:
+    """Two short intervals that together pay for one token yield one whole token.
+
+    Rounding each interval down to whole tokens discarded the credit of every
+    sub-second interval, draining the buckets under steady load.
+    """
+    with patch("pyrail.irail.time.monotonic", side_effect=[1000.0, 1000.2, 1000.4]):
+        api = iRail()
+        api._tokens = 0
+        api._burst_tokens = 0
+        api._refill_tokens()
+        assert api._tokens == pytest.approx(0.6)
+        api._refill_tokens()
+        assert api._tokens == pytest.approx(1.2)
+
+
+def test_refill_tokens_fills_burst_only_with_overflow() -> None:
+    """Burst tokens take only the refill credit the standard bucket cannot store."""
+    with patch("pyrail.irail.time.monotonic", side_effect=[1000.0, 1000.5, 1001.0]):
+        api = iRail()
+        api._tokens = 2.5
+        api._burst_tokens = 0
+        api._refill_tokens()
+        assert api._tokens == pytest.approx(3.0)
+        assert api._burst_tokens == pytest.approx(1.0)
+        api._refill_tokens()
+        assert api._burst_tokens == pytest.approx(2.5)
+
+
+async def test_rate_limit_waits_only_until_the_next_token() -> None:
+    """An empty bucket waits the time one token takes to refill, not a fixed second."""
+    with (
+        patch("pyrail.irail.time.monotonic", side_effect=[1000.0, 1000.0, 1000.34]),
+        patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+    ):
+        api = iRail()
+        api._tokens = 0
+        api._burst_tokens = 0
+        await api._handle_rate_limit()
+    assert mock_sleep.await_args is not None
+    assert mock_sleep.await_args.args[0] == pytest.approx(1 / 3)
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_saturated_requests_are_paced_smoothly(mock_get: MagicMock) -> None:
+    """Once the buckets are empty, every request waits about a third of a second.
+
+    The first 8 requests (3 standard tokens plus 5 burst tokens) go through
+    without waiting, later requests are paced one per third of a second instead
+    of arriving in clumps separated by one second freezes.
+    """
+    clock: list[float] = [1000.0]
+    waits: list[float] = []
+
+    def fake_monotonic() -> float:
+        return clock[0]
+
+    async def fake_sleep(seconds: float) -> None:
+        waits.append(seconds)
+        clock[0] += seconds
+
+    with (
+        patch("pyrail.irail.time.monotonic", side_effect=fake_monotonic),
+        patch("pyrail.irail.asyncio.sleep", new=fake_sleep),
+    ):
+        mock_get.return_value.__aenter__.return_value = _mock_response(data={"data": "ok"})
+        async with iRail() as api:
+            for _ in range(20):
+                await api._do_request("stations")
+
+    assert len(waits) == 12
+    assert all(wait == pytest.approx(1 / 3, rel=0.01) for wait in waits)
+
+
 @patch("pyrail.irail.ClientSession.get")
 async def test_get_stations(mock_get: MagicMock) -> None:
     """Test the get_stations endpoint.

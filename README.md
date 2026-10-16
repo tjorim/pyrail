@@ -197,6 +197,8 @@ async with iRail() as api:
         liveboard = await api.get_liveboard(station=station)
 ```
 
+When the limits are exhausted, a request waits only as long as the next token takes to refill, about a third of a second, so polling stays smooth instead of freezing for a full second.
+
 Exceeding the request limit will cause the server to return 429 responses, which raise a `RateLimitError` (see [Error Handling](#error-handling)). Rate limit waits and 429 answers are logged as warnings.
 
 ### Error Handling

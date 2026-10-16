@@ -163,8 +163,8 @@ class iRail:  # noqa: N801
         self.max_retries: int = max_retries
         self.request_timeout: float = request_timeout
         self.lang: str = lang
-        self._tokens: int = _TOKEN_CAPACITY
-        self._burst_tokens: int = _BURST_CAPACITY
+        self._tokens: float = _TOKEN_CAPACITY
+        self._burst_tokens: float = _BURST_CAPACITY
         self._last_request_time: float = time.monotonic()
         self._lock: Lock = Lock()
         self.session: ClientSession | None = session
@@ -236,41 +236,42 @@ class iRail:  # noqa: N801
         logger.debug("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
-        """Refill tokens for rate limiting using a token bucket algorithm.
+        """Refill the rate limiting token buckets.
 
-        - Standard tokens: Refill rate of 3 tokens per second, capped at 3 tokens.
-        - Burst tokens: An extra pool of 5 requests for spikes, refilled only
-          while the standard tokens are full.
+        Standard tokens refill at 3 tokens per second and hold at most 3. Burst
+        tokens take only the credit that overflows while the standard tokens are
+        full and hold at most 5. Credit is fractional and nothing is rounded away.
         """
         logger.debug("Refilling tokens")
         current_time: float = time.monotonic()
         elapsed: float = current_time - self._last_request_time
         self._last_request_time = current_time
 
-        self._tokens = min(_TOKEN_CAPACITY, self._tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
-
-        if self._tokens == _TOKEN_CAPACITY:
-            self._burst_tokens = min(_BURST_CAPACITY, self._burst_tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
+        credit: float = elapsed * _TOKEN_REFILLS_PER_SECOND
+        used_for_tokens: float = max(0.0, min(credit, _TOKEN_CAPACITY - self._tokens))
+        self._tokens = min(_TOKEN_CAPACITY, self._tokens + used_for_tokens)
+        overflow: float = credit - used_for_tokens
+        if overflow > 0 and self._tokens == _TOKEN_CAPACITY:
+            self._burst_tokens = min(_BURST_CAPACITY, self._burst_tokens + overflow)
 
     async def _handle_rate_limit(self) -> None:
-        """Handle rate limiting using a token bucket algorithm.
+        """Take one token for a request, or wait for the next one.
 
-        - Standard tokens: 3 requests per second.
-        - Burst tokens: An extra pool of 5 requests for spikes.
-        - Waits and refills tokens if both are exhausted.
+        Standard tokens allow 3 requests per second, burst tokens are an extra
+        pool of 5 for spikes. When both are exhausted, the request waits only
+        until the next standard token refills.
         """
         logger.debug("Handling rate limit")
         self._refill_tokens()
-        if self._tokens < 1:
-            if self._burst_tokens >= 1:
-                self._burst_tokens -= 1
-            else:
-                logger.warning("Rate limiting active, waiting for tokens")
-                wait_time = max(0, 1 - (time.monotonic() - self._last_request_time))
-                await asyncio.sleep(wait_time)
-                self._refill_tokens()
-                self._tokens -= 1
+        if self._tokens >= 1:
+            self._tokens -= 1
+        elif self._burst_tokens >= 1:
+            self._burst_tokens -= 1
         else:
+            logger.warning("Rate limiting active, waiting for a token")
+            wait_time: float = (1.0 - self._tokens) / _TOKEN_REFILLS_PER_SECOND
+            await asyncio.sleep(wait_time)
+            self._refill_tokens()
             self._tokens -= 1
 
     def _add_etag_header(self, method: str) -> dict[str, str]:
