@@ -136,8 +136,8 @@ async def test_close_allows_reuse(mock_get):
 async def test_rate_limit_waits_when_tokens_run_out():
     """Exhausting both token buckets waits for a refill before the request continues."""
     api = iRail()
-    api.tokens = 0
-    api.burst_tokens = 0
+    api._tokens = 0
+    api._burst_tokens = 0
     with patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
         await api._handle_rate_limit()
     mock_sleep.assert_awaited_once()
@@ -919,7 +919,7 @@ async def test_retry_backoff_delays(mock_get, mock_sleep):
     """Test that the delay doubles between attempts and is capped."""
     mock_get.side_effect = ClientError("down")
     async with iRail(max_retries=6) as api:
-        api.tokens = api.burst_tokens = 99
+        api._tokens = api._burst_tokens = 99
         with pytest.raises(ApiUnavailableError):
             await api._do_request("stations")
     assert [call.args[0] for call in mock_sleep.call_args_list] == [1.0, 2.0, 4.0, 8.0, 10.0, 10.0]
@@ -1044,7 +1044,7 @@ async def test_etag_caching(mock_get):
     ]
     async with iRail() as api:
         assert await api._do_request("stations") == {"data": "some_data"}
-        assert api.etag_cache == {"stations": etag}
+        assert api._etag_cache == {"stations": etag}
         assert await api._do_request("stations") is None
     assert mock_get.call_count == 2
     assert "If-None-Match" not in mock_get.call_args_list[0].kwargs["headers"]

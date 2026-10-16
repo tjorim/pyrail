@@ -9,7 +9,7 @@ from email.utils import parsedate_to_datetime
 import logging
 import time
 from types import TracebackType
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -48,6 +48,25 @@ _ALLOWED_VALUES: dict[str, frozenset[str]] = {
     "arrdep": frozenset({"departure", "arrival"}),
     "timesel": frozenset({"departure", "arrival"}),
     "typeOfTransport": frozenset({"automatic", "trains", "no_international_trains", "all"}),
+}
+
+
+class _EndpointSpec(TypedDict, total=False):
+    required: list[str]
+    optional: list[str]
+    xor: list[str]
+
+
+_ENDPOINTS: dict[str, _EndpointSpec] = {
+    "stations": {},
+    "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
+    "connections": {
+        "required": ["from", "to"],
+        "optional": ["date", "time", "timesel", "typeOfTransport"],
+    },
+    "vehicle": {"required": ["id"], "optional": ["date", "alerts"]},
+    "composition": {"required": ["id"], "optional": ["data"]},
+    "disturbances": {"optional": ["lineBreakCharacter"]},
 }
 
 
@@ -106,18 +125,6 @@ class iRail:
 
     """
 
-    endpoints: dict[str, dict[str, Any]] = {
-        "stations": {},
-        "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
-        "connections": {
-            "required": ["from", "to"],
-            "optional": ["date", "time", "timesel", "typeOfTransport"],
-        },
-        "vehicle": {"required": ["id"], "optional": ["date", "alerts"]},
-        "composition": {"required": ["id"], "optional": ["data"]},
-        "disturbances": {"optional": ["lineBreakCharacter"]},
-    }
-
     def __init__(
         self,
         lang: str = "en",
@@ -147,13 +154,13 @@ class iRail:
         self.max_retries: int = max_retries
         self.request_timeout: float = request_timeout
         self.lang: str = lang
-        self.tokens: int = _TOKEN_CAPACITY
-        self.burst_tokens: int = _BURST_CAPACITY
-        self.last_request_time: float = time.monotonic()
-        self.lock: Lock = Lock()
+        self._tokens: int = _TOKEN_CAPACITY
+        self._burst_tokens: int = _BURST_CAPACITY
+        self._last_request_time: float = time.monotonic()
+        self._lock: Lock = Lock()
         self.session: ClientSession | None = session
         self._owns_session = session is None
-        self.etag_cache: dict[str, str] = {}
+        self._etag_cache: dict[str, str] = {}
 
     async def __aenter__(self) -> "iRail":
         """Initialize the aiohttp client session when entering the async context."""
@@ -214,7 +221,7 @@ class iRail:
 
     def clear_etag_cache(self) -> None:
         """Clear the ETag cache."""
-        self.etag_cache.clear()
+        self._etag_cache.clear()
         logger.debug("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
@@ -226,13 +233,13 @@ class iRail:
         """
         logger.debug("Refilling tokens")
         current_time: float = time.monotonic()
-        elapsed: float = current_time - self.last_request_time
-        self.last_request_time = current_time
+        elapsed: float = current_time - self._last_request_time
+        self._last_request_time = current_time
 
-        self.tokens = min(_TOKEN_CAPACITY, self.tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
+        self._tokens = min(_TOKEN_CAPACITY, self._tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
 
-        if self.tokens == _TOKEN_CAPACITY:
-            self.burst_tokens = min(_BURST_CAPACITY, self.burst_tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
+        if self._tokens == _TOKEN_CAPACITY:
+            self._burst_tokens = min(_BURST_CAPACITY, self._burst_tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
 
     async def _handle_rate_limit(self) -> None:
         """Handle rate limiting using a token bucket algorithm.
@@ -243,17 +250,17 @@ class iRail:
         """
         logger.debug("Handling rate limit")
         self._refill_tokens()
-        if self.tokens < 1:
-            if self.burst_tokens >= 1:
-                self.burst_tokens -= 1
+        if self._tokens < 1:
+            if self._burst_tokens >= 1:
+                self._burst_tokens -= 1
             else:
                 logger.warning("Rate limiting active, waiting for tokens")
-                wait_time = max(0, 1 - (time.monotonic() - self.last_request_time))
+                wait_time = max(0, 1 - (time.monotonic() - self._last_request_time))
                 await asyncio.sleep(wait_time)
                 self._refill_tokens()
-                self.tokens -= 1
+                self._tokens -= 1
         else:
-            self.tokens -= 1
+            self._tokens -= 1
 
     def _add_etag_header(self, method: str) -> dict[str, str]:
         """Add ETag header for the given method if a cached ETag is available.
@@ -267,9 +274,9 @@ class iRail:
 
         """
         headers: dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
-        if method in self.etag_cache:
-            logger.debug("Adding If-None-Match header with value: %s", self.etag_cache[method])
-            headers["If-None-Match"] = self.etag_cache[method]
+        if method in self._etag_cache:
+            logger.debug("Adding If-None-Match header with value: %s", self._etag_cache[method])
+            headers["If-None-Match"] = self._etag_cache[method]
         return headers
 
     def _validate_date(self, date: str | None) -> None:
@@ -345,10 +352,10 @@ class iRail:
             ValueError: If any of the checks fails.
 
         """
-        if method not in self.endpoints:
+        if method not in _ENDPOINTS:
             raise ValueError(f"Unknown API endpoint: {method}")
 
-        endpoint = self.endpoints[method]
+        endpoint = _ENDPOINTS[method]
         required = endpoint.get("required", [])
         xor = endpoint.get("xor", [])
         optional = endpoint.get("optional", [])
@@ -379,7 +386,7 @@ class iRail:
 
         """
         if "Etag" in response.headers:
-            self.etag_cache[method] = response.headers["Etag"]
+            self._etag_cache[method] = response.headers["Etag"]
         try:
             json_data: dict[str, Any] | None = await response.json()
         except ValueError as e:
@@ -512,7 +519,7 @@ class iRail:
 
         max_attempts = self.max_retries + 1
         for attempt in range(1, max_attempts + 1):
-            async with self.lock:
+            async with self._lock:
                 await self._handle_rate_limit()
 
             request_headers: dict[str, str] = self._add_etag_header(method)
