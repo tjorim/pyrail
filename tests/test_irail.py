@@ -25,7 +25,7 @@ from pyrail.exceptions import (
     PyRailError,
     RateLimitError,
 )
-from pyrail.irail import _ENDPOINTS, _parse_retry_after, iRail
+from pyrail.irail import _ENDPOINTS, _ETAG_CACHE_LIMIT, _parse_retry_after, iRail
 from pyrail.models import (
     Alert,
     ApiResponse,
@@ -1316,6 +1316,33 @@ async def test_etag_cache_is_keyed_by_query(mock_get: MagicMock) -> None:
     assert "If-None-Match" not in mock_get.call_args_list[1].kwargs["headers"]
     assert mock_get.call_args_list[2].kwargs["headers"]["If-None-Match"] == '"etag-south"'
     assert len(api._etag_cache) == 2
+
+
+def test_etag_cache_is_capped() -> None:
+    """The ETag cache drops its oldest entries above the limit."""
+    api = iRail()
+    for index in range(_ETAG_CACHE_LIMIT + 5):
+        api._store_etag(("stations", (("query", str(index)),)), f'"etag{index}"')
+
+    assert len(api._etag_cache) == _ETAG_CACHE_LIMIT
+    assert ("stations", (("query", "0"),)) not in api._etag_cache
+    assert ("stations", (("query", "4"),)) not in api._etag_cache
+    assert ("stations", (("query", "5"),)) in api._etag_cache
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_not_modified_refreshes_the_cached_etag(mock_get: MagicMock) -> None:
+    """A 304 response carrying an ETag replaces the cached one for its request."""
+    liveboard = _load_example("liveboard.json")
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(data=liveboard, headers={"Etag": '"old-etag"'}),
+        _mock_response(status=304, headers={"Etag": '"new-etag"'}),
+    ]
+    async with iRail() as api:
+        await api.get_liveboard(station="Brussels-South")
+        assert await api.get_liveboard(station="Brussels-South") is None
+
+    assert list(api._etag_cache.values()) == ['"new-etag"']
 
 
 @patch("pyrail.irail.ClientSession.get")

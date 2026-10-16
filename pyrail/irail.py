@@ -2,6 +2,7 @@
 
 import asyncio
 from asyncio import Lock
+from collections import OrderedDict
 from collections.abc import Callable, Mapping
 import contextlib
 from datetime import UTC, datetime
@@ -38,6 +39,8 @@ _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
 
 _DEFAULT_REQUEST_TIMEOUT = 30.0
+
+_ETAG_CACHE_LIMIT = 128
 
 _SERVER_ERROR_STATUSES = range(500, 600)
 
@@ -175,7 +178,7 @@ class iRail:  # noqa: N801
         self._lock: Lock = Lock()
         self.session: ClientSession | None = session
         self._owns_session = session is None
-        self._etag_cache: dict[_RequestKey, str] = {}
+        self._etag_cache: OrderedDict[_RequestKey, str] = OrderedDict()
 
     async def __aenter__(self) -> Self:
         """Initialize the aiohttp client session when entering the async context."""
@@ -240,6 +243,12 @@ class iRail:  # noqa: N801
         """Clear the ETag cache."""
         self._etag_cache.clear()
         logger.debug("ETag cache cleared")
+
+    def _store_etag(self, request_key: _RequestKey, etag: str) -> None:
+        """Cache the ETag for a request, dropping the oldest entry above the limit."""
+        self._etag_cache[request_key] = etag
+        if len(self._etag_cache) > _ETAG_CACHE_LIMIT:
+            self._etag_cache.popitem(last=False)
 
     def _refill_tokens(self) -> None:
         """Refill the rate limiting token buckets.
@@ -410,7 +419,7 @@ class iRail:  # noqa: N801
 
         """
         if "Etag" in response.headers:
-            self._etag_cache[request_key] = response.headers["Etag"]
+            self._store_etag(request_key, response.headers["Etag"])
         try:
             json_data: Any = await response.json(content_type=None)
         except ValueError as e:
@@ -430,7 +439,8 @@ class iRail:  # noqa: N801
         """Handle the API response based on status code.
 
         Returns None for a 304 response, when the data has not been modified
-        since the previous identical request.
+        since the previous identical request. A 304 carrying an ETag replaces
+        the cached one for the request.
 
         Raises:
             RateLimitError: On HTTP 429.
@@ -457,6 +467,8 @@ class iRail:  # noqa: N801
             return await self._handle_success_response(response, method, request_key)
         if response.status == HTTPStatus.NOT_MODIFIED:
             logger.debug("Data not modified for method %s", method)
+            if "Etag" in response.headers:
+                self._store_etag(request_key, response.headers["Etag"])
             return None
         msg = f"Request to {method} returned an unexpected status {response.status}"
         raise InvalidResponseError(msg, status=response.status)
