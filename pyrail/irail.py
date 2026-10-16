@@ -38,6 +38,10 @@ _RETRY_MAX_DELAY = 10.0
 
 _DEFAULT_REQUEST_TIMEOUT = 30.0
 
+_TOKEN_CAPACITY = 3
+_TOKEN_REFILLS_PER_SECOND = 3
+_BURST_CAPACITY = 5
+
 _LANGUAGES: frozenset[str] = frozenset({"en", "nl", "fr", "de"})
 
 _ALLOWED_VALUES: dict[str, frozenset[str]] = {
@@ -90,8 +94,7 @@ class iRail:
             If provided, the session lifecycle must be managed externally.
         max_retries (int): How many times a request is retried after a network error, timeout or
             server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
-        request_timeout (float): Timeout in seconds for each request attempt, including retries
-            of the same request.
+        request_timeout (float): Timeout in seconds for each individual request attempt.
 
     Endpoints:
         stations: Retrieve all stations.
@@ -129,11 +132,12 @@ class iRail:
             session (ClientSession, optional): An existing aiohttp session. Defaults to None.
             max_retries (int): Number of retries after a transient failure. Default is 2 (3 attempts in total).
                 Use 0 to disable retrying.
-            request_timeout (float): Timeout in seconds for each request attempt, including retries of the
-                same request. Default is 30 seconds.
+            request_timeout (float): Timeout in seconds for each individual request attempt.
+                Default is 30 seconds.
 
         Raises:
-            ValueError: If max_retries is negative or request_timeout is not positive.
+            ValueError: If max_retries is negative, request_timeout is not positive, or lang is
+                not one of 'en', 'nl', 'fr', 'de'.
 
         """
         if max_retries < 0:
@@ -143,8 +147,8 @@ class iRail:
         self.max_retries: int = max_retries
         self.request_timeout: float = request_timeout
         self.lang: str = lang
-        self.tokens: int = 3
-        self.burst_tokens: int = 5
+        self.tokens: int = _TOKEN_CAPACITY
+        self.burst_tokens: int = _BURST_CAPACITY
         self.last_request_time: float = time.monotonic()
         self.lock: Lock = Lock()
         self.session: ClientSession | None = session
@@ -159,7 +163,10 @@ class iRail:
     async def __aexit__(
         self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
     ) -> None:
-        """Close the aiohttp client session when exiting the async context."""
+        """Close the owned aiohttp client session when exiting the async context.
+
+        A session provided by the caller is left open.
+        """
         await self.close()
 
     async def close(self) -> None:
@@ -171,6 +178,7 @@ class iRail:
         if self.session and not self.session.closed and self._owns_session:
             logger.debug("Closing aiohttp session")
             await self.session.close()
+            self.session = None
 
     def _ensure_session(self) -> ClientSession:
         """Return the active session, creating an owned one when none exists yet."""
@@ -207,29 +215,30 @@ class iRail:
     def clear_etag_cache(self) -> None:
         """Clear the ETag cache."""
         self.etag_cache.clear()
-        logger.info("ETag cache cleared")
+        logger.debug("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
         """Refill tokens for rate limiting using a token bucket algorithm.
 
-        - Standard tokens: Refill rate of 3 tokens/second, max 3 tokens.
-        - Burst tokens: Refilled only when standard tokens are full, max 5 tokens.
+        - Standard tokens: Refill rate of 3 tokens per second, capped at 3 tokens.
+        - Burst tokens: An extra pool of 5 requests for spikes, refilled only
+          while the standard tokens are full.
         """
         logger.debug("Refilling tokens")
         current_time: float = time.monotonic()
         elapsed: float = current_time - self.last_request_time
         self.last_request_time = current_time
 
-        self.tokens = min(3, self.tokens + int(elapsed * 3))
+        self.tokens = min(_TOKEN_CAPACITY, self.tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
 
-        if self.tokens == 3:
-            self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
+        if self.tokens == _TOKEN_CAPACITY:
+            self.burst_tokens = min(_BURST_CAPACITY, self.burst_tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
 
     async def _handle_rate_limit(self) -> None:
         """Handle rate limiting using a token bucket algorithm.
 
-        - Standard tokens: 3 requests/second.
-        - Burst tokens: Additional 5 requests/second for spikes.
+        - Standard tokens: 3 requests per second.
+        - Burst tokens: An extra pool of 5 requests for spikes.
         - Waits and refills tokens if both are exhausted.
         """
         logger.debug("Handling rate limit")
@@ -324,23 +333,16 @@ class iRail:
     def _validate_params(self, method: str, params: dict[str, Any] | None = None) -> None:
         """Validate parameters for a specific iRail API endpoint based on predefined requirements.
 
+        Checks that the method is a known endpoint, that all required parameters are present,
+        that the XOR parameter logic holds, that no unexpected parameters are given, and that
+        date, time and fixed-value parameters hold accepted values.
+
         Args:
             method (str): The API endpoint method to validate parameters for.
             params (dict[str, Any], optional): Dictionary of parameters to validate. Defaults to None.
 
         Raises:
-            ValueError: If the method is not a known endpoint, a required parameter is missing,
-                the XOR parameter logic is violated, an unexpected parameter is given, or a
-                parameter holds an unaccepted value.
-
-        Validates the following conditions:
-            1. Checks if the method is a known endpoint
-            2. Ensures all required parameters are present
-            3. Enforces XOR (exclusive OR) parameter logic where applicable
-            4. Prevents unexpected parameters from being included
-
-        Example:
-            self._validate_params('liveboard', {'station': 'Brussels', 'date': '150923'})
+            ValueError: If any of the checks fails.
 
         """
         if method not in self.endpoints:
@@ -408,19 +410,15 @@ class iRail:
             error_message = await response.text()
             with contextlib.suppress(ValueError, AttributeError):
                 error_message = (await response.json()).get("error", error_message)
-            logger.error("Bad request: %s", error_message)
             raise InvalidRequestError(error_message)
         elif response.status == 404:
-            error_message = await response.text()
-            logger.error("Endpoint %s not found, response: %s", method, error_message)
-            raise NotFoundError(error_message)
+            raise NotFoundError(await response.text())
         elif response.status == 200:
             return await self._handle_success_response(response, method)
         elif response.status == 304:
             logger.debug("Data not modified for method %s", method)
             return None
         else:
-            logger.error("Request failed with status code: %s, response: %s", response.status, await response.text())
             raise InvalidResponseError(
                 f"Request to {method} returned an unexpected status {response.status}", status=response.status
             )
@@ -522,7 +520,6 @@ class iRail:
                 return await self._execute_http_request(url, params, request_headers, method)
             except (ClientError, TimeoutError) as e:
                 if attempt == max_attempts:
-                    logger.error("Request to %s failed after %d attempt(s): %s", method, attempt, _describe(e))
                     raise ApiUnavailableError(
                         f"Request to {method} failed after {attempt} attempt(s): {_describe(e)}"
                     ) from e
@@ -536,7 +533,7 @@ class iRail:
                     max_attempts,
                 )
                 await asyncio.sleep(delay)
-        return None  # pragma: no cover - the loop always returns or raises
+        return None  # pragma: no cover
 
     def _parse_response[T](self, method: str, data: dict[str, Any], from_dict: Callable[[dict[str, Any]], T]) -> T:
         """Deserialize a response with the given deserialization function.
@@ -561,7 +558,6 @@ class iRail:
             StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified.
 
         Raises:
-            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -757,13 +753,14 @@ class iRail:
         """Retrieve information about current disturbances on the rail network.
 
         Args:
-            line_break_character (str, optional): A custom character to use for line breaks in the disturbance description. Defaults to ''.
+            line_break_character (str, optional): A custom character to use for line breaks in the
+                disturbance description. Defaults to None, which sends no lineBreakCharacter and
+                lets the API choose.
 
         Returns:
             DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified.
 
         Raises:
-            ValueError: If the parameters are invalid.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.

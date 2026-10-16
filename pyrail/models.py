@@ -16,6 +16,8 @@ def _timestamp_to_datetime(timestamp: str) -> datetime:
 
 def _str_to_bool(strbool: str) -> bool:
     """Convert a string ("0" or "1") to a boolean."""
+    if strbool not in ("0", "1"):
+        raise ValueError(f"Expected '0' or '1', got: {strbool}")
     return strbool == "1"
 
 
@@ -217,8 +219,9 @@ class ConnectionDeparture(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'stop' list from 'stops' before deserialization."""
-        d["stops"] = d["stops"]["stop"]
+        """Extract the 'stop' list from 'stops' before deserialization, defaulting to an empty list."""
+        stops = d.get("stops")
+        d["stops"] = stops.get("stop", []) if isinstance(stops, dict) else []
         return d
 
 
@@ -257,7 +260,7 @@ class Via(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class Remark(DataClassORJSONMixin):
-    """Represents a single remark for a train connection, including type and content.
+    """Represents a single remark for a train connection.
 
     The API does not document what a remark contains.
     """
@@ -268,7 +271,7 @@ class Remark(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class Alert(DataClassORJSONMixin):
-    """Represents a single alert for a train connection, including type and content."""
+    """Represents a single alert for a train connection."""
 
     id: str
     header: str
@@ -281,7 +284,7 @@ class Alert(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class ConnectionDetails(DataClassORJSONMixin):
-    """Details of a single connection, including departure and arrival information. The duration is in minutes."""
+    """Details of a single connection, including departure and arrival information. The duration is in seconds."""
 
     id: str
     departure: ConnectionDeparture
@@ -294,15 +297,13 @@ class ConnectionDetails(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Flatten the structure of the 'connections' response by extracting lists of remarks, alerts, and optionally flatten vias before deserialization."""
-        d["remarks"] = d["remarks"]["remark"]
-        d["alerts"] = d["alerts"]["alert"]
-
-        if "vias" in d and d["vias"] is not None:
-            d["vias"] = d["vias"].get("via", [])
-        else:
-            d["vias"] = None
-
+        """Flatten remarks, alerts and vias before deserialization, honoring the field defaults."""
+        remarks = d.get("remarks")
+        d["remarks"] = remarks.get("remark", []) if isinstance(remarks, dict) else []
+        alerts = d.get("alerts")
+        d["alerts"] = alerts.get("alert", []) if isinstance(alerts, dict) else []
+        vias = d.get("vias")
+        d["vias"] = vias.get("via", []) if isinstance(vias, dict) else None
         return d
 
 
@@ -353,8 +354,9 @@ class VehicleApiResponse(ApiResponse):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'stop' list from 'stops' before deserialization."""
-        d["stops"] = d["stops"]["stop"]
+        """Extract the 'stop' list from 'stops' before deserialization, defaulting to an empty list."""
+        stops = d.get("stops")
+        d["stops"] = stops.get("stop", []) if isinstance(stops, dict) else []
         return d
 
 
@@ -369,7 +371,7 @@ class MaterialType(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class Unit(DataClassORJSONMixin):
-    """Represents a single train unit, including its type and location."""
+    """Represents a single train unit, including its material type."""
 
     id: str
     material_type: MaterialType = field(metadata=field_options(alias="materialType"))
@@ -444,8 +446,9 @@ class CompositionApiResponse(ApiResponse):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Pre-deserialization hook to safely flatten composition segments."""
-        d["composition"] = d["composition"]["segments"]["segment"]
+        """Extract the 'segment' list from 'composition' before deserialization, defaulting to an empty list."""
+        composition = d.get("composition")
+        d["composition"] = composition.get("segments", {}).get("segment", []) if isinstance(composition, dict) else []
         return d
 
 
@@ -476,8 +479,9 @@ class Disturbance(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'descriptionLink' list from 'descriptionLinks' before deserialization."""
-        d["descriptionLinks"] = d["descriptionLinks"]["descriptionLink"]
+        """Extract the 'descriptionLink' list from 'descriptionLinks' before deserialization, defaulting to an empty list."""
+        links = d.get("descriptionLinks")
+        d["descriptionLinks"] = links.get("descriptionLink", []) if isinstance(links, dict) else []
         return d
 
 

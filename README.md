@@ -246,7 +246,7 @@ async with iRail(max_retries=0) as api:  # fail fast, no retries
     stations = await api.get_stations()
 ```
 
-When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Each failed attempt is logged as a warning.
+When all attempts fail, an `ApiUnavailableError` is raised, chained to the underlying error. Intermediate failures are logged as warnings, the final failure as an error.
 
 ## Development
 
@@ -277,6 +277,12 @@ To run the offline suite:
 uv run pytest
 ```
 
+CI also enforces a coverage threshold: branch coverage over `pyrail/` must stay at or above 92 percent. Run it locally with:
+
+```bash
+uv run coverage run -m pytest && uv run coverage report
+```
+
 To run the live suite, which needs network access:
 
 ```bash
@@ -285,9 +291,10 @@ uv run pytest -m live
 
 The live tests are excluded from a plain `pytest` run. Run them locally before a release. They also run daily and on demand through the *Live API Smoke Tests* workflow (Actions tab, *Run workflow*), where a failure notifies the maintainers.
 
-The vehicle and composition requests use a vehicle id taken from a Brussels-Central liveboard, as ids go stale with the timetable. A live test fails in one of two ways:
+The vehicle and composition requests use a vehicle id taken from a Brussels-Central liveboard, as ids go stale with the timetable. A live test fails in one of three ways:
 
 - `API UNAVAILABLE`: no usable response after 3 attempts, for example a network error, a timeout or an HTTP error. This is usually transient on the iRail side; re-run before investigating.
+- `API REJECTED REQUEST`: the API answered HTTP 400 or 404, for example an invalid parameter or a stale vehicle id. This is a request problem, not an outage.
 - `API INCOMPATIBLE`: iRail answered successfully but the response no longer deserializes. The message names the endpoint and the error, and the models in `pyrail/models.py` probably need updating.
 
 ### Code Style

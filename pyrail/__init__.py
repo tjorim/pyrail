@@ -1,6 +1,7 @@
 """Package initialization for pyrail."""
 
 from importlib.metadata import PackageNotFoundError, version
+import logging
 
 from .exceptions import (
     ApiUnavailableError,
@@ -11,6 +12,8 @@ from .exceptions import (
     RateLimitError,
 )
 from .irail import iRail
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 try:
     __version__ = version("pyrail")

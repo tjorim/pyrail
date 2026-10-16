@@ -38,9 +38,10 @@ class LiveApi:
         Fails with ``API UNAVAILABLE`` when every attempt fails with a transient ``PyRailError``,
         with ``API REJECTED REQUEST`` when the API answers HTTP 400 or 404, and with
         ``API INCOMPATIBLE`` when the response is unusable or cannot be deserialized.
-        Rejections, unusable responses and deserialization failures are not retried, as they
-        are deterministic. The ETag cache is cleared before every attempt so a 304 answer
-        cannot come back as None.
+        Rejections and unusable responses are not retried, as they are deterministic.
+        The ETag cache is cleared before every attempt so a 304 answer cannot come back as None.
+        Anything else that goes wrong fails the test as an ordinary error, since it is a bug
+        in the test or the client rather than an API change.
         """
         reason = "no response"
         for attempt in range(1, ATTEMPTS + 1):
@@ -56,12 +57,6 @@ class LiveApi:
                 )
             except PyRailError as err:
                 reason = f"{type(err).__name__}: {str(err)[:300]}"
-            except Exception as err:
-                pytest.fail(
-                    f"{INCOMPATIBLE}: '{endpoint}' answered successfully but the response failed to "
-                    f"deserialize: {type(err).__name__}: {err}",
-                    pytrace=False,
-                )
             else:
                 if result is not None:
                     return result

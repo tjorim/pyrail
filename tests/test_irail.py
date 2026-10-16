@@ -89,7 +89,7 @@ async def test_successful_request(mock_get):
 
 
 async def test_irail_context_manager():
-    """Ensure that the async context manager sets up and tears down the session properly."""
+    """The async context manager creates the session on entry and closes it on exit."""
     async with iRail() as irail:
         assert irail.session is not None
         assert isinstance(irail.session, ClientSession)
@@ -105,8 +105,7 @@ async def test_client_without_context_manager(mock_get):
     await api.close()
 
     assert stations is not None
-    assert api.session is not None
-    assert api.session.closed
+    assert api.session is None
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -119,6 +118,29 @@ async def test_close_leaves_external_session_open(mock_get):
         assert await api.get_stations() is not None
         await api.close()
         assert not session.closed
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_close_allows_reuse(mock_get):
+    """A closed client creates a fresh owned session on the next request."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("stations.json"))
+
+    api = iRail()
+    assert await api.get_stations() is not None
+    await api.close()
+    assert api.session is None
+    assert await api.get_stations() is not None
+    await api.close()
+
+
+async def test_rate_limit_waits_when_tokens_run_out():
+    """Exhausting both token buckets waits for a refill before the request continues."""
+    api = iRail()
+    api.tokens = 0
+    api.burst_tokens = 0
+    with patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        await api._handle_rate_limit()
+    mock_sleep.assert_awaited_once()
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -587,6 +609,8 @@ def test_str_to_bool():
     """Test the str_to_bool function that converts string values to boolean."""
     assert _str_to_bool("1") is True, "String '1' should convert to True"
     assert _str_to_bool("0") is False, "String '0' should convert to False"
+    with pytest.raises(ValueError, match="Expected '0' or '1'"):
+        _str_to_bool("true")
 
 
 def test_unit_optional_field_deserialization():
@@ -866,14 +890,13 @@ async def test_retry_on_server_error(mock_get, mock_sleep):
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
 @patch("pyrail.irail.ClientSession.get")
 async def test_retry_logs_each_failed_attempt(mock_get, mock_sleep, caplog):
-    """Test that every failed attempt is logged and the final failure is reported."""
+    """Test that every retried attempt logs a warning and the final failure raises."""
     mock_get.side_effect = ClientError("Persistent network error")
     async with iRail() as api:
-        with caplog.at_level(logging.WARNING), pytest.raises(ApiUnavailableError):
+        with caplog.at_level(logging.WARNING), pytest.raises(ApiUnavailableError, match="failed after 3 attempt"):
             await api._do_request("stations")
     assert mock_get.call_count == 3
     assert caplog.text.count("retrying in") == 2
-    assert "failed after 3 attempt(s)" in caplog.text
 
 
 @patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock)
