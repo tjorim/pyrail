@@ -3,9 +3,9 @@
 Every list field has a default. The fields with a deserialization hook honor it:
 a wrapper key that is absent, null or not a dict produces the default instead of
 an error. The top-level station, connection and disturbance wrappers have no
-hook, so there a null value is an error. A wrapper key the hooks do not recognise
-is not detected here, so the live smoke suite detects upstream shape changes
-where it asserts data is present.
+hook, and a null value in one of them is an error. A wrapper key the hooks do
+not recognise is not detected here, so the live smoke suite detects upstream
+shape changes where it asserts data is present.
 """
 
 from dataclasses import dataclass, field

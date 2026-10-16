@@ -185,7 +185,7 @@ async with iRail() as api:
 pyRail implements rate limiting to comply with iRail API's guidelines:
 
 - Maximum of 3 requests per second per source IP address
-- 5 burst requests available, allowing up to 8 requests in 1 second
+- 5 burst requests available, allowing a burst of 8 requests without waiting
 
 The library automatically handles rate limiting:
 
@@ -210,7 +210,7 @@ pyRail raises exceptions for errors returned by the iRail API and for connection
 | `InvalidRequestError` | The API responds with HTTP 400 (invalid request)                                    |
 | `NotFoundError`       | The API responds with HTTP 404 (resource not found)                                 |
 | `RateLimitError`      | The API responds with HTTP 429 (rate limit exceeded); see `retry_after`             |
-| `InvalidResponseError` | The response body is empty, is not valid JSON, is not a JSON object, does not match the response models, or has a status outside 200, 304, 400, 404 and 429. Carries the HTTP status in `status` when the failure has one |
+| `InvalidResponseError` | The response body is empty, is not valid JSON, is not a JSON object, does not match the response models, or has a status outside 200, 304, 400, 404, 429 and the 5xx range. Carries the HTTP status in `status` when the failure has one |
 | `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python

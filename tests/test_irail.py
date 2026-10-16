@@ -173,7 +173,7 @@ def test_refill_tokens_keeps_fractional_credit() -> None:
     Rounding each interval down to whole tokens discarded the credit of every
     sub-second interval, draining the buckets under steady load.
     """
-    with patch("pyrail.irail.time.monotonic", side_effect=[1000.0, 1000.2, 1000.4]):
+    with patch("time.monotonic", side_effect=[1000.0, 1000.2, 1000.4]):
         api = iRail()
         api._tokens = 0
         api._burst_tokens = 0
@@ -185,7 +185,7 @@ def test_refill_tokens_keeps_fractional_credit() -> None:
 
 def test_refill_tokens_fills_burst_only_with_overflow() -> None:
     """Burst tokens take only the refill credit the standard bucket cannot store."""
-    with patch("pyrail.irail.time.monotonic", side_effect=[1000.0, 1000.5, 1001.0]):
+    with patch("time.monotonic", side_effect=[1000.0, 1000.5, 1001.0]):
         api = iRail()
         api._tokens = 2.5
         api._burst_tokens = 0
@@ -199,8 +199,8 @@ def test_refill_tokens_fills_burst_only_with_overflow() -> None:
 async def test_rate_limit_waits_only_until_the_next_token() -> None:
     """An empty bucket waits the time one token takes to refill, not a fixed second."""
     with (
-        patch("pyrail.irail.time.monotonic", side_effect=[1000.0, 1000.0, 1000.34]),
-        patch("pyrail.irail.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch("time.monotonic", side_effect=[1000.0, 1000.0, 1000.34]),
+        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
     ):
         api = iRail()
         api._tokens = 0
@@ -220,8 +220,8 @@ async def test_saturated_requests_are_paced_smoothly(mock_get: MagicMock) -> Non
     """
     clock = _FakeClock()
     with (
-        patch("pyrail.irail.time.monotonic", side_effect=clock.monotonic),
-        patch("pyrail.irail.asyncio.sleep", new=clock.sleep),
+        patch("time.monotonic", side_effect=clock.monotonic),
+        patch("asyncio.sleep", new=clock.sleep),
     ):
         mock_get.return_value.__aenter__.return_value = _mock_response(data={"data": "ok"})
         async with iRail() as api:
@@ -241,8 +241,8 @@ async def test_concurrent_requests_share_the_rate_limit_budget(mock_get: MagicMo
     """
     clock = _FakeClock()
     with (
-        patch("pyrail.irail.time.monotonic", side_effect=clock.monotonic),
-        patch("pyrail.irail.asyncio.sleep", new=clock.sleep),
+        patch("time.monotonic", side_effect=clock.monotonic),
+        patch("asyncio.sleep", new=clock.sleep),
     ):
         mock_get.return_value.__aenter__.return_value = _mock_response(data={"data": "ok"})
         async with iRail() as api:

@@ -430,8 +430,9 @@ class iRail:  # noqa: N801
             RateLimitError: On HTTP 429.
             InvalidRequestError: On HTTP 400.
             NotFoundError: On HTTP 404.
-            InvalidResponseError: On an empty or unparseable body, or a status
-                outside the set the client handles (200, 304, 400, 404, 429).
+            InvalidResponseError: On an empty or unparseable body, a body that
+                is not a JSON object, or a status outside the set the client
+                handles (200, 304, 400, 404, 429).
 
         """
         if response.status == HTTPStatus.TOO_MANY_REQUESTS:
@@ -523,7 +524,7 @@ class iRail:  # noqa: N801
             NotFoundError: If the API responds with HTTP 404.
             InvalidResponseError: If the response body is empty, is not valid JSON,
                 is not a JSON object, or the status is outside the set the client
-                handles (200, 304, 400, 404, 429).
+                handles (200, 304, 400, 404, 429 and the 5xx range).
             ApiUnavailableError: If the request still fails after all retries (network error,
                 timeout or HTTP 5xx).
 

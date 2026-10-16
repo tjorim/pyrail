@@ -52,7 +52,7 @@ class InvalidResponseError(PyRailError):
 
     This exception indicates that the body is empty, is not valid JSON, is not
     a JSON object, does not match the response models, or that the status is
-    outside the set the client handles (200, 304, 400, 404, 429).
+    outside the set the client handles (200, 304, 400, 404, 429 and the 5xx range).
 
     Attributes:
         status: The HTTP status of the response, or None when the failure is
