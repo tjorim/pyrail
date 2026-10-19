@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from aiohttp import ClientSession
 import pytest
 
-from pyrail.irail import iRail
+from pyrail.irail import IRail
 from tests.live.live_api import REQUEST_TIMEOUT, LiveApi
 
 
@@ -29,7 +29,7 @@ async def live() -> AsyncIterator[LiveApi]:
     The client's own retries are disabled because LiveApi retries with a longer backoff,
     which keeps the number of requests and the total runtime per endpoint bounded.
     """
-    async with ClientSession(timeout=REQUEST_TIMEOUT) as session, iRail(session=session, max_retries=0) as client:
+    async with ClientSession(timeout=REQUEST_TIMEOUT) as session, IRail(session=session, max_retries=0) as client:
         yield LiveApi(client)
 
 

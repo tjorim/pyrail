@@ -1,6 +1,6 @@
 # pyRail
 
-An async Python wrapper for the iRail API, designed to make interacting with iRail simple and efficient.
+An async Python wrapper for the iRail API, designed to make interacting with IRail simple and efficient.
 Built with aiohttp, it provides non-blocking I/O operations for optimal performance in async applications.
 
 ## Overview
@@ -37,12 +37,12 @@ Here is an example of how to use pyRail asynchronously:
 
 ```python
 import asyncio
-from pyrail import iRail, PyRailError
+from pyrail import IRail, PyRailError
 
 
 async def main():
     # Sequential requests example
-    async with iRail() as api:
+    async with IRail() as api:
         try:
             # Get the total number of stations
             stations = await api.get_stations()
@@ -60,7 +60,7 @@ async def main():
         except PyRailError as e:
             print(f"Error occurred: {e}")
     # Parallel requests example
-    async with iRail() as api:
+    async with IRail() as api:
         try:
             connections, vehicle_info = await asyncio.gather(
                 # Get connections between stations
@@ -126,7 +126,7 @@ elif not liveboard.departures:
 You can configure the language for the API requests:
 
 ```python
-api = iRail(lang="nl")
+api = IRail(lang="nl")
 ```
 
 Supported languages are:
@@ -149,19 +149,19 @@ from aiohttp import ClientSession
 async def main():
     # Using an external session
     async with ClientSession() as session:
-        async with iRail(session=session) as api:
+        async with IRail(session=session) as api:
             stations = await api.get_stations()
             print(f"Total stations: {len(stations.stations)}")
 
-    # Or let iRail manage its own session
-    async with iRail() as api:
+    # Or let IRail manage its own session
+    async with IRail() as api:
         stations = await api.get_stations()
 ```
 
 Without the context manager, close the owned session yourself:
 
 ```python
-api = iRail()
+api = IRail()
 stations = await api.get_stations()
 await api.close()
 ```
@@ -173,7 +173,7 @@ An externally provided session is never closed by pyRail, with or without the co
 pyRail sends `If-None-Match` for a method once the API has returned an `ETag` for it. The iRail API does not send ETags at the moment (checked October 2026), so for now this has no effect and every request returns fresh data. You can clear the ETag cache when needed:
 
 ```python
-async with iRail() as api:
+async with IRail() as api:
     # Clear the ETag cache
     api.clear_etag_cache()
     # Subsequent requests will fetch fresh data
@@ -191,7 +191,7 @@ The library automatically handles rate limiting:
 
 ```python
 # Rate limiting is handled automatically
-async with iRail() as api:
+async with IRail() as api:
     # These requests will be rate-limited if needed
     for station in ["Brussels-South", "Antwerp-Central", "Ghent-Sint-Pieters"]:
         liveboard = await api.get_liveboard(station=station)
@@ -212,9 +212,9 @@ pyRail raises exceptions for errors returned by the iRail API and for connection
 | `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
-from pyrail import iRail, NotFoundError, PyRailError, RateLimitError
+from pyrail import IRail, NotFoundError, PyRailError, RateLimitError
 
-async with iRail() as api:
+async with IRail() as api:
     try:
         liveboard = await api.get_liveboard(station="Unknown station")
     except NotFoundError:
@@ -239,10 +239,10 @@ pyRail automatically retries transient failures with exponential backoff:
 By default a request is attempted up to 3 times in total, waiting 1s and then 2s between attempts (the delay doubles each time, capped at 10s). Use `max_retries` to change this, or set it to `0` to disable retrying:
 
 ```python
-async with iRail(max_retries=5) as api:
+async with IRail(max_retries=5) as api:
     stations = await api.get_stations()
 
-async with iRail(max_retries=0) as api:  # fail fast, no retries
+async with IRail(max_retries=0) as api:  # fail fast, no retries
     stations = await api.get_stations()
 ```
 
@@ -293,7 +293,7 @@ The live tests are excluded from a plain `pytest` run. Run them locally before a
 
 The vehicle and composition requests use a vehicle id taken from a Brussels-Central liveboard, as ids go stale with the timetable. A live test fails in one of three ways:
 
-- `API UNAVAILABLE`: no usable response after 3 attempts, for example a network error, a timeout or an HTTP error. This is usually transient on the iRail side; re-run before investigating.
+- `API UNAVAILABLE`: no usable response after 3 attempts, for example a network error, a timeout or an HTTP error. This is usually transient on the IRail side; re-run before investigating.
 - `API REJECTED REQUEST`: the API answered HTTP 400 or 404, for example an invalid parameter or a stale vehicle id. This is a request problem, not an outage.
 - `API INCOMPATIBLE`: iRail answered successfully but the response no longer deserializes. The message names the endpoint and the error, and the models in `pyrail/models.py` probably need updating.
 
