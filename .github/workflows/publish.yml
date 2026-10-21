@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing version tag to publish (for example v0.6.0)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -19,6 +25,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v7
       with:
+        ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
         fetch-depth: 0  # hatch-vcs derives the release version from git history and tags.
 
     - name: Set up uv
