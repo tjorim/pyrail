@@ -22,18 +22,13 @@ from pyrail.models import (
     VehicleApiResponse,
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
 
-# API base URL constant
 _API_BASE_URL = "https://api.irail.be/v1"
 
-# Retry policy: exponential backoff starting at _RETRY_BASE_DELAY seconds, capped at _RETRY_MAX_DELAY seconds
 _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
 
-# The API silently falls back to a default for values it does not recognise (typeOfTransport to 'automatic',
-# arrdep and timesel to 'departure'), so these parameters are checked before the request is sent.
 _ALLOWED_VALUES: dict[str, frozenset[str]] = {
     "arrdep": frozenset({"departure", "arrival"}),
     "timesel": frozenset({"departure", "arrival"}),
@@ -95,9 +90,6 @@ class iRail:
 
     """
 
-    # Available iRail API endpoints and their parameter requirements.
-    # Each endpoint is configured with required parameters, optional parameters, and XOR
-    # parameter groups (where exactly one parameter from the group must be provided).
     endpoints: dict[str, dict[str, Any]] = {
         "stations": {},
         "liveboard": {"xor": ["station", "id"], "optional": ["date", "time", "arrdep", "alerts"]},
@@ -132,34 +124,39 @@ class iRail:
         self.last_request_time: float = time.time()
         self.lock: Lock = Lock()
         self.session: ClientSession | None = session
-        self._owns_session = session is None  # Track ownership
+        self._owns_session = session is None
         self.etag_cache: dict[str, str] = {}
-        logger.info("iRail instance created")
 
     async def __aenter__(self) -> "iRail":
         """Initialize the aiohttp client session when entering the async context."""
-        if self.session and not self.session.closed:
-            logger.debug("Using externally provided session")
-        elif not self.session:
-            logger.debug("Creating new internal aiohttp session")
-            self.session = ClientSession()
+        self._ensure_session()
         return self
 
     async def __aexit__(
         self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
     ) -> None:
         """Close the aiohttp client session when exiting the async context."""
-        if self.session:
-            if self.session.closed:
-                logger.debug("Session is already closed, skipping closure")
-            elif not self._owns_session:
-                logger.debug("Session is externally provided; not closing it")
-            else:
-                logger.debug("Closing aiohttp session")
-                try:
-                    await self.session.close()
-                except Exception as e:
-                    logger.error("Error while closing aiohttp session: %s", e)
+        await self.close()
+
+    async def close(self) -> None:
+        """Close the aiohttp client session when this client owns it.
+
+        A session provided by the caller is never closed, so a client can be
+        used without the async context manager and closed explicitly.
+        """
+        if self.session and not self.session.closed and self._owns_session:
+            logger.debug("Closing aiohttp session")
+            try:
+                await self.session.close()
+            except Exception as e:
+                logger.error("Error while closing aiohttp session: %s", e)
+
+    def _ensure_session(self) -> ClientSession:
+        """Return the active session, creating an owned one when none exists yet."""
+        if self.session is None:
+            logger.debug("Creating new internal aiohttp session")
+            self.session = ClientSession()
+        return self.session
 
     @property
     def lang(self) -> str:
@@ -201,10 +198,8 @@ class iRail:
         elapsed: float = current_time - self.last_request_time
         self.last_request_time = current_time
 
-        # Refill tokens, 3 tokens per second, cap tokens at 3
         self.tokens = min(3, self.tokens + int(elapsed * 3))
 
-        # Refill burst tokens only if the request rate is below 3 requests per second
         if self.tokens == 3:
             self.burst_tokens = min(5, self.burst_tokens + int(elapsed * 3))
 
@@ -289,6 +284,10 @@ class iRail:
     def _validate_values(self, params: dict[str, Any]) -> bool:
         """Validate the date, the time and the parameters that only accept a fixed set of values.
 
+        The API silently replaces a value it does not recognise with a default
+        (typeOfTransport with 'automatic', arrdep and timesel with 'departure'),
+        so these parameters are checked here before the request is sent.
+
         Args:
             params (dict[str, Any]): The request parameters.
 
@@ -326,7 +325,6 @@ class iRail:
             4. Prevents unexpected parameters from being included
 
         Example:
-            # Validates parameters for the liveboard endpoint
             is_valid = self._validate_params('liveboard', {'station': 'Brussels', 'date': '150923'})
 
         """
@@ -341,24 +339,20 @@ class iRail:
 
         params = params or {}
 
-        # Validate date and time formats and fixed-value parameters if present
         if not self._validate_values(params):
             return False
 
-        # Ensure all required parameters are present
         for param in required:
             if param not in params or params[param] is None:
                 logger.error("Missing required parameter: %s for endpoint: %s", param, method)
                 return False
 
-        # Check XOR logic (only one of XOR parameters can be set)
         if xor:
             xor_values = [params.get(param) is not None for param in xor]
             if sum(xor_values) != 1:
                 logger.error("Exactly one of the XOR parameters %s must be provided for endpoint: %s", xor, method)
                 return False
 
-        # Ensure no unexpected parameters are included
         all_params = required + xor + optional
         for param in params:
             if param not in all_params:
@@ -380,9 +374,7 @@ class iRail:
             logger.error("Failed to parse JSON response")
             return None
 
-    async def _handle_response(
-        self, response: ClientResponse, method: str, args: dict[str, Any] | None = None
-    ) -> dict[str, Any] | None:
+    async def _handle_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
         """Handle the API response based on status code."""
         if response.status == 429:
             retry_after = _parse_retry_after(response.headers.get("Retry-After"))
@@ -417,12 +409,10 @@ class iRail:
             bool: True if the status should trigger a retry, False otherwise
 
         """
-        # Retry on server errors (5xx) but not on client errors (4xx except 429)
-        # 429 is handled separately in _handle_response
         return 500 <= response.status < 600
 
     async def _execute_http_request(
-        self, url: str, params: dict[str, Any], headers: dict[str, str], method: str, args: dict[str, Any] | None = None
+        self, url: str, params: dict[str, Any], headers: dict[str, str], method: str
     ) -> dict[str, Any] | None:
         """Perform a single HTTP request attempt.
 
@@ -431,7 +421,6 @@ class iRail:
             params: Query parameters
             headers: Request headers
             method: API method name for logging
-            args: Original method arguments, passed on to the response handler
 
         Returns:
             dict or None: Parsed response, or None if the response is not usable
@@ -441,15 +430,12 @@ class iRail:
             TimeoutError: If the request times out.
 
         """
-        if self.session is None:
-            logger.error("Session not initialized")
-            return None
-
-        async with self.session.get(url, params=params, headers=headers) as response:
+        session = self._ensure_session()
+        async with session.get(url, params=params, headers=headers) as response:
             if self._should_retry_on_status(response):
                 raise _ServerError(response.status)
 
-            return await self._handle_response(response, method, args)
+            return await self._handle_response(response, method)
 
     async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Send an asynchronous request to the specified iRail API endpoint.
@@ -486,14 +472,10 @@ class iRail:
 
         """
         logger.info("Starting request to endpoint: %s", method)
-        if self.session is None:
-            logger.error("Session not initialized. Use 'async with' context manager to initialize the client.")
-            return None
         if not self._validate_params(method, args or {}):
             logger.error("Validation failed for method: %s with args: %s", method, args)
             return None
 
-        # Construct the request URL and parameters
         url: str = f"{_API_BASE_URL}/{method}/"
         params = {"format": "json", "lang": self.lang}
         if args is not None:
@@ -501,13 +483,12 @@ class iRail:
 
         max_attempts = self.max_retries + 1
         for attempt in range(1, max_attempts + 1):
-            # Every attempt consumes a rate limit token, so retries cannot exceed the API limits
             async with self.lock:
                 await self._handle_rate_limit()
 
             request_headers: dict[str, str] = self._add_etag_header(method)
             try:
-                return await self._execute_http_request(url, params, request_headers, method, args)
+                return await self._execute_http_request(url, params, request_headers, method)
             except (ClientError, TimeoutError) as e:
                 if attempt == max_attempts:
                     logger.error("Request to %s failed after %d attempt(s): %s", method, attempt, _describe(e))

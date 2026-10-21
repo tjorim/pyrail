@@ -8,8 +8,6 @@ field assertions and error handling are covered by the offline suite in test_ira
 from collections.abc import Awaitable, Callable
 from typing import Literal
 
-import pytest
-
 from pyrail.irail import iRail
 from pyrail.models import (
     CompositionApiResponse,
@@ -39,7 +37,6 @@ async def _first_vehicle_id(live: LiveApi, travel_date: tuple[str, str]) -> str:
     return departures[0].vehicle
 
 
-@pytest.mark.asyncio
 async def test_live_stations(live: LiveApi) -> None:
     """The stations endpoint returns a non-empty list of stations."""
     response = await live.fetch("stations", lambda api: api.get_stations())
@@ -49,7 +46,6 @@ async def test_live_stations(live: LiveApi) -> None:
     assert all(station.id.startswith("BE.NMBS.") and station.name for station in response.stations)
 
 
-@pytest.mark.asyncio
 async def test_live_liveboard(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """The liveboard endpoint returns departures and arrivals for a station."""
     date, time = travel_date
@@ -71,7 +67,6 @@ async def test_live_liveboard(live: LiveApi, travel_date: tuple[str, str]) -> No
     assert all(a.vehicle and a.vehicle_info.name for a in arrivals.arrivals)
 
 
-@pytest.mark.asyncio
 async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """A liveboard requested by station id, with and without alerts, deserializes for both board types."""
     date, time = travel_date
@@ -90,7 +85,6 @@ async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tupl
             assert board is not None and len(board) > 0
 
 
-@pytest.mark.asyncio
 async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """The connections endpoint returns routes between two stations."""
     date, time = travel_date
@@ -104,7 +98,6 @@ async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> 
     assert all(c.departure.vehicle and c.arrival.station_info.id for c in response.connections)
 
 
-@pytest.mark.asyncio
 async def test_live_connections_timesel_and_type_of_transport(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """Connections deserialize when selected by arrival time and for each transport filter."""
     date, time = travel_date
@@ -129,7 +122,6 @@ async def test_live_connections_timesel_and_type_of_transport(live: LiveApi, tra
         assert response.connections, label
 
 
-@pytest.mark.asyncio
 async def test_live_no_international_trains_filter(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """The no-international-trains filter changes the result.
 
@@ -155,7 +147,6 @@ async def test_live_no_international_trains_filter(live: LiveApi, travel_date: t
     assert filtered != automatic
 
 
-@pytest.mark.asyncio
 async def test_live_vehicle(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """The vehicle endpoint returns the stops of a vehicle taken from a liveboard."""
     date, _ = travel_date
@@ -169,7 +160,6 @@ async def test_live_vehicle(live: LiveApi, travel_date: tuple[str, str]) -> None
     assert all(stop.station_info.id for stop in response.stops)
 
 
-@pytest.mark.asyncio
 async def test_live_composition(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """The composition endpoint returns the segments of a vehicle taken from a liveboard."""
     vehicle_id = await _first_vehicle_id(live, travel_date)
@@ -181,7 +171,6 @@ async def test_live_composition(live: LiveApi, travel_date: tuple[str, str]) -> 
     assert all(segment.origin.id and segment.destination.id for segment in response.composition)
 
 
-@pytest.mark.asyncio
 async def test_live_disturbances(live: LiveApi) -> None:
     """The disturbances endpoint deserializes, whether or not any disturbance is active."""
     response = await live.fetch("disturbances", lambda api: api.get_disturbances())

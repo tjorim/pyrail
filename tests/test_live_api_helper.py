@@ -11,7 +11,6 @@ from pyrail.exceptions import ApiUnavailableError, InvalidRequestError, NotFound
 from tests.live.live_api import ATTEMPTS, INCOMPATIBLE, REJECTED, UNAVAILABLE, LiveApi
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("error", [NotFoundError("no such station"), InvalidRequestError("bad parameter")])
 @patch("tests.live.live_api.asyncio.sleep", new_callable=AsyncMock)
 async def test_rejected_request_fails_fast(mock_sleep, error):
@@ -25,7 +24,6 @@ async def test_rejected_request_fails_fast(mock_sleep, error):
     mock_sleep.assert_not_called()
 
 
-@pytest.mark.asyncio
 @patch("tests.live.live_api.asyncio.sleep", new_callable=AsyncMock)
 async def test_unavailable_api_is_retried_then_fails(mock_sleep):
     """Test that an ApiUnavailableError is retried with a pause and then reported as unavailable."""
@@ -37,7 +35,6 @@ async def test_unavailable_api_is_retried_then_fails(mock_sleep):
     assert mock_sleep.call_count == ATTEMPTS - 1
 
 
-@pytest.mark.asyncio
 async def test_unparseable_success_fails_as_incompatible():
     """Test that a deserialization failure is reported as incompatible without retrying."""
     request = AsyncMock(side_effect=KeyError("missing"))
@@ -47,7 +44,6 @@ async def test_unparseable_success_fails_as_incompatible():
     assert request.call_count == 1
 
 
-@pytest.mark.asyncio
 async def test_successful_result_is_returned():
     """Test that a usable response is returned as is."""
     assert await LiveApi(MagicMock()).fetch("stations", AsyncMock(return_value="ok")) == "ok"

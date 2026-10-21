@@ -33,6 +33,7 @@ test = [
     "pytest>=9.1.1",
     "pytest-mock>=3.16.0",
     "pytest-asyncio>=1.4.0",
+    "coverage[toml]>=7.16.2",
 ]
 dev = [
     "ruff>=0.16.10",
@@ -44,6 +45,7 @@ default-groups = ["dev", "test"]
 
 [tool.ruff]
 line-length = 120
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [
@@ -73,10 +75,24 @@ split-on-trailing-comma = false
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "live: smoke tests against the real iRail API, excluded from ordinary runs (run with 'pytest -m live')",
 ]
-addopts = "-m 'not live'"
+addopts = "-ra -m 'not live' --strict-markers --strict-config"
+filterwarnings = [
+    "error",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["pyrail"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 92
 
 [tool.ty.rules]
 all = "error"
