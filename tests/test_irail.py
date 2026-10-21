@@ -25,7 +25,7 @@ from pyrail.exceptions import (
     PyRailError,
     RateLimitError,
 )
-from pyrail.irail import IRail, _ENDPOINTS, _parse_retry_after
+from pyrail.irail import _ENDPOINTS, IRail, _parse_retry_after
 from pyrail.models import (
     Alert,
     ApiResponse,
