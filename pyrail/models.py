@@ -1,4 +1,10 @@
-"""Module defining data models for the pyrail application."""
+"""Data models for the iRail API responses.
+
+Every list field has a default, and the deserialization hooks honor it: a wrapper
+key that is absent, null or not a dict produces the default instead of an error.
+A wrapper key the hooks do not recognise is not detected here, so the live smoke
+suite detects upstream shape changes where it asserts data is present.
+"""
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -15,7 +21,15 @@ def _timestamp_to_datetime(timestamp: str) -> datetime:
 
 
 def _str_to_bool(strbool: str) -> bool:
-    """Convert a string ("0" or "1") to a boolean."""
+    """Convert a string ("0" or "1") to a boolean.
+
+    Raises:
+        ValueError: If the value is neither '0' nor '1'.
+
+    """
+    if strbool not in ("0", "1"):
+        msg = f"Expected '0' or '1', got: {strbool}"
+        raise ValueError(msg)
     return strbool == "1"
 
 
@@ -149,17 +163,12 @@ class LiveboardApiResponse(ApiResponse):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Pre-deserialization hook to safely flatten departures and arrivals."""
-        if "departures" in d and d["departures"] is not None:
-            d["departures"] = d["departures"].get("departure", [])
-        else:
-            d["departures"] = None
-
-        if "arrivals" in d and d["arrivals"] is not None:
-            d["arrivals"] = d["arrivals"].get("arrival", [])
-        else:
-            d["arrivals"] = None
-
+        """Flatten departures and arrivals before deserialization, honoring the field defaults."""
+        d = d.copy()
+        departures = d.get("departures")
+        d["departures"] = departures.get("departure", []) if isinstance(departures, dict) else None
+        arrivals = d.get("arrivals")
+        d["arrivals"] = arrivals.get("arrival", []) if isinstance(arrivals, dict) else None
         return d
 
 
@@ -217,8 +226,10 @@ class ConnectionDeparture(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'stop' list from 'stops' before deserialization."""
-        d["stops"] = d["stops"]["stop"]
+        """Extract the 'stop' list from 'stops' before deserialization, defaulting to an empty list."""
+        d = d.copy()
+        stops = d.get("stops")
+        d["stops"] = stops.get("stop", []) if isinstance(stops, dict) else []
         return d
 
 
@@ -257,7 +268,7 @@ class Via(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class Remark(DataClassORJSONMixin):
-    """Represents a single remark for a train connection, including type and content.
+    """Represents a single remark for a train connection.
 
     The API does not document what a remark contains.
     """
@@ -268,7 +279,7 @@ class Remark(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class Alert(DataClassORJSONMixin):
-    """Represents a single alert for a train connection, including type and content."""
+    """Represents a single alert for a train connection."""
 
     id: str
     header: str
@@ -281,7 +292,7 @@ class Alert(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class ConnectionDetails(DataClassORJSONMixin):
-    """Details of a single connection, including departure and arrival information. The duration is in minutes."""
+    """Details of a single connection, including departure and arrival information. The duration is in seconds."""
 
     id: str
     departure: ConnectionDeparture
@@ -294,15 +305,14 @@ class ConnectionDetails(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Flatten the structure of the 'connections' response by extracting lists of remarks, alerts, and optionally flatten vias before deserialization."""
-        d["remarks"] = d["remarks"]["remark"]
-        d["alerts"] = d["alerts"]["alert"]
-
-        if "vias" in d and d["vias"] is not None:
-            d["vias"] = d["vias"].get("via", [])
-        else:
-            d["vias"] = None
-
+        """Flatten remarks, alerts and vias before deserialization, honoring the field defaults."""
+        d = d.copy()
+        remarks = d.get("remarks")
+        d["remarks"] = remarks.get("remark", []) if isinstance(remarks, dict) else []
+        alerts = d.get("alerts")
+        d["alerts"] = alerts.get("alert", []) if isinstance(alerts, dict) else []
+        vias = d.get("vias")
+        d["vias"] = vias.get("via", []) if isinstance(vias, dict) else None
         return d
 
 
@@ -353,8 +363,10 @@ class VehicleApiResponse(ApiResponse):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'stop' list from 'stops' before deserialization."""
-        d["stops"] = d["stops"]["stop"]
+        """Extract the 'stop' list from 'stops' before deserialization, defaulting to an empty list."""
+        d = d.copy()
+        stops = d.get("stops")
+        d["stops"] = stops.get("stop", []) if isinstance(stops, dict) else []
         return d
 
 
@@ -369,7 +381,7 @@ class MaterialType(DataClassORJSONMixin):
 
 @dataclass(slots=True)
 class Unit(DataClassORJSONMixin):
-    """Represents a single train unit, including its type and location."""
+    """Represents a single train unit, including its material type."""
 
     id: str
     material_type: MaterialType = field(metadata=field_options(alias="materialType"))
@@ -417,11 +429,10 @@ class SegmentComposition(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'unit' list from 'units' before deserialization."""
-        if "units" in d and isinstance(d["units"], dict):
-            d["units"] = d["units"].get("unit", [])
-        else:
-            d["units"] = []
+        """Extract the 'unit' list from 'units' before deserialization, defaulting to an empty list."""
+        d = d.copy()
+        units = d.get("units")
+        d["units"] = units.get("unit", []) if isinstance(units, dict) else []
         return d
 
 
@@ -444,8 +455,11 @@ class CompositionApiResponse(ApiResponse):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Pre-deserialization hook to safely flatten composition segments."""
-        d["composition"] = d["composition"]["segments"]["segment"]
+        """Extract the 'segment' list from 'composition' before deserialization, defaulting to an empty list."""
+        d = d.copy()
+        composition = d.get("composition")
+        segments = composition.get("segments") if isinstance(composition, dict) else None
+        d["composition"] = segments.get("segment", []) if isinstance(segments, dict) else []
         return d
 
 
@@ -476,8 +490,10 @@ class Disturbance(DataClassORJSONMixin):
     @classmethod
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
-        """Extract 'descriptionLink' list from 'descriptionLinks' before deserialization."""
-        d["descriptionLinks"] = d["descriptionLinks"]["descriptionLink"]
+        """Extract the 'descriptionLink' list from 'descriptionLinks' before deserialization, defaulting to an empty list."""
+        d = d.copy()
+        links = d.get("descriptionLinks")
+        d["descriptionLinks"] = links.get("descriptionLink", []) if isinstance(links, dict) else []
         return d
 
 

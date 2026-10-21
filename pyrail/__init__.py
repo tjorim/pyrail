@@ -1,9 +1,19 @@
 """Package initialization for pyrail."""
 
 from importlib.metadata import PackageNotFoundError, version
+import logging
 
-from .exceptions import ApiUnavailableError, InvalidRequestError, NotFoundError, PyRailError, RateLimitError
-from .irail import iRail
+from .exceptions import (
+    ApiUnavailableError,
+    InvalidRequestError,
+    InvalidResponseError,
+    NotFoundError,
+    PyRailError,
+    RateLimitError,
+)
+from .irail import IRail
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 try:
     __version__ = version("pyrail")
@@ -12,10 +22,11 @@ except PackageNotFoundError:  # pragma: no cover
 
 __all__ = [
     "ApiUnavailableError",
+    "IRail",
     "InvalidRequestError",
+    "InvalidResponseError",
     "NotFoundError",
     "PyRailError",
     "RateLimitError",
     "__version__",
-    "iRail",
 ]

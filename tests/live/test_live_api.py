@@ -8,7 +8,7 @@ field assertions and error handling are covered by the offline suite in test_ira
 from collections.abc import Awaitable, Callable
 from typing import Literal
 
-from pyrail.irail import iRail
+from pyrail.irail import IRail
 from pyrail.models import (
     CompositionApiResponse,
     ConnectionsApiResponse,
@@ -30,7 +30,7 @@ async def _first_vehicle_id(live: LiveApi, travel_date: tuple[str, str]) -> str:
     """
     date, time = travel_date
     liveboard = await live.fetch(
-        "liveboard", lambda api: api.get_liveboard(id=BRUSSELS_CENTRAL_ID, date=date, time=time)
+        "liveboard", lambda api: api.get_liveboard(station_id=BRUSSELS_CENTRAL_ID, date=date, time=time)
     )
     departures = [d for d in liveboard.departures or [] if not d.canceled]
     assert departures, "Expected Brussels-Central to have departures to pick a vehicle from"
@@ -59,11 +59,13 @@ async def test_live_liveboard(live: LiveApi, travel_date: tuple[str, str]) -> No
 
     assert isinstance(departures, LiveboardApiResponse)
     assert departures.station_info.id == BRUSSELS_CENTRAL_ID
-    assert departures.departures is not None and len(departures.departures) > 0
+    assert departures.departures is not None
+    assert len(departures.departures) > 0
     assert all(d.vehicle and d.vehicle_info.name for d in departures.departures)
 
     assert isinstance(arrivals, LiveboardApiResponse)
-    assert arrivals.arrivals is not None and len(arrivals.arrivals) > 0
+    assert arrivals.arrivals is not None
+    assert len(arrivals.arrivals) > 0
     assert all(a.vehicle and a.vehicle_info.name for a in arrivals.arrivals)
 
 
@@ -75,14 +77,15 @@ async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tupl
             response = await live.fetch(
                 f"liveboard (id, {arrdep}, alerts={alerts})",
                 lambda api, arrdep=arrdep, alerts=alerts: api.get_liveboard(
-                    id=BRUSSELS_CENTRAL_ID, date=date, time=time, arrdep=arrdep, alerts=alerts
+                    station_id=BRUSSELS_CENTRAL_ID, date=date, time=time, arrdep=arrdep, alerts=alerts
                 ),
             )
 
             assert isinstance(response, LiveboardApiResponse)
             assert response.station_info.id == BRUSSELS_CENTRAL_ID
             board = response.arrivals if arrdep == "arrival" else response.departures
-            assert board is not None and len(board) > 0
+            assert board is not None
+            assert len(board) > 0
 
 
 async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> None:
@@ -101,7 +104,7 @@ async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> 
 async def test_live_connections_timesel_and_type_of_transport(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """Connections deserialize when selected by arrival time and for each transport filter."""
     date, time = travel_date
-    variants: dict[str, Callable[[iRail], Awaitable[ConnectionsApiResponse | None]]] = {
+    variants: dict[str, Callable[[IRail], Awaitable[ConnectionsApiResponse | None]]] = {
         "timesel=arrival": lambda api: api.get_connections(
             "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, timesel="arrival"
         ),
@@ -143,7 +146,8 @@ async def test_live_no_international_trains_filter(live: LiveApi, travel_date: t
     automatic = await vehicle_types("automatic")
     filtered = await vehicle_types("no_international_trains")
 
-    assert automatic and filtered
+    assert automatic
+    assert filtered
     assert filtered != automatic
 
 
