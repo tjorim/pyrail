@@ -11,7 +11,7 @@ from .exceptions import (
     PyRailError,
     RateLimitError,
 )
-from .irail import iRail
+from .irail import IRail
 from .models import (
     Alert,
     ApiResponse,
@@ -68,6 +68,7 @@ __all__ = [
     "Disturbance",
     "DisturbanceType",
     "DisturbancesApiResponse",
+    "IRail",
     "InvalidRequestError",
     "InvalidResponseError",
     "LiveboardApiResponse",
@@ -92,5 +93,4 @@ __all__ = [
     "VehicleStop",
     "Via",
     "__version__",
-    "iRail",
 ]

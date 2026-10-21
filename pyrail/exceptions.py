@@ -30,6 +30,10 @@ class InvalidRequestError(PyRailError):
     invalid parameters that the API cannot process.
     """
 
+    def __init__(self, message: str = "Invalid API request") -> None:
+        """Initialize the exception with a message."""
+        super().__init__(message)
+
 
 class NotFoundError(PyRailError):
     """Raised when the requested resource is not found.
@@ -38,6 +42,10 @@ class NotFoundError(PyRailError):
     resource does not exist or could not be found in the system.
     """
 
+    def __init__(self, message: str = "Resource not found") -> None:
+        """Initialize the exception with a message."""
+        super().__init__(message)
+
 
 class ApiUnavailableError(PyRailError):
     """Raised when the API could not be reached or kept failing after all retries.
@@ -45,6 +53,10 @@ class ApiUnavailableError(PyRailError):
     This exception indicates a network failure, a request timeout or a server error (HTTP 5xx)
     that persisted through every attempt. The request may succeed later.
     """
+
+    def __init__(self, message: str = "API unavailable") -> None:
+        """Initialize the exception with a message."""
+        super().__init__(message)
 
 
 class InvalidResponseError(PyRailError):

@@ -31,7 +31,7 @@ jobs:
         uv pip install --python wheel-check/bin/python dist/*.whl
 
     - name: Import the package from the wheel
-      run: wheel-check/bin/python -I -c "import pyrail; assert pyrail.iRail and pyrail.LiveboardApiResponse"
+      run: wheel-check/bin/python -I -c "import pyrail; assert pyrail.IRail and pyrail.LiveboardApiResponse"
 
     - name: Check that py.typed ships in the wheel
       run: wheel-check/bin/python -I -c "import pathlib, pyrail; assert (pathlib.Path(pyrail.__file__).parent / 'py.typed').is_file()"

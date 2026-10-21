@@ -1,4 +1,4 @@
-"""Module providing the iRail class for interacting with the iRail API."""
+"""Module providing the IRail class for interacting with the iRail API."""
 
 import asyncio
 from asyncio import Lock
@@ -117,7 +117,7 @@ class _ServerError(ClientError):
 type _RequestKey = tuple[str, tuple[tuple[str, Any], ...]]
 
 
-class iRail:  # noqa: N801
+class IRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
 
     Attributes:
@@ -629,7 +629,7 @@ class iRail:  # noqa: N801
                 continue
 
             if data is None:
-                if etag is not None and self._etag_generation == etag_generation:
+                if "If-None-Match" in request_headers and etag is not None and self._etag_generation == etag_generation:
                     self._store_etag(request_key, etag)
                 return None
             parsed = self._parse_response(method, data, from_dict)
@@ -648,7 +648,7 @@ class iRail:  # noqa: N801
             return from_dict(data)
         except (LookupError, ValueError, OverflowError) as e:
             msg = f"Response from {method} does not match the expected model: {_describe(e)}"
-            raise InvalidResponseError(msg) from e
+            raise InvalidResponseError(msg, status=200) from e
 
     async def get_stations(self) -> StationsApiResponse | None:
         """Retrieve a list of all train stations from the iRail API.
@@ -667,7 +667,7 @@ class iRail:  # noqa: N801
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
-            async with iRail() as client:
+            async with IRail() as client:
                 stations = await client.get_stations()
                 if stations:
                     print(f"Total stations: {len(stations.stations)}")
@@ -678,7 +678,7 @@ class iRail:  # noqa: N801
     async def get_liveboard(
         self,
         station: str | None = None,
-        id: str | None = None,  # noqa: A002
+        station_id: str | None = None,
         date: str | None = None,
         time: str | None = None,
         arrdep: Literal["departure", "arrival"] = "departure",
@@ -692,7 +692,7 @@ class iRail:  # noqa: N801
 
         Args:
             station (str): Name of the train station.
-            id (str): Unique identifier of the train station.
+            station_id (str): Unique identifier of the train station.
             date (str, optional): Date for the liveboard in format 'DDMMYY', in Belgian local time. Defaults to current date.
             time (str, optional): Time for the liveboard in format 'HHMM', in Belgian local time. Defaults to current time.
             arrdep (str, optional): Type of board to retrieve. Either 'departure' (default) or 'arrival'.
@@ -712,7 +712,7 @@ class iRail:  # noqa: N801
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
-            async with iRail() as client:
+            async with IRail() as client:
                 liveboard = await client.get_liveboard(station='Brussels-South')
                 if liveboard:
                     print(f"Liveboard for Brussels-South: {liveboard}")
@@ -720,7 +720,7 @@ class iRail:  # noqa: N801
         """
         extra_params: dict[str, Any] = {
             "station": station,
-            "id": id,
+            "id": station_id,
             "date": date,
             "time": time,
             "arrdep": arrdep,
@@ -765,7 +765,7 @@ class iRail:  # noqa: N801
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
-            async with iRail() as client:
+            async with IRail() as client:
                 connections = await client.get_connections("Antwerpen-Centraal", "Brussel-Centraal")
                 if connections:
                     print(f"Connections from Antwerpen-Centraal to Brussel-Centraal: {connections}")
@@ -787,7 +787,7 @@ class iRail:  # noqa: N801
 
     async def get_vehicle(
         self,
-        id: str,  # noqa: A002
+        vehicle_id: str,
         date: str | None = None,
         *,
         alerts: bool = False,
@@ -795,7 +795,7 @@ class iRail:  # noqa: N801
         """Retrieve detailed information about a specific train vehicle.
 
         Args:
-            id (str): Unique identifier of the train vehicle to retrieve information for.
+            vehicle_id (str): Unique identifier of the train vehicle to retrieve information for.
             date (str, optional): Specific date for which vehicle information is requested. Defaults to None (current date).
             alerts (bool, optional): Whether to request service alerts. Defaults to False. The iRail API currently
                 ignores this for vehicles: the response has the same shape either way and carries no alerts.
@@ -813,11 +813,11 @@ class iRail:  # noqa: N801
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
-            async with iRail() as client:
+            async with IRail() as client:
                 vehicle_info = await client.get_vehicle("BE.NMBS.IC1832")
 
         """
-        extra_params: dict[str, Any] = {"id": id, "date": date, "alerts": "true" if alerts else "false"}
+        extra_params: dict[str, Any] = {"id": vehicle_id, "date": date, "alerts": "true" if alerts else "false"}
         return await self._do_request(
             "vehicle",
             VehicleApiResponse.from_dict,
@@ -826,13 +826,13 @@ class iRail:  # noqa: N801
 
     async def get_composition(
         self,
-        id: str,  # noqa: A002
+        vehicle_id: str,
         data: str | None = None,
     ) -> CompositionApiResponse | None:
         """Retrieve the composition details of a specific train.
 
         Args:
-            id (str): The unique identifier of the train for which composition details are requested.
+            vehicle_id (str): The unique identifier of the train for which composition details are requested.
             data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to None, which requests the filtered data.
 
         Returns:
@@ -848,11 +848,11 @@ class iRail:  # noqa: N801
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
-            async with iRail() as client:
+            async with IRail() as client:
                 composition = await client.get_composition('S51507')
 
         """
-        extra_params: dict[str, str | None] = {"id": id, "data": data}
+        extra_params: dict[str, str | None] = {"id": vehicle_id, "data": data}
         return await self._do_request(
             "composition",
             CompositionApiResponse.from_dict,
@@ -879,7 +879,7 @@ class iRail:  # noqa: N801
             ApiUnavailableError: If the API cannot be reached after all retries.
 
         Example:
-            async with iRail() as client:
+            async with IRail() as client:
                 disturbances = await client.get_disturbances()
                 if disturbances:
                     print(f"Current disturbances: {disturbances}")

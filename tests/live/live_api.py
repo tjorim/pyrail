@@ -14,7 +14,7 @@ from aiohttp import ClientTimeout
 import pytest
 
 from pyrail.exceptions import InvalidRequestError, InvalidResponseError, NotFoundError, PyRailError
-from pyrail.irail import iRail
+from pyrail.irail import IRail
 
 ATTEMPTS = 3
 BACKOFF_SECONDS = (5, 15)
@@ -26,13 +26,13 @@ INCOMPATIBLE = "API INCOMPATIBLE"
 
 
 class LiveApi:
-    """An iRail client that retries transient failures and classifies the outcome."""
+    """An IRail client that retries transient failures and classifies the outcome."""
 
-    def __init__(self, client: iRail) -> None:
+    def __init__(self, client: IRail) -> None:
         """Wrap the given client."""
         self.client = client
 
-    async def fetch[T](self, endpoint: str, request: Callable[[iRail], Awaitable[T | None]]) -> T:
+    async def fetch[T](self, endpoint: str, request: Callable[[IRail], Awaitable[T | None]]) -> T:
         """Call an endpoint, retrying when no usable response arrives.
 
         Fails with ``API UNAVAILABLE`` when every attempt fails with a transient ``PyRailError``,
