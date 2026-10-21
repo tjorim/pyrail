@@ -2,6 +2,7 @@
 
 import asyncio
 from asyncio import Lock
+from collections import OrderedDict
 from collections.abc import Callable, Mapping
 import contextlib
 from datetime import UTC, datetime
@@ -38,6 +39,8 @@ _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
 
 _DEFAULT_REQUEST_TIMEOUT = 30.0
+
+_ETAG_CACHE_LIMIT = 128
 
 _SERVER_ERROR_STATUSES = range(500, 600)
 
@@ -111,6 +114,9 @@ class _ServerError(ClientError):
         self.status = status
 
 
+type _RequestKey = tuple[str, tuple[tuple[str, Any], ...]]
+
+
 class IRail:
     """A Python wrapper for the iRail API, handling rate limiting and endpoint requests.
 
@@ -172,7 +178,8 @@ class IRail:
         self._lock: Lock = Lock()
         self.session: ClientSession | None = session
         self._owns_session = session is None
-        self._etag_cache: dict[str, str] = {}
+        self._etag_cache: OrderedDict[_RequestKey, str] = OrderedDict()
+        self._etag_generation: int = 0
 
     async def __aenter__(self) -> Self:
         """Initialize the aiohttp client session when entering the async context."""
@@ -234,9 +241,22 @@ class IRail:
         self._lang = value
 
     def clear_etag_cache(self) -> None:
-        """Clear the ETag cache."""
+        """Clear the ETag cache.
+
+        A response that was already in flight when the cache was cleared
+        does not repopulate it.
+        """
         self._etag_cache.clear()
+        self._etag_generation += 1
         logger.debug("ETag cache cleared")
+
+    def _store_etag(self, request_key: _RequestKey, etag: str) -> None:
+        """Cache the ETag for a request, dropping the least recently used entry above the limit."""
+        if request_key in self._etag_cache:
+            self._etag_cache.move_to_end(request_key)
+        self._etag_cache[request_key] = etag
+        if len(self._etag_cache) > _ETAG_CACHE_LIMIT:
+            self._etag_cache.popitem(last=False)
 
     def _refill_tokens(self) -> None:
         """Refill the rate limiting token buckets.
@@ -277,21 +297,18 @@ class IRail:
             self._refill_tokens()
             self._tokens -= 1
 
-    def _add_etag_header(self, method: str) -> dict[str, str]:
-        """Add ETag header for the given method if a cached ETag is available.
+    def _build_request_headers(self, request_key: _RequestKey) -> dict[str, str]:
+        """Build the request headers, adding If-None-Match for a cached ETag.
 
-        Args:
-            method (str): The API endpoint for which the header is being generated.
-
-        Returns:
-            dict[str, str]: A dictionary containing HTTP headers, including the ETag header
-            if a cached value exists.
-
+        The cache is keyed by the endpoint and its full query, so the header
+        is only sent for a repeat of the exact request the ETag came from.
+        A hit marks the entry as recently used, which protects it from eviction.
         """
         headers: dict[str, str] = {"User-Agent": "pyRail (https://github.com/tjorim/pyrail; tielemans.jorim@gmail.com)"}
-        if method in self._etag_cache:
-            logger.debug("Adding If-None-Match header with value: %s", self._etag_cache[method])
-            headers["If-None-Match"] = self._etag_cache[method]
+        if request_key in self._etag_cache:
+            self._etag_cache.move_to_end(request_key)
+            logger.debug("Adding If-None-Match header with value: %s", self._etag_cache[request_key])
+            headers["If-None-Match"] = self._etag_cache[request_key]
         return headers
 
     def _validate_date(self, date: str | None) -> None:
@@ -402,16 +419,21 @@ class IRail:
                 msg = f"Unexpected parameter: {param} for endpoint: {method}"
                 raise ValueError(msg)
 
-    async def _handle_success_response(self, response: ClientResponse, method: str) -> dict[str, Any]:
+    async def _handle_success_response(
+        self, response: ClientResponse, method: str
+    ) -> tuple[dict[str, Any], str | None]:
         """Handle a successful API response.
+
+        Returns:
+            tuple: The parsed body, and the ETag the response carries or None
+                when it carries none.
 
         Raises:
             InvalidResponseError: If the body is empty, is not valid JSON or is
                 not a JSON object.
 
         """
-        if "Etag" in response.headers:
-            self._etag_cache[method] = response.headers["Etag"]
+        etag: str | None = response.headers.get("Etag")
         try:
             json_data: Any = await response.json(content_type=None)
         except ValueError as e:
@@ -423,13 +445,16 @@ class IRail:
         if not json_data:
             msg = f"Response body from {method} is empty"
             raise InvalidResponseError(msg, status=200)
-        return json_data
+        return json_data, etag
 
-    async def _handle_response(self, response: ClientResponse, method: str) -> dict[str, Any] | None:
+    async def _handle_response(self, response: ClientResponse, method: str) -> tuple[dict[str, Any] | None, str | None]:
         """Handle the API response based on status code.
 
-        Returns None for a 304 response, when the data has not been modified
-        since the previous request for the same method.
+        Returns:
+            tuple: The parsed body, which is None for a 304 response when the
+                data has not been modified since the previous identical
+                request, and the ETag the response carries or None when it
+                carries none.
 
         Raises:
             RateLimitError: On HTTP 429.
@@ -456,7 +481,7 @@ class IRail:
             return await self._handle_success_response(response, method)
         if response.status == HTTPStatus.NOT_MODIFIED:
             logger.debug("Data not modified for method %s", method)
-            return None
+            return None, response.headers.get("Etag")
         msg = f"Request to {method} returned an unexpected status {response.status}"
         raise InvalidResponseError(msg, status=response.status)
 
@@ -473,8 +498,12 @@ class IRail:
         return response.status in _SERVER_ERROR_STATUSES
 
     async def _execute_http_request(
-        self, url: str, params: dict[str, Any], headers: dict[str, str], method: str
-    ) -> dict[str, Any] | None:
+        self,
+        url: str,
+        params: dict[str, Any],
+        headers: dict[str, str],
+        method: str,
+    ) -> tuple[dict[str, Any] | None, str | None]:
         """Perform a single HTTP request attempt.
 
         Args:
@@ -484,7 +513,9 @@ class IRail:
             method: API method name for logging
 
         Returns:
-            dict or None: Parsed response, or None if the data is not modified (304)
+            tuple: The parsed response, or None if the data is not modified
+                (304), and the ETag the response carries or None when it
+                carries none.
 
         Raises:
             ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
@@ -504,22 +535,27 @@ class IRail:
 
                 return await self._handle_response(response, method)
 
-    async def _do_request(self, method: str, args: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    async def _do_request[T](
+        self, method: str, from_dict: Callable[[dict[str, Any]], T], args: dict[str, Any] | None = None
+    ) -> T | None:
         """Send an asynchronous request to the specified iRail API endpoint.
 
         This method handles API requests with rate limiting, parameter validation,
         and ETag-based caching. It supports conditional requests and manages
         various HTTP response scenarios. Network errors, timeouts and server errors (5xx)
-        are retried up to ``max_retries`` times with exponential backoff.
+        are retried up to ``max_retries`` times with exponential backoff. The response
+        is deserialized with ``from_dict``, and its ETag is cached only after the
+        response is fully accepted, so a rejected response never leaves a cache entry.
 
         Args:
             method (str): The iRail API endpoint method to request.
+            from_dict (Callable): The deserialization function for the response body.
             args (dict, optional): Additional query parameters for the request.
                 Defaults to None.
 
         Returns:
-            dict or None: Parsed JSON response from the API if successful,
-                None if the data is not modified (304).
+            The deserialized response from the API, or None if the data is
+            not modified (304).
 
         Raises:
             ValueError: If the method is not a known endpoint or the parameters are invalid.
@@ -528,8 +564,8 @@ class IRail:
             InvalidRequestError: If the API responds with HTTP 400.
             NotFoundError: If the API responds with HTTP 404.
             InvalidResponseError: If the response body is empty, is not valid JSON,
-                is not a JSON object, or the status is outside the set the client
-                handles (200, 304, 400, 404, 429 and the 5xx range).
+                is not a JSON object, does not match the expected model, or the status
+                is outside the set the client handles (200, 304, 400, 404, 429 and the 5xx range).
             ApiUnavailableError: If the request still fails after all retries (network error,
                 timeout or HTTP 5xx).
 
@@ -539,6 +575,8 @@ class IRail:
             - Raises RateLimitError immediately on rate limit (429) responses, without waiting or retrying
             - Retries network failures, timeouts and server errors with exponential backoff.
               Every attempt, including retries, goes through the rate limiter and the request timeout
+            - An ETag is stored only for a fully accepted response, and only when the cache
+              was not cleared while the request was in flight
 
         """
         logger.debug("Starting request to endpoint: %s", method)
@@ -548,6 +586,8 @@ class IRail:
         params = {"format": "json", "lang": self.lang}
         if args is not None:
             params.update(args)
+        request_key: _RequestKey = (method, tuple(sorted(params.items())))
+        etag_generation = self._etag_generation
 
         max_attempts = self.max_retries + 1
         attempt = 1
@@ -555,9 +595,9 @@ class IRail:
             async with self._lock:
                 await self._handle_rate_limit()
 
-            request_headers: dict[str, str] = self._add_etag_header(method)
+            request_headers: dict[str, str] = self._build_request_headers(request_key)
             try:
-                return await self._execute_http_request(url, params, request_headers, method)
+                data, etag = await self._execute_http_request(url, params, request_headers, method)
             except (ClientError, TimeoutError) as e:
                 if attempt == max_attempts:
                     msg = f"Request to {method} failed after {attempt} attempt(s): {_describe(e)}"
@@ -573,6 +613,16 @@ class IRail:
                 )
                 await asyncio.sleep(delay)
                 attempt += 1
+                continue
+
+            if data is None:
+                if "If-None-Match" in request_headers and etag is not None and self._etag_generation == etag_generation:
+                    self._store_etag(request_key, etag)
+                return None
+            parsed = self._parse_response(method, data, from_dict)
+            if etag is not None and self._etag_generation == etag_generation:
+                self._store_etag(request_key, etag)
+            return parsed
 
     def _parse_response[T](self, method: str, data: dict[str, Any], from_dict: Callable[[dict[str, Any]], T]) -> T:
         """Deserialize a response with the given deserialization function.
@@ -609,10 +659,7 @@ class IRail:
                     print(f"Total stations: {len(stations.stations)}")
 
         """
-        stations_response_dict = await self._do_request("stations")
-        if stations_response_dict is None:
-            return None
-        return self._parse_response("stations", stations_response_dict, StationsApiResponse.from_dict)
+        return await self._do_request("stations", StationsApiResponse.from_dict)
 
     async def get_liveboard(
         self,
@@ -664,12 +711,11 @@ class IRail:
             "arrdep": arrdep,
             "alerts": "true" if alerts else "false",
         }
-        liveboard_response_dict = await self._do_request(
-            "liveboard", {k: v for k, v in extra_params.items() if v is not None}
+        return await self._do_request(
+            "liveboard",
+            LiveboardApiResponse.from_dict,
+            {k: v for k, v in extra_params.items() if v is not None},
         )
-        if liveboard_response_dict is None:
-            return None
-        return self._parse_response("liveboard", liveboard_response_dict, LiveboardApiResponse.from_dict)
 
     async def get_connections(
         self,
@@ -717,12 +763,11 @@ class IRail:
             "timesel": timesel,
             "typeOfTransport": type_of_transport,
         }
-        connections_response_dict = await self._do_request(
-            "connections", {k: v for k, v in extra_params.items() if v is not None}
+        return await self._do_request(
+            "connections",
+            ConnectionsApiResponse.from_dict,
+            {k: v for k, v in extra_params.items() if v is not None},
         )
-        if connections_response_dict is None:
-            return None
-        return self._parse_response("connections", connections_response_dict, ConnectionsApiResponse.from_dict)
 
     async def get_vehicle(
         self,
@@ -756,12 +801,11 @@ class IRail:
 
         """
         extra_params: dict[str, Any] = {"id": vehicle_id, "date": date, "alerts": "true" if alerts else "false"}
-        vehicle_response_dict = await self._do_request(
-            "vehicle", {k: v for k, v in extra_params.items() if v is not None}
+        return await self._do_request(
+            "vehicle",
+            VehicleApiResponse.from_dict,
+            {k: v for k, v in extra_params.items() if v is not None},
         )
-        if vehicle_response_dict is None:
-            return None
-        return self._parse_response("vehicle", vehicle_response_dict, VehicleApiResponse.from_dict)
 
     async def get_composition(
         self,
@@ -791,12 +835,11 @@ class IRail:
 
         """
         extra_params: dict[str, str | None] = {"id": vehicle_id, "data": data}
-        composition_response_dict = await self._do_request(
-            "composition", {k: v for k, v in extra_params.items() if v is not None}
+        return await self._do_request(
+            "composition",
+            CompositionApiResponse.from_dict,
+            {k: v for k, v in extra_params.items() if v is not None},
         )
-        if composition_response_dict is None:
-            return None
-        return self._parse_response("composition", composition_response_dict, CompositionApiResponse.from_dict)
 
     async def get_disturbances(self, line_break_character: str | None = None) -> DisturbancesApiResponse | None:
         """Retrieve information about current disturbances on the rail network.
@@ -824,9 +867,8 @@ class IRail:
 
         """
         extra_params = {"lineBreakCharacter": line_break_character}
-        disturbances_response_dict = await self._do_request(
-            "disturbances", {k: v for k, v in extra_params.items() if v is not None}
+        return await self._do_request(
+            "disturbances",
+            DisturbancesApiResponse.from_dict,
+            {k: v for k, v in extra_params.items() if v is not None},
         )
-        if disturbances_response_dict is None:
-            return None
-        return self._parse_response("disturbances", disturbances_response_dict, DisturbancesApiResponse.from_dict)
