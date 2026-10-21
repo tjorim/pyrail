@@ -61,28 +61,6 @@ _ALLOWED_VALUES: Mapping[str, frozenset[str]] = MappingProxyType(
 )
 
 
-type _EndpointSpec = Mapping[str, tuple[str, ...]]
-
-
-def _frozen_spec(spec: dict[str, tuple[str, ...]]) -> _EndpointSpec:
-    """Freeze one endpoint spec, so the endpoint table cannot be mutated at any level."""
-    return MappingProxyType(spec)
-
-
-_ENDPOINTS: Mapping[str, _EndpointSpec] = MappingProxyType(
-    {
-        "stations": _frozen_spec({}),
-        "liveboard": _frozen_spec({"xor": ("station", "id"), "optional": ("date", "time", "arrdep", "alerts")}),
-        "connections": _frozen_spec(
-            {"required": ("from", "to"), "optional": ("date", "time", "timesel", "typeOfTransport")}
-        ),
-        "vehicle": _frozen_spec({"required": ("id",), "optional": ("date", "alerts")}),
-        "composition": _frozen_spec({"required": ("id",), "optional": ("data",)}),
-        "disturbances": _frozen_spec({"optional": ("lineBreakCharacter",)}),
-    }
-)
-
-
 def _describe(error: BaseException) -> str:
     """Describe an exception for log and error messages, including its type when it has no message."""
     return f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
@@ -387,51 +365,6 @@ class IRail:
                 msg = f"Invalid {name}: expected one of {sorted(allowed)}, got: {params[name]}"
                 raise ValueError(msg)
 
-    def _validate_params(self, method: str, params: dict[str, Any] | None = None) -> None:
-        """Validate parameters for a specific iRail API endpoint based on predefined requirements.
-
-        Checks that the method is a known endpoint, that all required parameters are present,
-        that the XOR parameter logic holds, that no unexpected parameters are given, and that
-        date, time and fixed-value parameters hold accepted values.
-
-        Args:
-            method (str): The API endpoint method to validate parameters for.
-            params (dict[str, Any], optional): Dictionary of parameters to validate. Defaults to None.
-
-        Raises:
-            ValueError: If any of the checks fails.
-
-        """
-        if method not in _ENDPOINTS:
-            msg = f"Unknown API endpoint: {method}"
-            raise ValueError(msg)
-
-        endpoint = _ENDPOINTS[method]
-        required = endpoint.get("required", ())
-        xor = endpoint.get("xor", ())
-        optional = endpoint.get("optional", ())
-
-        params = params or {}
-
-        self._validate_values(params)
-
-        for param in required:
-            if param not in params or params[param] is None:
-                msg = f"Missing required parameter: {param} for endpoint: {method}"
-                raise ValueError(msg)
-
-        if xor:
-            xor_values = [params.get(param) is not None for param in xor]
-            if sum(xor_values) != 1:
-                msg = f"Exactly one of the XOR parameters {xor} must be provided for endpoint: {method}"
-                raise ValueError(msg)
-
-        all_params = required + xor + optional
-        for param in params:
-            if param not in all_params:
-                msg = f"Unexpected parameter: {param} for endpoint: {method}"
-                raise ValueError(msg)
-
     async def _handle_success_response(
         self, response: ClientResponse, method: str
     ) -> tuple[dict[str, Any], str | None]:
@@ -554,9 +487,10 @@ class IRail:
     ) -> T | None:
         """Send an asynchronous request to the specified iRail API endpoint.
 
-        This method handles API requests with rate limiting, parameter validation,
-        and ETag-based caching. It supports conditional requests and manages
-        various HTTP response scenarios. Network errors, timeouts and server errors (5xx)
+        This method handles API requests with rate limiting and ETag-based caching.
+        Endpoint methods validate their parameters before calling this helper.
+        It supports conditional requests and manages various HTTP response scenarios.
+        Network errors, timeouts and server errors (5xx)
         are retried up to ``max_retries`` times with exponential backoff. The response
         is deserialized with ``from_dict``, and its ETag is cached only after the
         response is fully accepted, so a rejected response never leaves a cache entry.
@@ -572,7 +506,6 @@ class IRail:
             not modified (304).
 
         Raises:
-            ValueError: If the method is not a known endpoint or the parameters are invalid.
             RuntimeError: If the active session has been closed.
             RateLimitError: If the API responds with HTTP 429. The exception's ``retry_after`` holds the
                 Retry-After delay in seconds, if given. The request is not retried.
@@ -595,7 +528,6 @@ class IRail:
 
         """
         logger.debug("Starting request to endpoint: %s", method)
-        self._validate_params(method, args or {})
 
         url: str = f"{_API_BASE_URL}/{method}/"
         params = {"format": "json", "lang": self.lang}
@@ -691,7 +623,7 @@ class IRail:
         """Retrieve a liveboard for a specific train station.
 
         Asynchronously fetches live departure or arrival information for a given station.
-        Provide exactly one of 'station' or 'id'.
+        Provide exactly one of 'station' or 'station_id'.
 
         Args:
             station (str): Name of the train station.
@@ -729,10 +661,16 @@ class IRail:
             "arrdep": arrdep,
             "alerts": "true" if alerts else "false",
         }
+        params = {k: v for k, v in extra_params.items() if v is not None}
+        self._validate_values(params)
+        if (station is None) == (station_id is None):
+            msg = "Provide exactly one of station or station_id"
+            raise ValueError(msg)
+
         return await self._do_request(
             "liveboard",
             LiveboardApiResponse.from_dict,
-            {k: v for k, v in extra_params.items() if v is not None},
+            params,
         )
 
     async def get_connections(
@@ -782,10 +720,16 @@ class IRail:
             "timesel": timesel,
             "typeOfTransport": type_of_transport,
         }
+        params = {k: v for k, v in extra_params.items() if v is not None}
+        self._validate_values(params)
+        if from_station is None or to_station is None:
+            msg = "Both from_station and to_station must be provided"
+            raise ValueError(msg)
+
         return await self._do_request(
             "connections",
             ConnectionsApiResponse.from_dict,
-            {k: v for k, v in extra_params.items() if v is not None},
+            params,
         )
 
     async def get_vehicle(
@@ -821,10 +765,16 @@ class IRail:
 
         """
         extra_params: dict[str, Any] = {"id": vehicle_id, "date": date, "alerts": "true" if alerts else "false"}
+        params = {k: v for k, v in extra_params.items() if v is not None}
+        self._validate_values(params)
+        if vehicle_id is None:
+            msg = "vehicle_id must be provided"
+            raise ValueError(msg)
+
         return await self._do_request(
             "vehicle",
             VehicleApiResponse.from_dict,
-            {k: v for k, v in extra_params.items() if v is not None},
+            params,
         )
 
     async def get_composition(
@@ -856,10 +806,15 @@ class IRail:
 
         """
         extra_params: dict[str, str | None] = {"id": vehicle_id, "data": data}
+        params = {k: v for k, v in extra_params.items() if v is not None}
+        if vehicle_id is None:
+            msg = "vehicle_id must be provided"
+            raise ValueError(msg)
+
         return await self._do_request(
             "composition",
             CompositionApiResponse.from_dict,
-            {k: v for k, v in extra_params.items() if v is not None},
+            params,
         )
 
     async def get_disturbances(self, line_break_character: str | None = None) -> DisturbancesApiResponse | None:
