@@ -8,7 +8,7 @@ field assertions and error handling are covered by the offline suite in test_ira
 from collections.abc import Awaitable, Callable
 from typing import Literal
 
-from pyrail.irail import iRail
+from pyrail.irail import IRail
 from pyrail.models import (
     CompositionApiResponse,
     ConnectionsApiResponse,
@@ -30,7 +30,7 @@ async def _first_vehicle_id(live: LiveApi, travel_date: tuple[str, str]) -> str:
     """
     date, time = travel_date
     liveboard = await live.fetch(
-        "liveboard", lambda api: api.get_liveboard(id=BRUSSELS_CENTRAL_ID, date=date, time=time)
+        "liveboard", lambda api: api.get_liveboard(station_id=BRUSSELS_CENTRAL_ID, date=date, time=time)
     )
     departures = [d for d in liveboard.departures or [] if not d.canceled]
     assert departures, "Expected Brussels-Central to have departures to pick a vehicle from"
@@ -77,7 +77,7 @@ async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tupl
             response = await live.fetch(
                 f"liveboard (id, {arrdep}, alerts={alerts})",
                 lambda api, arrdep=arrdep, alerts=alerts: api.get_liveboard(
-                    id=BRUSSELS_CENTRAL_ID, date=date, time=time, arrdep=arrdep, alerts=alerts
+                    station_id=BRUSSELS_CENTRAL_ID, date=date, time=time, arrdep=arrdep, alerts=alerts
                 ),
             )
 
@@ -104,7 +104,7 @@ async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> 
 async def test_live_connections_timesel_and_type_of_transport(live: LiveApi, travel_date: tuple[str, str]) -> None:
     """Connections deserialize when selected by arrival time and for each transport filter."""
     date, time = travel_date
-    variants: dict[str, Callable[[iRail], Awaitable[ConnectionsApiResponse | None]]] = {
+    variants: dict[str, Callable[[IRail], Awaitable[ConnectionsApiResponse | None]]] = {
         "timesel=arrival": lambda api: api.get_connections(
             "Antwerpen-Centraal", "Brussel-Centraal", date=date, time=time, timesel="arrival"
         ),
