@@ -8,7 +8,7 @@ from email.utils import format_datetime
 import json
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientError, ClientSession
@@ -25,7 +25,7 @@ from pyrail.exceptions import (
     PyRailError,
     RateLimitError,
 )
-from pyrail.irail import _ENDPOINTS, _ETAG_CACHE_LIMIT, IRail, _parse_retry_after
+from pyrail.irail import _ETAG_CACHE_LIMIT, IRail, _parse_retry_after
 from pyrail.models import (
     Alert,
     ApiResponse,
@@ -405,10 +405,12 @@ async def test_get_liveboard_by_id(mock_get: MagicMock) -> None:
         assert params["id"] == "BE.NMBS.008813003"
         assert "station" not in params
 
-        with pytest.raises(ValueError, match="Exactly one of the XOR parameters"):
+        with pytest.raises(ValueError, match="exactly one of station or station_id"):
             await api.get_liveboard(station="Brussels-Central", station_id="BE.NMBS.008813003")
-        with pytest.raises(ValueError, match="Exactly one of the XOR parameters"):
+        with pytest.raises(ValueError, match="exactly one of station or station_id"):
             await api.get_liveboard()
+
+    assert mock_get.call_count == 1
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -471,23 +473,28 @@ async def test_get_connections_timesel_and_type_of_transport(mock_get: MagicMock
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_fixed_value_parameters_reject_unknown_values(mock_get: MagicMock) -> None:
+@pytest.mark.parametrize(
+    ("call", "message"),
+    [
+        (
+            lambda api: api.get_connections("A", "B", type_of_transport="nointernationaltrains"),
+            "Invalid typeOfTransport",
+        ),
+        (lambda api: api.get_connections("A", "B", type_of_transport="Trains"), "Invalid typeOfTransport"),
+        (lambda api: api.get_connections("A", "B", timesel="arrivals"), "Invalid timesel"),
+        (lambda api: api.get_liveboard(station="Brussels-Central", arrdep="arrivals"), "Invalid arrdep"),
+    ],
+)
+async def test_fixed_value_parameters_reject_unknown_values(
+    mock_get: MagicMock, call: Callable[[IRail], Awaitable[object]], message: str
+) -> None:
     """Values the API would silently replace by a default are rejected before any request is sent."""
-    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
-
-    async with IRail() as api:
-        with pytest.raises(ValueError, match="Invalid typeOfTransport"):
-            await api._do_request(
-                "connections", dict, {"from": "A", "to": "B", "typeOfTransport": "nointernationaltrains"}
-            )
-        with pytest.raises(ValueError, match="Invalid typeOfTransport"):
-            await api._do_request("connections", dict, {"from": "A", "to": "B", "typeOfTransport": "Trains"})
-        with pytest.raises(ValueError, match="Invalid timesel"):
-            await api._do_request("connections", dict, {"from": "A", "to": "B", "timesel": "arrivals"})
-        with pytest.raises(ValueError, match="Invalid arrdep"):
-            await api._do_request("liveboard", dict, {"station": "Brussels-Central", "arrdep": "arrivals"})
+    api = IRail()
+    with pytest.raises(ValueError, match=message):
+        await call(api)
 
     mock_get.assert_not_called()
+    assert api.session is None
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -1165,24 +1172,49 @@ def test_invalid_language_rejected() -> None:
     assert api.lang == "nl"
 
 
-def test_validate_params_rejects_bad_requests() -> None:
-    """Test that unknown endpoints, missing required parameters and unexpected parameters raise ValueError."""
+@patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(lambda api: api.get_connections(None, "B"), id="missing-origin"),
+        pytest.param(lambda api: api.get_connections("A", None), id="missing-destination"),
+        pytest.param(lambda api: api.get_vehicle(None), id="missing-vehicle-id"),
+        pytest.param(lambda api: api.get_composition(None), id="missing-composition-id"),
+    ],
+)
+async def test_endpoint_methods_reject_missing_required_values(
+    mock_get: MagicMock, call: Callable[[IRail], Awaitable[object]]
+) -> None:
+    """Required values are checked at runtime even when a caller bypasses type checking."""
     api = IRail()
-    with pytest.raises(ValueError, match="Unknown API endpoint"):
-        api._validate_params("unknown", {})
-    with pytest.raises(ValueError, match="Missing required parameter"):
-        api._validate_params("connections", {"from": "A"})
-    with pytest.raises(ValueError, match="Unexpected parameter"):
-        api._validate_params("disturbances", {"unexpected": True})
+    with pytest.raises(ValueError, match="must be provided"):
+        await call(api)
+
+    mock_get.assert_not_called()
+    assert api.session is None
 
 
-def test_endpoint_table_is_frozen() -> None:
-    """The endpoint table rejects mutation at both levels."""
-    endpoints = cast("Any", _ENDPOINTS)
-    with pytest.raises(TypeError):
-        endpoints["liveboard"]["optional"] = ()
-    with pytest.raises(TypeError):
-        endpoints["new"] = {}
+@patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize(
+    ("call", "message"),
+    [
+        (lambda api: api.get_liveboard(station="A", date="320923"), "Invalid date format"),
+        (lambda api: api.get_liveboard(station="A", time="2460"), "Invalid time format"),
+        (lambda api: api.get_connections("A", "B", date="320923"), "Invalid date format"),
+        (lambda api: api.get_connections("A", "B", time="2460"), "Invalid time format"),
+        (lambda api: api.get_vehicle("IC538", date="320923"), "Invalid date format"),
+    ],
+)
+async def test_endpoint_methods_validate_dates_and_times_before_requesting(
+    mock_get: MagicMock, call: Callable[[IRail], Awaitable[object]], message: str
+) -> None:
+    """All endpoints accepting dates or times reject invalid formats before opening a session."""
+    api = IRail()
+    with pytest.raises(ValueError, match=message):
+        await call(api)
+
+    mock_get.assert_not_called()
+    assert api.session is None
 
 
 def test_non_positive_request_timeout_rejected() -> None:
@@ -1217,8 +1249,9 @@ async def test_deserialization_failure_raises_invalid_response(mock_get: MagicMo
     """Test that a body that does not match the models raises InvalidResponseError."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data={"unexpected": True})
     async with IRail() as api:
-        with pytest.raises(InvalidResponseError, match="does not match the expected model"):
+        with pytest.raises(InvalidResponseError, match="does not match the expected model") as exc_info:
             await api.get_stations()
+    assert exc_info.value.status == 200
 
 
 @patch("pyrail.irail.ClientSession.get")

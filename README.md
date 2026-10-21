@@ -284,7 +284,7 @@ uv run pytest
 CI also enforces a coverage threshold: coverage over `pyrail/`, statements and branches together, must stay at or above 92 percent. Run it locally with:
 
 ```bash
-uv run coverage run -m pytest && uv run coverage report
+uv run pytest --cov=pyrail --cov-report=term-missing:skip-covered
 ```
 
 To run the live suite, which needs network access:
