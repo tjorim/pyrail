@@ -350,7 +350,7 @@ class VehicleStop(DataClassORJSONMixin):
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))
     arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))
     is_extra_stop: bool = field(metadata=field_options(alias="isExtraStop", deserialize=_str_to_bool))
-    occupancy: Occupancy | None = field(default=None)
+    occupancy: Occupancy | None = field(default=None)  # Not present on the last stop.
     departure_connection: str | None = field(default=None, metadata=field_options(alias="departureConnection"))
 
 

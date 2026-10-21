@@ -28,7 +28,4 @@ jobs:
         enable-cache: true
 
     - name: Run tests
-      run: uv run --locked coverage run -m pytest
-
-    - name: Enforce coverage threshold
-      run: uv run --locked coverage report
+      run: uv run --locked pytest --cov=pyrail --cov-report=term-missing:skip-covered

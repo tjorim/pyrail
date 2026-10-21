@@ -16,6 +16,8 @@ import pytest
 from pyrail.exceptions import InvalidRequestError, InvalidResponseError, NotFoundError, PyRailError
 from pyrail.irail import IRail
 
+# The fixture disables client retries, so this is the only retry layer; client
+# rate limiting still applies to every attempt.
 ATTEMPTS = 3
 BACKOFF_SECONDS = (5, 15)
 REQUEST_TIMEOUT = ClientTimeout(total=30)
