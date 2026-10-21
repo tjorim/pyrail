@@ -126,7 +126,8 @@ class IRail:
             context manager is entered or the first request, and after close() of an owned session.
             Remains set when the caller provided the session.
             If not provided, a new session will be created and managed internally.
-            If provided, the session lifecycle must be managed externally.
+            If provided, the session lifecycle must be managed externally, and a closed
+            session fails the next request or context manager entry with a RuntimeError.
         max_retries (int): How many times a request is retried after a network error, timeout or
             server error (5xx). Each attempt goes through the rate limiter. 0 disables retrying.
         request_timeout (float): Timeout in seconds for each individual request attempt.
@@ -182,7 +183,12 @@ class IRail:
         self._etag_generation: int = 0
 
     async def __aenter__(self) -> Self:
-        """Initialize the aiohttp client session when entering the async context."""
+        """Initialize the aiohttp client session when entering the async context.
+
+        Raises:
+            RuntimeError: If the active session has been closed.
+
+        """
         self._ensure_session()
         return self
 
@@ -202,16 +208,25 @@ class IRail:
         used without the async context manager and closed explicitly.
         After close of an owned session, the next request creates a fresh one.
         """
-        if self.session and not self.session.closed and self._owns_session:
-            logger.debug("Closing aiohttp session")
-            await self.session.close()
+        if self.session and self._owns_session:
+            if not self.session.closed:
+                logger.debug("Closing aiohttp session")
+                await self.session.close()
             self.session = None
 
     def _ensure_session(self) -> ClientSession:
-        """Return the active session, creating an owned one when none exists yet."""
+        """Return the active session, creating an owned one when none exists yet.
+
+        Raises:
+            RuntimeError: If the active session has been closed.
+
+        """
         if self.session is None:
             logger.debug("Creating new internal aiohttp session")
             self.session = ClientSession()
+        if self.session.closed:
+            msg = "The session is closed, so no request can be sent"
+            raise RuntimeError(msg)
         return self.session
 
     @property
@@ -520,6 +535,7 @@ class IRail:
         Raises:
             ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
             TimeoutError: If the attempt exceeds ``request_timeout`` seconds.
+            RuntimeError: If the active session has been closed.
             InvalidResponseError: On an empty or unparseable body, a body that is
                 not a JSON object, or an unexpected status.
             RateLimitError: On HTTP 429.
@@ -559,6 +575,7 @@ class IRail:
 
         Raises:
             ValueError: If the method is not a known endpoint or the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API responds with HTTP 429. The exception's ``retry_after`` holds the
                 Retry-After delay in seconds, if given. The request is not retried.
             InvalidRequestError: If the API responds with HTTP 400.
@@ -646,6 +663,7 @@ class IRail:
             StationsApiResponse or None: A StationsApiResponse object containing a list of all train stations and their details, or None if the data is not modified.
 
         Raises:
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -690,6 +708,7 @@ class IRail:
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -742,6 +761,7 @@ class IRail:
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -789,6 +809,7 @@ class IRail:
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -823,6 +844,7 @@ class IRail:
 
         Raises:
             ValueError: If the parameters are invalid.
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
@@ -853,6 +875,7 @@ class IRail:
             DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified.
 
         Raises:
+            RuntimeError: If the active session has been closed.
             RateLimitError: If the API rate limit is exceeded.
             InvalidRequestError: If the request is invalid.
             NotFoundError: If the requested resource is not found.
