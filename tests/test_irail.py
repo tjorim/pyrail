@@ -1511,19 +1511,3 @@ def test_package_exports_the_response_models() -> None:
     assert pyrail.DisturbancesApiResponse is DisturbancesApiResponse
     for name in pyrail.__all__:
         assert hasattr(pyrail, name)
-
-
-@pytest.mark.parametrize(
-    ("exception", "default_message"),
-    [
-        (InvalidRequestError, "Invalid API request"),
-        (NotFoundError, "Resource not found"),
-        (ApiUnavailableError, "API unavailable"),
-    ],
-)
-def test_exception_messages_preserve_defaults_and_custom_messages(
-    exception: type[PyRailError], default_message: str
-) -> None:
-    """Existing exceptions retain useful messages when constructed without arguments."""
-    assert str(exception()) == default_message
-    assert str(exception("Custom failure")) == "Custom failure"

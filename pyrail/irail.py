@@ -35,6 +35,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 _API_BASE_URL = "https://api.irail.be/v1"
 
+# Retry transient failures with exponential backoff, capped at the maximum delay.
 _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 10.0
 
@@ -50,6 +51,7 @@ _BURST_CAPACITY = 5
 
 _LANGUAGES: frozenset[str] = frozenset({"en", "nl", "fr", "de"})
 
+# The API silently substitutes defaults for unknown values, so validate them locally.
 _ALLOWED_VALUES: Mapping[str, frozenset[str]] = MappingProxyType(
     {
         "arrdep": frozenset({"departure", "arrival"}),
@@ -605,6 +607,7 @@ class IRail:
         max_attempts = self.max_retries + 1
         attempt = 1
         while True:
+            # Retries must consume a token too, or failures could exceed the API limits.
             async with self._lock:
                 await self._handle_rate_limit()
 

@@ -32,7 +32,7 @@ Changelog = "https://github.com/tjorim/pyrail/releases"
 test = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
-    "coverage[toml]>=7.16.2",
+    "pytest-cov>=7.1.0",
 ]
 dev = [
     "ruff>=0.16.10",
