@@ -37,12 +37,12 @@ Here is an example of how to use pyRail asynchronously:
 
 ```python
 import asyncio
-from pyrail import iRail, PyRailError
+from pyrail import IRail, PyRailError
 
 
 async def main():
     # Sequential requests example
-    async with iRail() as api:
+    async with IRail() as api:
         try:
             # Get the total number of stations
             stations = await api.get_stations()
@@ -60,7 +60,7 @@ async def main():
         except PyRailError as e:
             print(f"Error occurred: {e}")
     # Parallel requests example
-    async with iRail() as api:
+    async with IRail() as api:
         try:
             connections, vehicle_info = await asyncio.gather(
                 # Get connections between stations
@@ -128,7 +128,7 @@ elif not liveboard.departures:
 You can configure the language for the API requests:
 
 ```python
-api = iRail(lang="nl")
+api = IRail(lang="nl")
 ```
 
 Supported languages are:
@@ -151,19 +151,19 @@ from aiohttp import ClientSession
 async def main():
     # Using an external session
     async with ClientSession() as session:
-        async with iRail(session=session) as api:
+        async with IRail(session=session) as api:
             stations = await api.get_stations()
             print(f"Total stations: {len(stations.stations)}")
 
-    # Or let iRail manage its own session
-    async with iRail() as api:
+    # Or let IRail manage its own session
+    async with IRail() as api:
         stations = await api.get_stations()
 ```
 
 Without the context manager, close the owned session yourself:
 
 ```python
-api = iRail()
+api = IRail()
 stations = await api.get_stations()
 await api.close()
 ```
@@ -175,7 +175,7 @@ An externally provided session is never closed by pyRail, with or without the co
 pyRail sends `If-None-Match` for a request once the API has returned an `ETag` for that same request, so the endpoint and the parameters must match. A response is cached only after it fully arrives and matches the models. A 304 only refreshes an entry that was already cached when the request was sent, and clearing the cache also covers responses that are already in flight. The cache holds at most 128 entries and drops the least recently used one first. The iRail API does not send ETags at the moment (checked October 2026), so for now this has no effect and every request returns fresh data. You can clear the ETag cache when needed:
 
 ```python
-async with iRail() as api:
+async with IRail() as api:
     # Clear the ETag cache
     api.clear_etag_cache()
     # Subsequent requests will fetch fresh data
@@ -193,7 +193,7 @@ The library automatically handles rate limiting:
 
 ```python
 # Rate limiting is handled automatically
-async with iRail() as api:
+async with IRail() as api:
     # These requests will be rate-limited if needed
     for station in ["Brussels-South", "Antwerp-Central", "Ghent-Sint-Pieters"]:
         liveboard = await api.get_liveboard(station=station)
@@ -216,9 +216,9 @@ pyRail raises exceptions for errors returned by the iRail API and for connection
 | `ApiUnavailableError` | The API cannot be reached (network error, timeout or HTTP 5xx) after all retries   |
 
 ```python
-from pyrail import iRail, NotFoundError, PyRailError, RateLimitError
+from pyrail import IRail, NotFoundError, PyRailError, RateLimitError
 
-async with iRail() as api:
+async with IRail() as api:
     try:
         liveboard = await api.get_liveboard(station="Unknown station")
     except NotFoundError:
@@ -243,10 +243,10 @@ pyRail automatically retries transient failures with exponential backoff:
 By default a request is attempted up to 3 times in total, waiting 1s and then 2s between attempts (the delay doubles each time, capped at 10s). Use `max_retries` to change this, or set it to `0` to disable retrying:
 
 ```python
-async with iRail(max_retries=5) as api:
+async with IRail(max_retries=5) as api:
     stations = await api.get_stations()
 
-async with iRail(max_retries=0) as api:  # fail fast, no retries
+async with IRail(max_retries=0) as api:  # fail fast, no retries
     stations = await api.get_stations()
 ```
 
