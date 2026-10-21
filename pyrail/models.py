@@ -164,6 +164,7 @@ class LiveboardApiResponse(ApiResponse):
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Flatten departures and arrivals before deserialization, honoring the field defaults."""
+        d = d.copy()
         departures = d.get("departures")
         d["departures"] = departures.get("departure", []) if isinstance(departures, dict) else None
         arrivals = d.get("arrivals")
@@ -226,6 +227,7 @@ class ConnectionDeparture(DataClassORJSONMixin):
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract the 'stop' list from 'stops' before deserialization, defaulting to an empty list."""
+        d = d.copy()
         stops = d.get("stops")
         d["stops"] = stops.get("stop", []) if isinstance(stops, dict) else []
         return d
@@ -304,6 +306,7 @@ class ConnectionDetails(DataClassORJSONMixin):
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Flatten remarks, alerts and vias before deserialization, honoring the field defaults."""
+        d = d.copy()
         remarks = d.get("remarks")
         d["remarks"] = remarks.get("remark", []) if isinstance(remarks, dict) else []
         alerts = d.get("alerts")
@@ -361,6 +364,7 @@ class VehicleApiResponse(ApiResponse):
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract the 'stop' list from 'stops' before deserialization, defaulting to an empty list."""
+        d = d.copy()
         stops = d.get("stops")
         d["stops"] = stops.get("stop", []) if isinstance(stops, dict) else []
         return d
@@ -426,6 +430,7 @@ class SegmentComposition(DataClassORJSONMixin):
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract the 'unit' list from 'units' before deserialization, defaulting to an empty list."""
+        d = d.copy()
         units = d.get("units")
         d["units"] = units.get("unit", []) if isinstance(units, dict) else []
         return d
@@ -451,6 +456,7 @@ class CompositionApiResponse(ApiResponse):
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract the 'segment' list from 'composition' before deserialization, defaulting to an empty list."""
+        d = d.copy()
         composition = d.get("composition")
         segments = composition.get("segments") if isinstance(composition, dict) else None
         d["composition"] = segments.get("segment", []) if isinstance(segments, dict) else []
@@ -485,6 +491,7 @@ class Disturbance(DataClassORJSONMixin):
     @override
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Extract the 'descriptionLink' list from 'descriptionLinks' before deserialization, defaulting to an empty list."""
+        d = d.copy()
         links = d.get("descriptionLinks")
         d["descriptionLinks"] = links.get("descriptionLink", []) if isinstance(links, dict) else []
         return d

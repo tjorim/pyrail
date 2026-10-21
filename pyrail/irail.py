@@ -303,10 +303,12 @@ class IRail:
         """
         if date is None:
             return
+        msg = f"Invalid date format: {date}. Expected DDMMYY (e.g., 150923 for September 15, 2023)"
+        if len(date) != len("DDMMYY") or not date.isascii() or not date.isdigit():
+            raise ValueError(msg)
         try:
             time.strptime(date, "%d%m%y")
         except ValueError:
-            msg = f"Invalid date format: {date}. Expected DDMMYY (e.g., 150923 for September 15, 2023)"
             raise ValueError(msg) from None
 
     def _validate_time(self, time_str: str | None) -> None:
@@ -322,10 +324,12 @@ class IRail:
         """
         if time_str is None:
             return
+        msg = f"Invalid time format: {time_str}. Expected HHMM (e.g., 1430 for 2:30 PM)"
+        if len(time_str) != len("HHMM") or not time_str.isascii() or not time_str.isdigit():
+            raise ValueError(msg)
         try:
             time.strptime(time_str, "%H%M")
         except ValueError:
-            msg = f"Invalid time format: {time_str}. Expected HHMM (e.g., 1430 for 2:30 PM)"
             raise ValueError(msg) from None
 
     def _validate_values(self, params: dict[str, Any]) -> None:
@@ -614,7 +618,7 @@ class IRail:
         """Retrieve a liveboard for a specific train station.
 
         Asynchronously fetches live departure or arrival information for a given station.
-        Provide exactly one of 'station' or 'id'.
+        Provide exactly one of 'station' or 'station_id'.
 
         Args:
             station (str): Name of the train station.

@@ -1170,3 +1170,51 @@ def test_package_exposes_version() -> None:
     """The package exposes its installed version as a string."""
     assert isinstance(pyrail.__version__, str)
     assert pyrail.__version__
+
+
+@patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"date": "1923"},
+        {"date": "01012024"},
+        {"date": "\uff10\uff11\uff10\uff11\uff12\uff14"},
+        {"date": "01a124"},
+        {"time": "930"},
+        {"time": "123"},
+        {"time": "\uff11\uff12\uff13\uff14"},
+        {"time": "1a30"},
+    ],
+)
+async def test_liveboard_rejects_non_fixed_width_date_and_time(mock_get: MagicMock, params: dict[str, str]) -> None:
+    """Date and time inputs must be fixed-width ASCII digits before any request is sent."""
+    api = IRail()
+    try:
+        with pytest.raises(ValueError, match=r"Invalid (date|time) format"):
+            await api.get_liveboard(station="Brussels-Central", date=params.get("date"), time=params.get("time"))
+        mock_get.assert_not_called()
+        assert api.session is None
+    finally:
+        await api.close()
+
+
+@pytest.mark.parametrize(
+    ("model", "fixture"),
+    [
+        (StationsApiResponse, "stations.json"),
+        (LiveboardApiResponse, "liveboard.json"),
+        (LiveboardApiResponse, "liveboard_arrivals.json"),
+        (ConnectionsApiResponse, "connections.json"),
+        (VehicleApiResponse, "vehicle.json"),
+        (CompositionApiResponse, "composition.json"),
+        (DisturbancesApiResponse, "disturbances.json"),
+    ],
+)
+def test_model_deserialization_preserves_input(model: type[DataClassORJSONMixin], fixture: str) -> None:
+    """Parsing a recorded response repeatedly preserves its root and nested wrapper dictionaries."""
+    data = _load_example(fixture)
+    original = deepcopy(data)
+    first = model.from_dict(data)
+    second = model.from_dict(data)
+    assert first == second
+    assert data == original
