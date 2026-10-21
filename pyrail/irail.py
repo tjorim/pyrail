@@ -616,7 +616,7 @@ class IRail:
                 continue
 
             if data is None:
-                if etag is not None and self._etag_generation == etag_generation:
+                if "If-None-Match" in request_headers and etag is not None and self._etag_generation == etag_generation:
                     self._store_etag(request_key, etag)
                 return None
             parsed = self._parse_response(method, data, from_dict)

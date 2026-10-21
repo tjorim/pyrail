@@ -1497,3 +1497,18 @@ def test_model_deserialization_preserves_input(model: type[DataClassORJSONMixin]
     second = model.from_dict(data)
     assert first == second
     assert data == original
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_unsolicited_not_modified_does_not_seed_the_etag_cache(mock_get: MagicMock) -> None:
+    """A 304 without a conditional request cannot cache data the caller never received."""
+    mock_get.return_value.__aenter__.side_effect = [
+        _mock_response(status=304, headers={"Etag": '"orphan-etag"'}),
+        _mock_response(data=_load_example("stations.json")),
+    ]
+    async with IRail() as api:
+        assert await api.get_stations() is None
+        assert api._etag_cache == {}
+        assert await api.get_stations() is not None
+
+    assert "If-None-Match" not in mock_get.call_args_list[1].kwargs["headers"]
