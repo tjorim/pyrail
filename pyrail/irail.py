@@ -10,7 +10,7 @@ from http import HTTPStatus
 import logging
 import time
 from types import MappingProxyType, TracebackType
-from typing import Any, Literal, Self, TypedDict
+from typing import Any, Literal, Self
 
 from aiohttp import ClientError, ClientResponse, ClientSession
 
@@ -47,30 +47,33 @@ _BURST_CAPACITY = 5
 
 _LANGUAGES: frozenset[str] = frozenset({"en", "nl", "fr", "de"})
 
-_ALLOWED_VALUES: dict[str, frozenset[str]] = {
-    "arrdep": frozenset({"departure", "arrival"}),
-    "timesel": frozenset({"departure", "arrival"}),
-    "typeOfTransport": frozenset({"automatic", "trains", "no_international_trains", "all"}),
-}
+_ALLOWED_VALUES: Mapping[str, frozenset[str]] = MappingProxyType(
+    {
+        "arrdep": frozenset({"departure", "arrival"}),
+        "timesel": frozenset({"departure", "arrival"}),
+        "typeOfTransport": frozenset({"automatic", "trains", "no_international_trains", "all"}),
+    }
+)
 
 
-class _EndpointSpec(TypedDict, total=False):
-    required: tuple[str, ...]
-    optional: tuple[str, ...]
-    xor: tuple[str, ...]
+type _EndpointSpec = Mapping[str, tuple[str, ...]]
+
+
+def _frozen_spec(spec: dict[str, tuple[str, ...]]) -> _EndpointSpec:
+    """Freeze one endpoint spec, so the endpoint table cannot be mutated at any level."""
+    return MappingProxyType(spec)
 
 
 _ENDPOINTS: Mapping[str, _EndpointSpec] = MappingProxyType(
     {
-        "stations": {},
-        "liveboard": {"xor": ("station", "id"), "optional": ("date", "time", "arrdep", "alerts")},
-        "connections": {
-            "required": ("from", "to"),
-            "optional": ("date", "time", "timesel", "typeOfTransport"),
-        },
-        "vehicle": {"required": ("id",), "optional": ("date", "alerts")},
-        "composition": {"required": ("id",), "optional": ("data",)},
-        "disturbances": {"optional": ("lineBreakCharacter",)},
+        "stations": _frozen_spec({}),
+        "liveboard": _frozen_spec({"xor": ("station", "id"), "optional": ("date", "time", "arrdep", "alerts")}),
+        "connections": _frozen_spec(
+            {"required": ("from", "to"), "optional": ("date", "time", "timesel", "typeOfTransport")}
+        ),
+        "vehicle": _frozen_spec({"required": ("id",), "optional": ("date", "alerts")}),
+        "composition": _frozen_spec({"required": ("id",), "optional": ("data",)}),
+        "disturbances": _frozen_spec({"optional": ("lineBreakCharacter",)}),
     }
 )
 
@@ -163,8 +166,8 @@ class IRail:
         self.max_retries: int = max_retries
         self.request_timeout: float = request_timeout
         self.lang: str = lang
-        self._tokens: int = _TOKEN_CAPACITY
-        self._burst_tokens: int = _BURST_CAPACITY
+        self._tokens: float = _TOKEN_CAPACITY
+        self._burst_tokens: float = _BURST_CAPACITY
         self._last_request_time: float = time.monotonic()
         self._lock: Lock = Lock()
         self.session: ClientSession | None = session
@@ -236,41 +239,42 @@ class IRail:
         logger.debug("ETag cache cleared")
 
     def _refill_tokens(self) -> None:
-        """Refill tokens for rate limiting using a token bucket algorithm.
+        """Refill the rate limiting token buckets.
 
-        - Standard tokens: Refill rate of 3 tokens per second, capped at 3 tokens.
-        - Burst tokens: An extra pool of 5 requests for spikes, refilled only
-          while the standard tokens are full.
+        Standard tokens refill at 3 tokens per second and hold at most 3. Burst
+        tokens take only the credit that overflows while the standard tokens are
+        full and hold at most 5. Credit is fractional and nothing is rounded away.
         """
         logger.debug("Refilling tokens")
         current_time: float = time.monotonic()
         elapsed: float = current_time - self._last_request_time
         self._last_request_time = current_time
 
-        self._tokens = min(_TOKEN_CAPACITY, self._tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
-
-        if self._tokens == _TOKEN_CAPACITY:
-            self._burst_tokens = min(_BURST_CAPACITY, self._burst_tokens + int(elapsed * _TOKEN_REFILLS_PER_SECOND))
+        credit: float = elapsed * _TOKEN_REFILLS_PER_SECOND
+        used_for_tokens: float = max(0.0, min(credit, _TOKEN_CAPACITY - self._tokens))
+        self._tokens = min(_TOKEN_CAPACITY, self._tokens + used_for_tokens)
+        overflow: float = credit - used_for_tokens
+        if overflow > 0:
+            self._burst_tokens = min(_BURST_CAPACITY, self._burst_tokens + overflow)
 
     async def _handle_rate_limit(self) -> None:
-        """Handle rate limiting using a token bucket algorithm.
+        """Take one token for a request, or wait for the next one.
 
-        - Standard tokens: 3 requests per second.
-        - Burst tokens: An extra pool of 5 requests for spikes.
-        - Waits and refills tokens if both are exhausted.
+        Standard tokens allow 3 requests per second, burst tokens are an extra
+        pool of 5 for spikes. When both are exhausted, the request waits only
+        until the next standard token refills.
         """
         logger.debug("Handling rate limit")
         self._refill_tokens()
-        if self._tokens < 1:
-            if self._burst_tokens >= 1:
-                self._burst_tokens -= 1
-            else:
-                logger.warning("Rate limiting active, waiting for tokens")
-                wait_time = max(0, 1 - (time.monotonic() - self._last_request_time))
-                await asyncio.sleep(wait_time)
-                self._refill_tokens()
-                self._tokens -= 1
+        if self._tokens >= 1:
+            self._tokens -= 1
+        elif self._burst_tokens >= 1:
+            self._burst_tokens -= 1
         else:
+            logger.warning("Rate limiting active, waiting for a token")
+            wait_time: float = (1.0 - self._tokens) / _TOKEN_REFILLS_PER_SECOND
+            await asyncio.sleep(wait_time)
+            self._refill_tokens()
             self._tokens -= 1
 
     def _add_etag_header(self, method: str) -> dict[str, str]:
@@ -402,13 +406,14 @@ class IRail:
         """Handle a successful API response.
 
         Raises:
-            InvalidResponseError: If the body is empty or is not valid JSON.
+            InvalidResponseError: If the body is empty, is not valid JSON or is
+                not a JSON object.
 
         """
         if "Etag" in response.headers:
             self._etag_cache[method] = response.headers["Etag"]
         try:
-            json_data: dict[str, Any] | None = await response.json(content_type=None)
+            json_data: Any = await response.json(content_type=None)
         except ValueError as e:
             msg = f"Response from {method} is not valid JSON: {_describe(e)}"
             raise InvalidResponseError(msg, status=200) from e
@@ -430,8 +435,9 @@ class IRail:
             RateLimitError: On HTTP 429.
             InvalidRequestError: On HTTP 400.
             NotFoundError: On HTTP 404.
-            InvalidResponseError: On an empty or unparseable body, or a status
-                outside the set the client handles (200, 304, 400, 404, 429).
+            InvalidResponseError: On an empty or unparseable body, a body that
+                is not a JSON object, or a status outside the set this method
+                handles (200, 304, 400, 404, 429).
 
         """
         if response.status == HTTPStatus.TOO_MANY_REQUESTS:
@@ -483,7 +489,8 @@ class IRail:
         Raises:
             ClientError: On network failures and, as a ``_ServerError``, on 5xx responses.
             TimeoutError: If the attempt exceeds ``request_timeout`` seconds.
-            InvalidResponseError: On an empty or unparseable body, or an unexpected status.
+            InvalidResponseError: On an empty or unparseable body, a body that is
+                not a JSON object, or an unexpected status.
             RateLimitError: On HTTP 429.
             InvalidRequestError: On HTTP 400.
             NotFoundError: On HTTP 404.
@@ -520,8 +527,9 @@ class IRail:
                 Retry-After delay in seconds, if given. The request is not retried.
             InvalidRequestError: If the API responds with HTTP 400.
             NotFoundError: If the API responds with HTTP 404.
-            InvalidResponseError: If the response body is empty, is not valid JSON, or the
-                status is outside the set the client handles (200, 304, 400, 404, 429).
+            InvalidResponseError: If the response body is empty, is not valid JSON,
+                is not a JSON object, or the status is outside the set the client
+                handles (200, 304, 400, 404, 429 and the 5xx range).
             ApiUnavailableError: If the request still fails after all retries (network error,
                 timeout or HTTP 5xx).
 
@@ -542,7 +550,8 @@ class IRail:
             params.update(args)
 
         max_attempts = self.max_retries + 1
-        for attempt in range(1, max_attempts + 1):
+        attempt = 1
+        while True:
             async with self._lock:
                 await self._handle_rate_limit()
 
@@ -563,7 +572,7 @@ class IRail:
                     max_attempts,
                 )
                 await asyncio.sleep(delay)
-        return None  # pragma: no cover
+                attempt += 1
 
     def _parse_response[T](self, method: str, data: dict[str, Any], from_dict: Callable[[dict[str, Any]], T]) -> T:
         """Deserialize a response with the given deserialization function.
