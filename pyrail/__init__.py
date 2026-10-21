@@ -11,7 +11,7 @@ from .exceptions import (
     PyRailError,
     RateLimitError,
 )
-from .irail import iRail
+from .irail import IRail
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -22,11 +22,11 @@ except PackageNotFoundError:  # pragma: no cover
 
 __all__ = [
     "ApiUnavailableError",
+    "IRail",
     "InvalidRequestError",
     "InvalidResponseError",
     "NotFoundError",
     "PyRailError",
     "RateLimitError",
     "__version__",
-    "iRail",
 ]
