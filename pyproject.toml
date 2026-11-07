@@ -82,6 +82,7 @@ split-on-trailing-comma = false
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "live: smoke tests against the real iRail API, excluded from ordinary runs (run with 'pytest -m live')",
 ]
