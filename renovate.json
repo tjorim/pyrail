@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>tjorim/renovate-config",
+    "github>tjorim/renovate-config:python-lib"
+  ],
+  "packageRules": [
+    {
+      "description": [
+        "Serialization stack"
+      ],
+      "matchDatasources": [
+        "pypi"
+      ],
+      "matchPackageNames": [
+        "mashumaro",
+        "orjson"
+      ],
+      "groupName": "serialization"
+    },
+    {
+      "description": [
+        "Dependabot used versioning-strategy: increase here."
+      ],
+      "matchManagers": [
+        "pep621"
+      ],
+      "rangeStrategy": "bump"
+    }
+  ]
+}
