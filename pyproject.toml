@@ -30,6 +30,7 @@ Changelog = "https://github.com/tjorim/pyrail/releases"
 
 [dependency-groups]
 test = [
+    # Only the reference that pyrail/cdn/arrow.py is tested against; it is not a runtime dependency.
     "pyarrow>=26",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",

@@ -8,6 +8,18 @@ dependencies.
 
 Only what the CDN files use is supported: 8 to 64 bit integers, 32 and 64 bit floats, UTF-8 strings and
 booleans, in uncompressed record batches. Anything else raises :class:`ArrowError`.
+
+Why this module exists, and what to do when it is no longer enough (measured in November 2026 against the
+release ``nmbs-sncb-20261110-5d71e5b6``; the numbers and method are in tjorim/pyrail#247):
+
+* ``pyarrow`` reads the files, but is about 166 MB installed and has no armv7 or 32-bit wheels. It is a
+  test-only dependency here: the tests compare this reader with it.
+* ``nanoarrow`` (3 MB) rejects the files, because it expects a Schema message first. Using it would need an
+  adapter about as large as this module.
+* ``arro3-io`` reads the files directly and returned values identical to this reader on every file tried
+  (34 MB installed, wheels for armv7 and i686). It is pre-1.0 and one more dependency, so it is the first
+  fallback to try, but only once a CDN release needs something this reader lacks, for example compression or
+  dictionary encoding. Add it behind this module's :func:`read_table` interface, with that file as the test.
 """
 
 from collections.abc import Callable
