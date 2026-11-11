@@ -80,7 +80,9 @@ releases remain on disk until removed. Cache bodies duplicate the selected outpu
 | `compare_all.py` | The comparison above: time, peak memory, installed size and correctness for every reader, plus the realtime parse. Uses `bench_readers.py` and `bench_realtime.py`. |
 | `bench_readers.py` | One reader over all files, as one JSON line (`stdlib`, `pyarrow`, `arro3` or `nanoarrow`). |
 | `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
-| `bench_decoded_cache.py` | Isolated-process comparison of repeated Arrow loads and planner preparation, with/without decoded-table caching. |
+| `bench_decoded_cache.py` | Isolated-process comparison of uncached, decoded-table and prepared-window reuse. |
+| `prepared_cache.py` | Bounded immutable connection-window and departure-index cache for the planner spike. |
+| `test_prepared_cache.py` | Window cache reuse, invalidation, immutability and eviction checks. |
 | `bench_downloader.py` | Primes an ETag cache, times full warm sample refreshes, and compares them with public iRail API journey requests. |
 | `check_schema_message.py` | Shows that the CDN files start with a record batch, not a Schema message. |
 | `probe_nanoarrow.py` | Shows nanoarrow failing on the CDN file but reading the same table as an IPC stream. |
@@ -219,7 +221,46 @@ uv run --locked python experiments/cdn/bench_decoded_cache.py data --write resul
 ```
 
 The new benchmark uses a fresh process per mode/window, verifies equal table/connection digests and
-arrival results, and reports both raw table reloads and complete connection-list preparation. Raw Arrow
-caching does not cache the derived sorted connection lists or full journey results. It does not speed up
+arrival results, and reports both raw table reloads and complete connection-list preparation. Decoded-table
+caching alone does not retain derived connection lists; the prepared-window mode below adds that layer. Neither speeds up
 `fetch_data.py` directly: that downloader copies Arrow files without decoding them. Retaining decoded
 columns trades resident memory for CPU and file I/O savings. See [the local results](results/2026-11-11-fedora-decoded-cache.md).
+
+## Prepared connection windows
+
+The experiment-only `PreparedConnectionCache` retains a sorted, immutable tuple of connection rows and
+its departure-time index for each window. It owns at most two windows by default and shares the caller's
+`DecodedTableCache` when provided. Keep the same object alive across journey queries:
+
+```python
+from prepared_cache import PreparedConnectionCache
+
+windows = PreparedConnectionCache(max_windows=2, decoded_cache=cache)
+window = windows.prepare(pages, files, start, end, release_id=release_id)
+# Pass window.connections and window.departures to the spike's scan functions.
+windows.clear()  # releases prepared entries; clear the decoded cache separately if desired
+```
+
+This snippet runs with `experiments/cdn` on the import path, like the scripts in this directory; it is not
+a new public routing API. Keys include the exact time range, release ID, relevant resolved file paths and
+metadata snapshots, and file identity/size/mtime/ctime. Changes trigger a rebuild. Metadata includes the
+page epoch, which changes absolute connection timestamps even if Arrow bytes remain the same. A hit
+stats relevant files and compares metadata; it does not read/decode Arrow or reconstruct/sort rows.
+Callers must supply current release/page metadata after refreshes. Realtime is outside this prototype;
+a future overlay must have its own version/invalidation rules.
+
+The planner CLI enables both memory caches by default. `--no-prepared-cache` keeps decoded-table caching
+but rebuilds windows; `--no-decoded-cache` disables both. Different exact ranges/releases are misses; the
+first preparation still does the full work. These are entry-count limits, not memory budgets; callers holding
+snapshots can retain them after eviction. Concurrent threads require external synchronization.
+
+The decoded-cache benchmark now includes `prepared` workers and times initial window construction
+separately from repeated lookups. It verifies identical row digests and arrivals in all three modes:
+
+```bash
+uv run --locked python experiments/cdn/bench_decoded_cache.py data --write results.json
+```
+
+See [the prepared-window measurements](results/2026-11-11-fedora-prepared-cache.md). This optimization
+avoids repeated preparation of the same window; it does not change scan complexity, implement missing
+routing features, or reduce the filesystem downloader's refresh time.

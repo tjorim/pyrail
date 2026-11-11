@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 from _common import data_dir, rss_mb
+from prepared_cache import PreparedConnectionCache
 from pyrail.cdn.arrow import read_table
 from pyrail.cdn.cache import DecodedTableCache
 
@@ -113,12 +114,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", nargs="?", default="data")
     parser.add_argument("--api", action="store_true")
+    parser.add_argument("--no-prepared-cache", action="store_true", help="rebuild connection windows on each load")
     parser.add_argument("--no-decoded-cache", action="store_true", help="decode Arrow files on every load")
     parser.add_argument("--date", help="query date; defaults to the sampled date")
     args = parser.parse_args()
     data = data_dir([args.dir])
 
     cache = None if args.no_decoded_cache else DecodedTableCache()
+    prepared_cache = (
+        None if args.no_prepared_cache or args.no_decoded_cache else PreparedConnectionCache(decoded_cache=cache)
+    )
     stops, pages, files = load(data, cache)
     index = {iri: i for i, iri in enumerate(stops["iri"])}
     arlon = stops["name"].index("Arlon")
@@ -136,7 +141,8 @@ def main() -> None:
         ),
         ("Oostende to Arlon (long, transfers)", station("008891702"), arlon),
     ]
-    date = args.date or json.loads((data / "sample.json").read_text())["date"]
+    sample = json.loads((data / "sample.json").read_text())
+    date = args.date or sample["date"]
     t0 = int(datetime.fromisoformat(f"{date}T08:00:00").replace(tzinfo=ZoneInfo("Europe/Brussels")).timestamp())
     min_transfer = stops["minTransferTime"]
 
@@ -146,15 +152,17 @@ def main() -> None:
         ("48 h window (worst case)", 2 * DAY),
     ):
         start = time.perf_counter()
-        connections, decoded = decode_pages(pages, files, t0, t0 + window, cache)
-        decode_ms = (time.perf_counter() - start) * 1000
-        start = time.perf_counter()
-        deps = [c[0] for c in connections]  # already sorted: pages and rows are in departure order
-        assert deps == sorted(deps)  # noqa: S101
-        prep_ms = (time.perf_counter() - start) * 1000
+        if prepared_cache is not None:
+            prepared = prepared_cache.prepare(pages, files, t0, t0 + window, release_id=sample["releaseId"])
+            connections, deps, decoded = prepared.connections, prepared.departures, prepared.pages
+        else:
+            connections, decoded = decode_pages(pages, files, t0, t0 + window, cache)
+            connections.sort(key=lambda c: c[0])
+            deps = [c[0] for c in connections]
+        preparation_ms = (time.perf_counter() - start) * 1000
         print(
-            f"\n== {window_name}: {decoded} pages, {len(connections)} connections; decode {decode_ms:.0f} ms, "
-            f"list prep {prep_ms:.0f} ms, rss {rss_mb()} MB"
+            f"\n== {window_name}: {decoded} pages, {len(connections)} connections; "
+            f"load/prepare {preparation_ms:.0f} ms, rss {rss_mb()} MB"
         )
         for label, source, target in queries:
             times = []

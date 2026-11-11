@@ -2,8 +2,8 @@
 
 Run: uv run python experiments/cdn/bench_decoded_cache.py data --write results.json
 Each mode/window runs in a fresh process. No network requests are made. Planner
-measurements include tuple construction/sorting; caching Arrow columns does not cache
-prepared connection lists or complete journey results.
+memory mode rebuilds connection tuples from cached Arrow columns. Prepared mode additionally
+caches immutable connection windows and departure indexes. No journey results are cached.
 """
 
 import argparse
@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 
 from _common import data_dir, files, rss_mb
 from planner_spike import decode_pages, earliest_arrival, load
+from prepared_cache import PreparedConnectionCache
 from pyrail.cdn.arrow import read_table
 from pyrail.cdn.cache import DecodedTableCache
 
@@ -41,7 +42,7 @@ def timed(call):
 
 def worker(data, mode, hours, repeat):
     paths = files(data)
-    cache = DecodedTableCache(max_entries=len(paths)) if mode == "memory" else None
+    cache = DecodedTableCache(max_entries=len(paths)) if mode in ("memory", "prepared") else None
     baseline_rss = rss_mb()
 
     def read_all():
@@ -74,18 +75,25 @@ def worker(data, mode, hours, repeat):
         ("long", index["008891702"], stops["name"].index("Arlon")),
     ]
 
+    prepared_cache = PreparedConnectionCache(decoded_cache=cache) if mode == "prepared" else None
+
     def prepare():
+        if prepared_cache is not None:
+            result = prepared_cache.prepare(pages, page_files, t0, t1, release_id=sample["releaseId"])
+            return result.connections, result.departures, result.pages
         connections, count = decode_pages(pages, page_files, t0, t1, cache)
         connections.sort(key=lambda c: c[0])
         return connections, [c[0] for c in connections], count
 
+    initial_window, prepare_prime_ms = timed(prepare)
+    del initial_window
     preparation = []
     searches = {name: [] for name, _, _ in queries}
     arrivals = {}
     for _ in range(repeat):
         (connections, departures, count), elapsed = timed(prepare)
         preparation.append(elapsed)
-        connection_digest = hashlib.sha256(repr(connections).encode()).hexdigest()
+        connection_digest = hashlib.sha256(repr(tuple(connections)).encode()).hexdigest()
         for name, source, target in queries:
             arrival, elapsed = timed(
                 lambda connections=connections, departures=departures: earliest_arrival(
@@ -108,6 +116,17 @@ def worker(data, mode, hours, repeat):
         "pages": count,
         "connections": rows,
         "connection_digest": connection_digest,
+        "prepare_prime_ms": prepare_prime_ms,
+        "prepared_cache_stats": {
+            "entries": len(prepared_cache),
+            "hits": prepared_cache.hits,
+            "misses": prepared_cache.misses,
+        }
+        if prepared_cache is not None
+        else None,
+        "decoded_cache_final_stats": {"entries": len(cache), "hits": cache.hits, "misses": cache.misses}
+        if cache is not None
+        else None,
         "prepare_samples_ms": preparation,
         "prepare_median_ms": statistics.median(preparation),
         "search_samples_ms": searches,
@@ -122,7 +141,7 @@ def main():
     parser.add_argument("dir", nargs="?", default="data")
     parser.add_argument("--repeat", type=int, default=3)
     parser.add_argument("--write", type=Path)
-    parser.add_argument("--worker", choices=("uncached", "memory"), help=argparse.SUPPRESS)
+    parser.add_argument("--worker", choices=("uncached", "memory", "prepared"), help=argparse.SUPPRESS)
     parser.add_argument("--hours", type=int, choices=(24, 48), default=24, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.repeat <= 0:
@@ -133,7 +152,7 @@ def main():
         return
     results = []
     for hours in (24, 48):
-        for mode in ("uncached", "memory"):
+        for mode in ("uncached", "memory", "prepared"):
             completed = subprocess.run(
                 [
                     sys.executable,
@@ -151,9 +170,10 @@ def main():
                 text=True,
             )
             results.append(json.loads(completed.stdout))
-        before, after = results[-2:]
-        for key in ("arrow_digest", "connection_digest", "arrivals"):
-            assert before[key] == after[key], f"cached {key} differs from baseline"
+        before = results[-3]
+        for after in results[-2:]:
+            for key in ("arrow_digest", "connection_digest", "arrivals"):
+                assert before[key] == after[key], f"cached {key} differs from baseline"
     report = {
         "timestamp": datetime.now(UTC).isoformat(),
         "platform": platform.platform(),
@@ -163,8 +183,8 @@ def main():
         "release": json.loads((data / "manifest.jsonld").read_text())["releaseId"],
         "results": results,
         "scope": "Fresh processes per mode/window; first raw load excluded from warm medians. "
-        "Raw loads return all tables; planner preparation reuses Arrow columns but rebuilds/sorts "
-        "connection tuples. RSS is the process high-water mark including digest verification, "
+        "Raw loads return all tables. First window preparation is separately timed and excluded from warm medians. "
+        "memory mode rebuilds/sorts connection tuples; prepared mode reuses immutable tuples and their departure index. RSS is the process high-water mark including digest verification, "
         "cache, preparations and searches. No network or full production routing.",
     }
     output = json.dumps(report, indent=2) + "\n"
