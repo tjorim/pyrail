@@ -6,6 +6,7 @@ into DIR/ext and reads them with pyrail.cdn.arrow.read_table, which also shows t
 Run from the repository root: uv run python experiments/cdn/inspect_extensions.py [DIR]
 """
 
+from hashlib import sha256
 import json
 from urllib.request import Request, urlopen
 
@@ -17,7 +18,7 @@ extensions = json.loads((data / "irail.json").read_text())["files"]
 (data / "ext").mkdir(exist_ok=True)
 for key in ("stations", "platforms", "headsigns", "stopEnrichment", "routeEnrichment", "tripEnrichment"):
     path = data / "ext" / f"{key}.arrow"
-    if not path.exists():
+    if not path.exists() or sha256(path.read_bytes()).hexdigest() != extensions[key]["sha256"]:
         request = Request("https://irail.github.io" + extensions[key]["path"], headers={"User-Agent": "pyrail-experiments"})  # noqa: S310
         path.write_bytes(urlopen(request, timeout=120).read())  # noqa: S310
     table = read_table(path.read_bytes())

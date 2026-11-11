@@ -25,7 +25,7 @@ uv sync --group experiments        # pyarrow, arro3-io, nanoarrow, gtfs-realtime
 
 ```bash
 uv run --locked python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 8    # about 20 MB; `data/` is git-ignored
-uv run --group experiments python experiments/cdn/compare_all.py data --write experiments/cdn/results/<date>.md
+uv run --group experiments python experiments/cdn/compare_all.py data --write experiments/cdn/results/2026-11-11.md
 ```
 
 Pick a `--date` inside the manifest's coverage. `compare_all.py` runs every reader in its own process, checks

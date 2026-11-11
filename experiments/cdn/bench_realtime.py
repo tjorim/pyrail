@@ -17,7 +17,7 @@ for _ in range(5):
     feed = gtfs_realtime_pb2.FeedMessage()
     feed.ParseFromString(raw)
     timings.append((time.perf_counter() - start) * 1000)
-update = next(e.trip_update for e in feed.entity if e.HasField("trip_update"))
+update = next((e.trip_update for e in feed.entity if e.HasField("trip_update") and e.trip_update.stop_time_update), None)
 print(
     json.dumps(
         {
@@ -26,7 +26,7 @@ print(
             "ms_best": round(min(timings), 2),
             "rss_peak_mb": rss_mb(),
             "installed_mb": round(installed_mb("gtfs-realtime-bindings", "protobuf"), 1),
-            "example_stop_ids": [s.stop_id for s in update.stop_time_update][:4],
+            "example_stop_ids": [s.stop_id for s in update.stop_time_update][:4] if update else [],
         }
     )
 )

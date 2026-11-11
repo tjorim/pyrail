@@ -74,8 +74,19 @@ def decode_pages(pages, files, t_from: int, t_to: int, cache=None):
     return [c for c in connections if t_from <= c[0] < t_to], decoded
 
 
+def require_coverage(pages, t_from: int, t_to: int) -> None:
+    """Raise unless the sampled pages cover [t_from, t_to): a short sample would give short timings and false 'none'."""
+    first = datetime.fromisoformat(pages[0]["minDepartureTime"].replace("Z", "+00:00")).timestamp() if pages else None
+    last = datetime.fromisoformat(pages[-1]["maxDepartureTime"].replace("Z", "+00:00")).timestamp() if pages else None
+    if first is None or first > t_from or last < t_to:
+        msg = "the sampled pages do not cover the requested window; fetch more pages (fetch_data.py --pages 12)"
+        raise ValueError(msg)
+
+
 def earliest_arrival(connections, deps, min_transfer, n_stops, source, target, t0, *, early_stop=True):
     """Plain Connection Scan: earliest arrival at target when leaving source at or after t0, or INF."""
+    if source == target:
+        return t0
     arrival = [INF] * n_stops
     arrival[source] = t0
     reached = set()
@@ -165,6 +176,8 @@ def main() -> None:
         ("24 h window", DAY),
         ("48 h window (worst case)", 2 * DAY),
     ):
+        if events is None:
+            require_coverage(pages, t0, t0 + window)
         start = time.perf_counter()
         if events is not None:
             published = events.publish(events.begin_refresh(), data, t0, t0 + window)

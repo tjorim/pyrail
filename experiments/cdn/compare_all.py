@@ -17,7 +17,7 @@ import platform
 import subprocess
 import sys
 
-from _common import data_dir, files, version
+from _common import TABLES, data_dir, files, version
 
 HERE = Path(__file__).parent
 READERS = [
@@ -48,7 +48,7 @@ def main() -> None:
     mismatched = [n for n, r in results.items() if r.get("digest") and r["digest"] != reference]
 
     manifest = json.loads((data / "manifest.jsonld").read_text())
-    pages = len(list((data / "pages").glob("p*.arrow")))
+    pages = len(files(data)) - len(TABLES)
     lines = [
         f"# CDN reader comparison, {datetime.now(UTC).date()}",
         "",
@@ -85,8 +85,12 @@ def main() -> None:
         "",
         f"`gtfs-realtime-bindings` {version('gtfs-realtime-bindings')} + `protobuf` {version('protobuf')} "
         f"({realtime['installed_mb']} MB installed): {realtime['bytes']} bytes, {realtime['entities']} trip entities, "
-        f"parsed in {realtime['ms_best']} ms (best of 5), peak RSS {realtime['rss_peak_mb']} MB. "
-        f"Stop ids carry the platform as a suffix, e.g. `{realtime['example_stop_ids'][0]}`.",
+        f"parsed in {realtime['ms_best']} ms (best of 5), peak RSS {realtime['rss_peak_mb']} MB."
+        + (
+            f" Stop ids carry the platform as a suffix, e.g. `{realtime['example_stop_ids'][0]}`."
+            if realtime["example_stop_ids"]
+            else ""
+        ),
         "",
         "## Not covered",
         "",

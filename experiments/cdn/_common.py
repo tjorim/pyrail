@@ -1,6 +1,7 @@
 """Shared helpers for the experiment scripts."""
 
 from importlib import metadata
+import json
 from pathlib import Path
 import resource
 import sys
@@ -19,8 +20,17 @@ def data_dir(args: list[str] | None = None) -> Path:
 
 
 def files(path: Path) -> list[Path]:
-    """The four tables and every connection page in the data directory."""
-    return [path / f"{name}.arrow" for name in TABLES] + sorted((path / "pages").glob("p*.arrow"))
+    """The four tables and the connection pages listed in sample.json.
+
+    fetch_data.py writes sample.json last, so a failed or partial refresh has none, and stale files left in
+    pages/ are never picked up by a glob.
+    """
+    marker = path / "sample.json"
+    if not marker.exists():
+        msg = f"no complete sample in {path}: run fetch_data.py first (it writes sample.json when it is done)"
+        raise SystemExit(msg)
+    pages = [path / "pages" / page["file"] for page in json.loads(marker.read_text())["pages"]]
+    return [path / f"{name}.arrow" for name in TABLES] + pages
 
 
 def rss_mb() -> int:

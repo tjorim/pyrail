@@ -46,7 +46,12 @@ def make_reader(name):
             # The files have no leading Schema message, so nanoarrow's stream reader rejects them (the 8 bytes
             # skipped are the "ARROW1" magic and its padding).
             stream = na.ArrayStream(ipc.InputStream.from_readable(io.BytesIO(path.read_bytes()[8:])))
-            return {field.name: [] for field in stream.schema.fields}
+            names = [field.name for field in stream.schema.fields]
+            columns = {name: [] for name in names}
+            for batch in stream:
+                for index, name in enumerate(names):
+                    columns[name].extend(batch.child(index).to_pylist())
+            return columns
 
         return read
     raise SystemExit("reader must be one of: " + ", ".join(DISTRIBUTIONS))
