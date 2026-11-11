@@ -3,7 +3,7 @@
 Scripts behind the spike in [#247](https://github.com/tjorim/pyrail/issues/247) (reading the iRail CDN's Arrow
 files and GTFS Realtime feed) and the plan in [#246](https://github.com/tjorim/pyrail/issues/246). They are
 **not** part of the package: ruff, ty, pytest and the build skip this directory. CI runs the standalone
-benchmark model checks with unittest; these do not need experiment dependencies.
+downloader and benchmark model checks with unittest; these do not need experiment dependencies.
 
 All explored libraries are installed with one command, as the `experiments` dependency group in
 `pyproject.toml` (pinned in `uv.lock`; not part of the default groups, so CI and normal development don't
@@ -33,11 +33,24 @@ that the values they return are identical to pyarrow's (it exits with an error i
 report. **Results are dated files in [`results/`](results/): re-run after a new CDN release, a library
 release, or on other hardware, and add a new file instead of trusting old numbers.**
 
+## Downloader cache
+
+`fetch_data.py` stores response bodies and ETags under `DIR/.http-cache`, keyed by the full URL.
+Every run contacts the server, sending `If-None-Match` when a matching cached body exists. A `304`
+reuses those bytes; a `200` replaces them and its validator. Responses without ETags are downloaded
+unconditionally next time. This implements revalidation, not `Cache-Control` freshness or offline fallback.
+
+The cache survives restarts and is separate from output filenames such as `pages/p0.arrow`, so changing
+the date or release cannot reuse another URL's validator. Missing/corrupt entries trigger a full download;
+HTTP/network errors still fail the run. Removing `DIR/.http-cache` resets the cache. Cached URLs from older
+releases remain on disk until removed. Cache bodies duplicate the selected output files on disk.
+
 ## Scripts
 
 | Script | What it does |
 |---|---|
-| `fetch_data.py` | Downloads the tables, the realtime snapshot and consecutive connection pages. |
+| `fetch_data.py` | Downloads the tables, realtime snapshot and connection pages, with persistent ETag revalidation. |
+| `test_fetch_data.py` | Downloader cache checks against a local HTTP server; no external network. |
 | `compare_all.py` | The comparison above: time, peak memory, installed size and correctness for every reader, plus the realtime parse. Uses `bench_readers.py` and `bench_realtime.py`. |
 | `bench_readers.py` | One reader over all files, as one JSON line (`stdlib`, `pyarrow`, `arro3` or `nanoarrow`). |
 | `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
