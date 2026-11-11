@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
+import struct
 from typing import Any
 
 import pyarrow as pa
@@ -100,6 +101,17 @@ class TestTypes:
         """Check: nulls become none."""
         assert read_table(_write(_table(column=(kind, values)))) == {"column": values}
 
+    def test_null_string_slot_can_contain_invalid_utf8(self) -> None:
+        """Do not decode bytes belonging to a null string slot."""
+        array = pa.Array.from_buffers(
+            pa.string(),
+            2,
+            [pa.py_buffer(b"\x02"), pa.py_buffer(struct.pack("<3i", 0, 1, 2)), pa.py_buffer(b"\xffa")],
+            null_count=1,
+        )
+        raw = _write(pa.table({"text": array}))
+        assert read_table(raw) == pa_ipc.open_file(raw).read_all().to_pydict() == {"text": [None, "a"]}
+
     def test_more_than_eight_rows_in_bitmaps(self) -> None:
         """Check: more than eight rows in bitmaps."""
         values = [index % 3 == 0 for index in range(100)]
@@ -188,6 +200,20 @@ class TestMalformed:
                 read_table(damaged)
             except ArrowError:
                 continue  # rejected: fine; a damaged value that still decodes is also fine
+
+    @pytest.mark.parametrize(
+        "offsets",
+        [(-1, 13, 29), (0, -1, 29), (0, 30, 29), (0, 13, 30), (0, 29, 13)],
+    )
+    def test_invalid_string_offsets(self, offsets: tuple[int, int, int]) -> None:
+        """Reject negative, out-of-range and decreasing string offsets."""
+        raw = bytearray(_write(_table(text=(pa.string(), ["a" * 13, "b" * 16]))))
+        original_offsets = struct.pack("<3i", 0, 13, 29)
+        assert raw.count(original_offsets) == 1
+        position = raw.index(original_offsets)
+        struct.pack_into("<3i", raw, position, *offsets)
+        with pytest.raises(ArrowError, match="string offsets"):
+            read_table(raw)
 
     def test_footer_length_out_of_range(self) -> None:
         """Check: footer length out of range."""

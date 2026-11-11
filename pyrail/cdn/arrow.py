@@ -26,6 +26,7 @@ The scripts, dependency group and dated results for all of these are in ``experi
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import pairwise
 import struct
 from typing import Any
 
@@ -188,11 +189,16 @@ def _decode_column(
             msg = "string offsets are shorter than the row count"
             raise ArrowError(msg)
         offsets = struct.unpack_from(f"<{rows + 1}i", buf, offsets_start)
-        if rows and (offsets[rows] > data_length or offsets[0] < 0):
+        if any(offset < 0 or offset > data_length for offset in offsets):
             msg = "string offsets point outside the data buffer"
             raise ArrowError(msg)
+        if any(start > end for start, end in pairwise(offsets)):
+            msg = "string offsets are not nondecreasing"
+            raise ArrowError(msg)
         data = bytes(buf[data_start : data_start + data_length])
-        values = [data[offsets[i] : offsets[i + 1]].decode() for i in range(rows)]
+        values = [
+            data[offsets[i] : offsets[i + 1]].decode() if valid is None or valid[i] else None for i in range(rows)
+        ]
         used = 3
     elif kind == _BOOL:
         values = _bits(buf, *buffer_at(1), rows)
