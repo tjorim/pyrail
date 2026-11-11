@@ -8,7 +8,8 @@ Built with aiohttp, it provides non-blocking I/O operations for optimal performa
 > replaced by static Linked Connections files on a CDN, and stricter rate limiting may apply from Q2 2027
 > ([#245](https://github.com/tjorim/pyrail/issues/245)). pyRail is preparing a replacement backend so that
 > your code keeps working. No date is fixed yet. Progress and details are tracked in
-> [#246](https://github.com/tjorim/pyrail/issues/246).
+> [#246](https://github.com/tjorim/pyrail/issues/246), and the work in progress lives on the
+> [`CDN-rebase` branch](https://github.com/tjorim/pyrail/tree/CDN-rebase).
 
 ## Overview
 
