@@ -56,6 +56,16 @@ reader still has no third-party dependencies. Use `--concurrency 1` for pooled s
 The request timeout is 60 seconds. A failed download cancels the remaining work and leaves `sample.json`
 absent; it is published atomically only after all selected files have been written.
 
+Unchanged files are verified by byte comparison and keep their inode and modification time. Missing or
+altered output files are repaired atomically, including same-size corruption; a matching ETag alone does
+not prove an output file is intact. An identical 200 response can update cache metadata without rewriting
+the cached body. Metadata with a renewed deadline still changes and is written.
+
+The previous `sample.json` is temporarily renamed to `.sample.previous` while a refresh is in progress.
+After all files succeed, an identical marker is restored by rename; a changed marker is replaced atomically.
+A failed refresh leaves only the hidden marker, so consumers still reject an incomplete sample. Successful
+retries can reuse that marker. This avoids rewriting marker bytes but still performs directory metadata I/O.
+
 The cache survives restarts and is separate from output filenames such as `pages/p0.arrow`, so changing
 the date or release cannot reuse another URL's validator. Missing/corrupt entries trigger a full download;
 HTTP/network errors on required requests still fail the run. Removing `DIR/.http-cache` resets the cache. Cached URLs from older
@@ -168,3 +178,13 @@ cache. The report includes local fresh-hit counts as well as actual HTTP statuse
 Expiry is per URL: for example, the realtime feed can revalidate while timetable files remain fresh.
 See [the local freshness results](results/2026-11-11-fedora-fresh-downloader.md). Existing timestamped reports
 describe the behavior at the time they were measured.
+
+## Avoiding unchanged file writes
+
+```bash
+uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --pages 12 --concurrency 4 --compare-writes --skip-api --write results.json
+```
+
+This compares unconditional atomic replacement with byte-checked publication, on the same fresh HTTP
+cache. File-write counts include output files, HTTP cache files and sample-marker contents; renames and
+unlinks are not counted as body writes. See [the local results](results/2026-11-11-fedora-unchanged-files.md).

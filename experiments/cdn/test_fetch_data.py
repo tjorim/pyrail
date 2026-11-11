@@ -57,6 +57,50 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class FilePublicationTests(unittest.TestCase):
+    def test_unchanged_file_is_not_replaced(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "data.arrow"
+            path.write_bytes(b"original")
+            before = path.stat()
+            with patch("fetch_data._atomic_write") as write:
+                self.assertFalse(fetch_data._write_if_changed(path, b"original"))
+            write.assert_not_called()
+            self.assertEqual(path.stat().st_mtime_ns, before.st_mtime_ns)
+            self.assertEqual(path.stat().st_ino, before.st_ino)
+
+    def test_missing_changed_and_same_size_corrupt_files_are_repaired(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "data.arrow"
+            self.assertTrue(fetch_data._write_if_changed(path, b"original"))
+            self.assertTrue(fetch_data._write_if_changed(path, b"changed"))
+            self.assertEqual(path.read_bytes(), b"changed")
+            path.write_bytes(b"corrupt")
+            self.assertTrue(fetch_data._write_if_changed(path, b"changed"))
+            self.assertEqual(path.read_bytes(), b"changed")
+
+    def test_sample_marker_stays_hidden_until_success_and_preserves_mtime(self):
+        with TemporaryDirectory() as directory:
+            out = Path(directory)
+            sample = {"pages": []}
+            raw = b"manifest"
+            fetch_data.prepare(out)
+            with redirect_stdout(StringIO()):
+                fetch_data.finish(out, raw, sample)
+            before = (out / "sample.json").stat()
+            fetch_data.prepare(out)
+            self.assertFalse((out / "sample.json").exists())
+            self.assertTrue((out / ".sample.previous").exists())
+            # A retry following an interrupted refresh can still restore the old marker.
+            fetch_data.prepare(out)
+            with patch("fetch_data._atomic_write") as write, redirect_stdout(StringIO()):
+                fetch_data.finish(out, raw, sample)
+            write.assert_not_called()
+            self.assertEqual((out / "sample.json").stat().st_mtime_ns, before.st_mtime_ns)
+            self.assertEqual((out / "sample.json").stat().st_ino, before.st_ino)
+            self.assertFalse((out / ".sample.previous").exists())
+
+
 class FreshnessPolicyTests(unittest.TestCase):
     def test_explicit_policy_parsing(self):
         now = 1800000000
@@ -271,6 +315,17 @@ class DownloaderTests(unittest.TestCase):
         self.assertEqual(body.stat().st_mtime_ns, original_mtime)
         self.assertEqual([etag for _, etag in self.server.requests], [None, 'W/"v1"'])
 
+    def test_200_with_identical_body_updates_validator_without_rewriting_body(self):
+        self.seed()
+        body = next((self.directory / ".http-cache").glob("*.body"))
+        before = body.stat()
+        self.respond(b"original", '"v2"')
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.assertEqual((body.stat().st_ino, body.stat().st_mtime_ns), (before.st_ino, before.st_mtime_ns))
+        self.respond(body=b"", etag=None, status=304)
+        self.downloader.get(self.url)
+        self.assertEqual(self.server.requests[-1][1], '"v2"')
+
     def test_changed_response_replaces_body_and_validator(self):
         self.seed()
         self.respond(b"updated", '"v2"')
@@ -377,10 +432,18 @@ class DownloaderTests(unittest.TestCase):
             redirect_stdout(StringIO()),
         ):
             fetch_data.main()
+            tracked = [
+                self.directory / "manifest.jsonld",
+                self.directory / "stops.arrow",
+                self.directory / "sample.json",
+            ]
+            before = {path: (path.stat().st_ino, path.stat().st_mtime_ns) for path in tracked}
             (self.directory / "pages" / "p0.arrow").unlink()
             for _ in range(8):
                 self.respond(body=b"", etag=None, status=304)
             fetch_data.main()
+        for path in tracked:
+            self.assertEqual((path.stat().st_ino, path.stat().st_mtime_ns), before[path])
         self.assertEqual((self.directory / "pages" / "p0.arrow").read_bytes(), b"sample bytes")
         self.assertEqual(json.loads((self.directory / "sample.json").read_text())["releaseId"], "test")
         self.assertEqual([etag for _, etag in self.server.requests[:8]], [None] * 8)

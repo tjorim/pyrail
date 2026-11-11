@@ -1,0 +1,498 @@
+{
+  "timestamp": "2026-11-11T20:03:32.229170+00:00",
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.12.13",
+  "revision": "7476f7ff777e79cee5abfba10941e644f9dbc970",
+  "release": "nmbs-sncb-20261111-5c05082d",
+  "query_date": "2026-11-12",
+  "pages": 12,
+  "repeat": 3,
+  "cdn_variants": [
+    {
+      "transport": "aiohttp",
+      "revalidate": false,
+      "skip_unchanged": false,
+      "concurrency": 4,
+      "prime": {
+        "ms": 244.332,
+        "connections": {
+          "created": 1,
+          "reused": 0
+        },
+        "file_writes": 22,
+        "file_bytes_written": 23980058,
+        "writes": [
+          {
+            "path": "stops.arrow",
+            "bytes": 55458
+          },
+          {
+            "path": "routes.arrow",
+            "bytes": 72626
+          },
+          {
+            "path": "trips.arrow",
+            "bytes": 4002586
+          },
+          {
+            "path": "transfers.arrow",
+            "bytes": 74058
+          },
+          {
+            "path": "irail.json",
+            "bytes": 93508
+          },
+          {
+            "path": "pages/p0.arrow",
+            "bytes": 671090
+          },
+          {
+            "path": "pages/p1.arrow",
+            "bytes": 2635530
+          },
+          {
+            "path": "pages/p2.arrow",
+            "bytes": 2698210
+          },
+          {
+            "path": "pages/p3.arrow",
+            "bytes": 1467378
+          },
+          {
+            "path": "pages/p4.arrow",
+            "bytes": 671514
+          },
+          {
+            "path": "pages/p5.arrow",
+            "bytes": 2634898
+          },
+          {
+            "path": "pages/p6.arrow",
+            "bytes": 2700018
+          },
+          {
+            "path": "pages/p7.arrow",
+            "bytes": 1482042
+          },
+          {
+            "path": "pages/p8.arrow",
+            "bytes": 200298
+          },
+          {
+            "path": "pages/p9.arrow",
+            "bytes": 1543226
+          },
+          {
+            "path": "pages/p10.arrow",
+            "bytes": 1583162
+          },
+          {
+            "path": "pages/p11.arrow",
+            "bytes": 1112314
+          },
+          {
+            "path": ".http-cache/ed837863fa3c7dc2ccc1fc5c8762b24078baff98b12cda3ec5ca3a1629e99036.body",
+            "bytes": 97842
+          },
+          {
+            "path": ".http-cache/ed837863fa3c7dc2ccc1fc5c8762b24078baff98b12cda3ec5ca3a1629e99036.json",
+            "bytes": 330
+          },
+          {
+            "path": "trip-updates.pb",
+            "bytes": 97842
+          },
+          {
+            "path": "manifest.jsonld",
+            "bytes": 81764
+          },
+          {
+            "path": ".sample.previous",
+            "bytes": 4364
+          }
+        ],
+        "statuses": {
+          "200": 1
+        },
+        "conditional_requests": 1,
+        "fresh_cache_hits": 18,
+        "body_bytes": 97842,
+        "requests": [
+          {
+            "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+            "conditional": true,
+            "body_bytes": 97842,
+            "status": 200
+          }
+        ]
+      },
+      "warm": [
+        {
+          "ms": 60.688,
+          "connections": {
+            "created": 0,
+            "reused": 0
+          },
+          "file_writes": 20,
+          "file_bytes_written": 23881886,
+          "writes": [
+            {
+              "path": "stops.arrow",
+              "bytes": 55458
+            },
+            {
+              "path": "routes.arrow",
+              "bytes": 72626
+            },
+            {
+              "path": "trips.arrow",
+              "bytes": 4002586
+            },
+            {
+              "path": "transfers.arrow",
+              "bytes": 74058
+            },
+            {
+              "path": "irail.json",
+              "bytes": 93508
+            },
+            {
+              "path": "trip-updates.pb",
+              "bytes": 97842
+            },
+            {
+              "path": "pages/p0.arrow",
+              "bytes": 671090
+            },
+            {
+              "path": "pages/p1.arrow",
+              "bytes": 2635530
+            },
+            {
+              "path": "pages/p2.arrow",
+              "bytes": 2698210
+            },
+            {
+              "path": "pages/p3.arrow",
+              "bytes": 1467378
+            },
+            {
+              "path": "pages/p4.arrow",
+              "bytes": 671514
+            },
+            {
+              "path": "pages/p5.arrow",
+              "bytes": 2634898
+            },
+            {
+              "path": "pages/p6.arrow",
+              "bytes": 2700018
+            },
+            {
+              "path": "pages/p7.arrow",
+              "bytes": 1482042
+            },
+            {
+              "path": "pages/p8.arrow",
+              "bytes": 200298
+            },
+            {
+              "path": "pages/p9.arrow",
+              "bytes": 1543226
+            },
+            {
+              "path": "pages/p10.arrow",
+              "bytes": 1583162
+            },
+            {
+              "path": "pages/p11.arrow",
+              "bytes": 1112314
+            },
+            {
+              "path": "manifest.jsonld",
+              "bytes": 81764
+            },
+            {
+              "path": ".sample.previous",
+              "bytes": 4364
+            }
+          ],
+          "statuses": {},
+          "conditional_requests": 0,
+          "fresh_cache_hits": 19,
+          "body_bytes": 0,
+          "requests": []
+        },
+        {
+          "ms": 55.453,
+          "connections": {
+            "created": 0,
+            "reused": 0
+          },
+          "file_writes": 20,
+          "file_bytes_written": 23881886,
+          "writes": [
+            {
+              "path": "stops.arrow",
+              "bytes": 55458
+            },
+            {
+              "path": "routes.arrow",
+              "bytes": 72626
+            },
+            {
+              "path": "trips.arrow",
+              "bytes": 4002586
+            },
+            {
+              "path": "transfers.arrow",
+              "bytes": 74058
+            },
+            {
+              "path": "irail.json",
+              "bytes": 93508
+            },
+            {
+              "path": "trip-updates.pb",
+              "bytes": 97842
+            },
+            {
+              "path": "pages/p0.arrow",
+              "bytes": 671090
+            },
+            {
+              "path": "pages/p1.arrow",
+              "bytes": 2635530
+            },
+            {
+              "path": "pages/p2.arrow",
+              "bytes": 2698210
+            },
+            {
+              "path": "pages/p3.arrow",
+              "bytes": 1467378
+            },
+            {
+              "path": "pages/p4.arrow",
+              "bytes": 671514
+            },
+            {
+              "path": "pages/p5.arrow",
+              "bytes": 2634898
+            },
+            {
+              "path": "pages/p6.arrow",
+              "bytes": 2700018
+            },
+            {
+              "path": "pages/p7.arrow",
+              "bytes": 1482042
+            },
+            {
+              "path": "pages/p8.arrow",
+              "bytes": 200298
+            },
+            {
+              "path": "pages/p9.arrow",
+              "bytes": 1543226
+            },
+            {
+              "path": "pages/p10.arrow",
+              "bytes": 1583162
+            },
+            {
+              "path": "pages/p11.arrow",
+              "bytes": 1112314
+            },
+            {
+              "path": "manifest.jsonld",
+              "bytes": 81764
+            },
+            {
+              "path": ".sample.previous",
+              "bytes": 4364
+            }
+          ],
+          "statuses": {},
+          "conditional_requests": 0,
+          "fresh_cache_hits": 19,
+          "body_bytes": 0,
+          "requests": []
+        },
+        {
+          "ms": 54.749,
+          "connections": {
+            "created": 0,
+            "reused": 0
+          },
+          "file_writes": 20,
+          "file_bytes_written": 23881886,
+          "writes": [
+            {
+              "path": "stops.arrow",
+              "bytes": 55458
+            },
+            {
+              "path": "routes.arrow",
+              "bytes": 72626
+            },
+            {
+              "path": "trips.arrow",
+              "bytes": 4002586
+            },
+            {
+              "path": "transfers.arrow",
+              "bytes": 74058
+            },
+            {
+              "path": "irail.json",
+              "bytes": 93508
+            },
+            {
+              "path": "trip-updates.pb",
+              "bytes": 97842
+            },
+            {
+              "path": "pages/p0.arrow",
+              "bytes": 671090
+            },
+            {
+              "path": "pages/p1.arrow",
+              "bytes": 2635530
+            },
+            {
+              "path": "pages/p2.arrow",
+              "bytes": 2698210
+            },
+            {
+              "path": "pages/p3.arrow",
+              "bytes": 1467378
+            },
+            {
+              "path": "pages/p4.arrow",
+              "bytes": 671514
+            },
+            {
+              "path": "pages/p5.arrow",
+              "bytes": 2634898
+            },
+            {
+              "path": "pages/p6.arrow",
+              "bytes": 2700018
+            },
+            {
+              "path": "pages/p7.arrow",
+              "bytes": 1482042
+            },
+            {
+              "path": "pages/p8.arrow",
+              "bytes": 200298
+            },
+            {
+              "path": "pages/p9.arrow",
+              "bytes": 1543226
+            },
+            {
+              "path": "pages/p10.arrow",
+              "bytes": 1583162
+            },
+            {
+              "path": "pages/p11.arrow",
+              "bytes": 1112314
+            },
+            {
+              "path": "manifest.jsonld",
+              "bytes": 81764
+            },
+            {
+              "path": ".sample.previous",
+              "bytes": 4364
+            }
+          ],
+          "statuses": {},
+          "conditional_requests": 0,
+          "fresh_cache_hits": 19,
+          "body_bytes": 0,
+          "requests": []
+        }
+      ],
+      "median_ms": 55.453
+    },
+    {
+      "transport": "aiohttp",
+      "revalidate": false,
+      "skip_unchanged": true,
+      "concurrency": 4,
+      "prime": {
+        "ms": 25.26,
+        "connections": {
+          "created": 0,
+          "reused": 0
+        },
+        "file_writes": 0,
+        "file_bytes_written": 0,
+        "writes": [],
+        "statuses": {},
+        "conditional_requests": 0,
+        "fresh_cache_hits": 19,
+        "body_bytes": 0,
+        "requests": []
+      },
+      "warm": [
+        {
+          "ms": 23.741,
+          "connections": {
+            "created": 0,
+            "reused": 0
+          },
+          "file_writes": 0,
+          "file_bytes_written": 0,
+          "writes": [],
+          "statuses": {},
+          "conditional_requests": 0,
+          "fresh_cache_hits": 19,
+          "body_bytes": 0,
+          "requests": []
+        },
+        {
+          "ms": 21.995,
+          "connections": {
+            "created": 0,
+            "reused": 0
+          },
+          "file_writes": 0,
+          "file_bytes_written": 0,
+          "writes": [],
+          "statuses": {},
+          "conditional_requests": 0,
+          "fresh_cache_hits": 19,
+          "body_bytes": 0,
+          "requests": []
+        },
+        {
+          "ms": 21.967,
+          "connections": {
+            "created": 0,
+            "reused": 0
+          },
+          "file_writes": 0,
+          "file_bytes_written": 0,
+          "writes": [],
+          "statuses": {},
+          "conditional_requests": 0,
+          "fresh_cache_hits": 19,
+          "body_bytes": 0,
+          "requests": []
+        }
+      ],
+      "median_ms": 21.995
+    }
+  ],
+  "api": [],
+  "api_skipped": true,
+  "median_ms": {
+    "aiohttp-4-freshness-rewrite": 55.453,
+    "aiohttp-4-freshness-skip-writes": 21.995
+  },
+  "scope": "CDN: full sample refresh, HTTP plus disk cache reads/checks/writes, no Arrow decoding/routing. API: public IRail.get_connections, HTTP plus JSON/model parsing, shared session, ETag support enabled, no retries. API primes and one-second pacing excluded from warm medians. Response body bytes exclude HTTP headers and TLS; API aiohttp bytes may be decompressed. CDN variants share the same disk cache, prime before measurement, and create a fresh session per refresh. aiohttp reuses connections within each refresh; urllib is the original baseline. Fresh cache hits skip network requests unless revalidate is enabled. File-write counts include atomic data/cache/marker writes, excluding rename/unlink directory metadata operations. The rewrite baseline bypasses byte comparisons; the optimized path reads existing files to verify equality. API measurements are omitted when api_skipped is true."
+}

@@ -47,6 +47,17 @@ def _atomic_write(path: Path, data: bytes) -> None:
         temporary_path.unlink(missing_ok=True)
 
 
+def _write_if_changed(path: Path, data: bytes) -> bool:
+    """Keep identical files (including their inode/mtime); repair missing or altered files."""
+    try:
+        if path.stat().st_size == len(data) and path.read_bytes() == data:
+            return False
+    except FileNotFoundError:
+        pass
+    _atomic_write(path, data)
+    return True
+
+
 def _fresh_until(headers, response_headers, request_time, now):
     """Explicit freshness only; account for upstream age and time spent in transit (RFC 9111)."""
     directives = {}
@@ -154,8 +165,8 @@ class _Cache:
             return data
         # Body and validator are bound by a digest, including after interrupted writes.
         if modified:
-            _atomic_write(body_path, data)
-        _atomic_write(
+            _write_if_changed(body_path, data)
+        _write_if_changed(
             metadata_path,
             json.dumps(
                 {
@@ -250,7 +261,10 @@ class AsyncDownloader(_Cache):
 def prepare(out: Path):
     (out / "pages").mkdir(parents=True, exist_ok=True)
     # A partial refresh must not claim that the old sample is complete.
-    (out / "sample.json").unlink(missing_ok=True)
+    try:
+        (out / "sample.json").replace(out / ".sample.previous")
+    except FileNotFoundError:
+        pass
 
 
 def plan(out: Path, raw: bytes, date: str, count: int):
@@ -275,11 +289,15 @@ def plan(out: Path, raw: bytes, date: str, count: int):
 
 
 def finish(out: Path, raw: bytes, sample):
-    _atomic_write(out / "manifest.jsonld", raw)
+    _write_if_changed(out / "manifest.jsonld", raw)
     for stale in (out / "pages").glob("p*.arrow"):
         if stale.name not in {page["file"] for page in sample["pages"]}:
             stale.unlink()
-    _atomic_write(out / "sample.json", (json.dumps(sample, indent=2) + "\n").encode())
+    # Restore the old marker by rename if its contents match, preserving its mtime.
+    # During a failed refresh it remains hidden, so consumers cannot use a partial sample.
+    previous = out / ".sample.previous"
+    _write_if_changed(previous, (json.dumps(sample, indent=2) + "\n").encode())
+    previous.replace(out / "sample.json")
     print(f"wrote tables, realtime snapshot and {len(sample['pages'])} pages to {out}")
 
 
@@ -290,7 +308,7 @@ def download_sequential(out: Path, date: str, pages: int, revalidate: bool = Fal
     raw = downloader.get(MANIFEST)
     jobs, sample = plan(out, raw, date, pages)
     for path, url in jobs:
-        _atomic_write(path, downloader.get(url))
+        _write_if_changed(path, downloader.get(url))
     finish(out, raw, sample)
 
 
@@ -309,7 +327,7 @@ async def download_async(out: Path, date: str, pages: int, concurrency: int = 4,
 
         async def fetch(path, url):
             async with semaphore:
-                _atomic_write(path, await downloader.get(url))
+                _write_if_changed(path, await downloader.get(url))
 
         # A failure cancels and joins the other tasks before the session closes.
         # sample.json is published only after all resources succeed.

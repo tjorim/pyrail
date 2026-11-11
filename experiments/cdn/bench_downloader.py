@@ -10,7 +10,7 @@ to compare sequential urllib, pooled sequential aiohttp, and pooled bounded conc
 import argparse
 import asyncio
 from collections import Counter
-from contextlib import redirect_stdout
+from contextlib import ExitStack, redirect_stdout
 from datetime import UTC, datetime, timedelta
 from io import StringIO
 import json
@@ -30,9 +30,19 @@ from pyrail import IRail
 from pyrail.cdn.arrow import read_table
 
 
-def download(directory, date, pages, transport="aiohttp", concurrency=4, revalidate=False):
+def download(directory, date, pages, transport="aiohttp", concurrency=4, revalidate=False, skip_unchanged=True):
     requests = []
     original_open = fetch_data.urlopen
+    original_write = fetch_data._atomic_write
+    writes = []
+
+    def record_write(path, data):
+        original_write(path, data)
+        writes.append({"path": str(path.relative_to(directory)), "bytes": len(data)})
+
+    def force_write(path, data):
+        fetch_data._atomic_write(path, data)
+        return True
 
     class Response:
         def __init__(self, response, record):
@@ -88,7 +98,11 @@ def download(directory, date, pages, transport="aiohttp", concurrency=4, revalid
     trace.on_connection_reuseconn.append(connection_reused)
 
     start = time.perf_counter()
-    with redirect_stdout(StringIO()):
+    with ExitStack() as stack:
+        stack.enter_context(redirect_stdout(StringIO()))
+        stack.enter_context(patch("fetch_data._atomic_write", side_effect=record_write))
+        if not skip_unchanged:
+            stack.enter_context(patch("fetch_data._write_if_changed", side_effect=force_write))
         if transport == "urllib":
             with patch("fetch_data.urlopen", side_effect=record_open):
                 fetch_data.download_sequential(directory, date, pages, revalidate)
@@ -101,6 +115,9 @@ def download(directory, date, pages, transport="aiohttp", concurrency=4, revalid
     return {
         "ms": round(1000 * (time.perf_counter() - start), 3),
         "connections": connections if transport == "aiohttp" else None,
+        "file_writes": len(writes),
+        "file_bytes_written": sum(w["bytes"] for w in writes),
+        "writes": writes,
         "statuses": dict(Counter(str(r["status"]) for r in requests)),
         "conditional_requests": sum(r["conditional"] for r in requests),
         "fresh_cache_hits": pages + 7 - len(requests),
@@ -157,11 +174,13 @@ def main():
     parser.add_argument("--pages", type=int, default=12)
     parser.add_argument("--repeat", type=int, default=3)
     parser.add_argument("--write", type=Path)
+    parser.add_argument("--skip-api", action="store_true", help="benchmark only the CDN downloader")
     parser.add_argument("--transport", choices=("aiohttp", "urllib"), default="aiohttp")
     parser.add_argument("--concurrency", type=int, default=4)
     comparison = parser.add_mutually_exclusive_group()
     comparison.add_argument("--compare-transports", action="store_true")
     comparison.add_argument("--compare-freshness", action="store_true")
+    comparison.add_argument("--compare-writes", action="store_true")
     parser.add_argument("--revalidate", action="store_true", help="ignore local freshness and always contact server")
     args = parser.parse_args()
     if args.pages <= 0 or args.repeat <= 0 or args.concurrency <= 0:
@@ -176,27 +195,33 @@ def main():
         modes = list(dict.fromkeys(modes))
     if args.compare_freshness:
         modes = [(args.transport, args.concurrency, True), (args.transport, args.concurrency, False)]
+    modes = [(transport, concurrency, revalidate, True) for transport, concurrency, revalidate in modes]
+    if args.compare_writes:
+        modes = [(args.transport, args.concurrency, False, False), (args.transport, args.concurrency, False, True)]
     variants = []
-    for transport, concurrency, revalidate in modes:
-        label = f"{transport}-{concurrency}-{'revalidate' if revalidate else 'freshness'}"
+    for transport, concurrency, revalidate, skip_unchanged in modes:
+        label = f"{transport}-{concurrency}-{'revalidate' if revalidate else 'freshness'}-{'skip-writes' if skip_unchanged else 'rewrite'}"
         print(f"Priming {label} (excluded from warm results)...", file=sys.stderr, flush=True)
-        prime = download(args.dir, args.date, args.pages, transport, concurrency, revalidate)
+        prime = download(args.dir, args.date, args.pages, transport, concurrency, revalidate, skip_unchanged)
         warm = []
         for index in range(args.repeat):
             print(f"Warm {label} run {index + 1}/{args.repeat}...", file=sys.stderr, flush=True)
-            warm.append(download(args.dir, args.date, args.pages, transport, concurrency, revalidate))
+            warm.append(download(args.dir, args.date, args.pages, transport, concurrency, revalidate, skip_unchanged))
         variants.append(
             {
                 "transport": transport,
                 "revalidate": revalidate,
+                "skip_unchanged": skip_unchanged,
                 "concurrency": concurrency,
                 "prime": prime,
                 "warm": warm,
                 "median_ms": statistics.median(r["ms"] for r in warm),
             }
         )
-    print("Measuring public API client...", file=sys.stderr, flush=True)
-    api = asyncio.run(api_samples(args.dir, args.date, args.repeat))
+    api = []
+    if not args.skip_api:
+        print("Measuring public API client...", file=sys.stderr, flush=True)
+        api = asyncio.run(api_samples(args.dir, args.date, args.repeat))
     report = {
         "timestamp": datetime.now(UTC).isoformat(),
         "platform": platform.platform(),
@@ -208,16 +233,17 @@ def main():
         "repeat": args.repeat,
         "cdn_variants": variants,
         "api": api,
+        "api_skipped": args.skip_api,
         "median_ms": {
             **{
-                f"{v['transport']}-{v['concurrency']}-{'revalidate' if v['revalidate'] else 'freshness'}": v[
+                f"{v['transport']}-{v['concurrency']}-{'revalidate' if v['revalidate'] else 'freshness'}-{'skip-writes' if v['skip_unchanged'] else 'rewrite'}": v[
                     "median_ms"
                 ]
                 for v in variants
             },
             **{
                 label: statistics.median(r["ms"] for r in api if r["query"] == label and not r["prime"])
-                for label in ("short", "long")
+                for label in (() if args.skip_api else ("short", "long"))
             },
         },
         "scope": "CDN: full sample refresh, HTTP plus disk cache reads/checks/writes, no Arrow decoding/routing. "
@@ -226,7 +252,10 @@ def main():
         "Response body bytes exclude HTTP headers and TLS; API aiohttp bytes may be decompressed. "
         "CDN variants share the same disk cache, prime before measurement, and create a fresh session per "
         "refresh. aiohttp reuses connections within each refresh; urllib is the original baseline. "
-        "Fresh cache hits skip network requests unless revalidate is enabled.",
+        "Fresh cache hits skip network requests unless revalidate is enabled. File-write counts include "
+        "atomic data/cache/marker writes, excluding rename/unlink directory metadata operations. "
+        "The rewrite baseline bypasses byte comparisons; the optimized path reads existing files to verify equality. "
+        "API measurements are omitted when api_skipped is true.",
     }
     output = json.dumps(report, indent=2) + "\n"
     print(output, end="")
