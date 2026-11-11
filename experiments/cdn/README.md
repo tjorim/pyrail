@@ -36,9 +36,17 @@ release, or on other hardware, and add a new file instead of trusting old number
 ## Downloader cache
 
 `fetch_data.py` stores response bodies and ETags under `DIR/.http-cache`, keyed by the full URL.
-Every run contacts the server, sending `If-None-Match` when a matching cached body exists. A `304`
-reuses those bytes; a `200` replaces them and its validator. Responses without ETags are downloaded
-unconditionally next time. This implements revalidation, not `Cache-Control` freshness or offline fallback.
+Fresh entries are reused without an HTTP request, even without an ETag. Explicit `Cache-Control: max-age`
+(or `Expires` when max-age is absent) determines freshness, accounting for `Date`, upstream `Age`, and
+request time. Stale entries send `If-None-Match` if an ETag exists; otherwise they download unconditionally.
+A `304` renews freshness using updated response headers, retaining previous cache policy when omitted;
+a `200` replaces the bytes, validator and policy. Old cache entries without freshness metadata revalidate.
+
+`no-cache` forces revalidation and `no-store` removes the HTTP cache entry. Invalid/duplicate max-age or
+invalid Age values are treated as stale; there is no heuristic lifetime or offline/stale-on-error fallback.
+Unknown `Vary` fields also force revalidation. Both transports use the same fixed User-Agent and
+`Accept-Encoding: identity`, so those variants can be reused safely. A backwards clock change forces
+revalidation. `--revalidate` bypasses local freshness to force a conditional request for diagnostics.
 
 The default downloader uses one aiohttp session per refresh. After fetching the manifest, it downloads
 independent resources concurrently, with **at most four requests in flight** across all hosts. TCP/TLS
@@ -50,7 +58,7 @@ absent; it is published atomically only after all selected files have been writt
 
 The cache survives restarts and is separate from output filenames such as `pages/p0.arrow`, so changing
 the date or release cannot reuse another URL's validator. Missing/corrupt entries trigger a full download;
-HTTP/network errors still fail the run. Removing `DIR/.http-cache` resets the cache. Cached URLs from older
+HTTP/network errors on required requests still fail the run. Removing `DIR/.http-cache` resets the cache. Cached URLs from older
 releases remain on disk until removed. Cache bodies duplicate the selected output files on disk.
 
 ## Scripts
@@ -136,7 +144,7 @@ Home Assistant performance or justify shipping the repeated-scan profile algorit
 ## Warm ETag downloader versus the API
 
 ```bash
-uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --pages 12 --compare-transports --concurrency 4 --write results.json
+uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --pages 12 --compare-transports --revalidate --concurrency 4 --write results.json
 ```
 
 This uses `data/downloader-benchmark` by default, separately from the planner's sample. A priming pass is
@@ -148,3 +156,15 @@ parsing, primes each journey, and paces calls one second apart. It needs only no
 A full sample refresh and one journey request are different workloads; refresh costs should be amortized
 across journeys. See [the original local measurements](results/2026-11-11-fedora-downloader.md) and
 [the pooled/parallel comparison](results/2026-11-11-fedora-pooled-downloader.md).
+
+## Fresh-cache refresh benchmark
+
+```bash
+uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --pages 12 --concurrency 4 --compare-freshness --write results.json
+```
+
+`--compare-freshness` compares forced ETag revalidation with freshness-aware reuse on the same primed
+cache. The report includes local fresh-hit counts as well as actual HTTP statuses and transferred bytes.
+Expiry is per URL: for example, the realtime feed can revalidate while timetable files remain fresh.
+See [the local freshness results](results/2026-11-11-fedora-fresh-downloader.md). Existing timestamped reports
+describe the behavior at the time they were measured.

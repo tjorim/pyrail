@@ -3,6 +3,7 @@
 import asyncio
 from collections import deque
 from contextlib import redirect_stdout
+from email.utils import formatdate
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import StringIO
 import json
@@ -40,7 +41,9 @@ class Handler(BaseHTTPRequestHandler):
     def respond(self):
         self.server.requests.append((self.path, self.headers.get("If-None-Match")))
         status, headers, body = self.server.responses.popleft()
-        self.send_response(status)
+        self.send_response_only(status)
+        if "Date" not in headers:
+            self.send_header("Date", self.date_time_string())
         for name, value in headers.items():
             self.send_header(name, value)
         self.send_header("Content-Length", str(len(body)))
@@ -52,6 +55,44 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *_args):
         pass
+
+
+class FreshnessPolicyTests(unittest.TestCase):
+    def test_explicit_policy_parsing(self):
+        now = 1800000000
+        date = formatdate(now, usegmt=True)
+        cases = [
+            ({"cache-control": 'PUBLIC, MAX-AGE="60"'}, {}, now + 60),
+            ({"cache-control": "max-age=60, max-age=120"}, {}, now),
+            ({"cache-control": "max-age=-1"}, {}, now),
+            ({"cache-control": "max-age=invalid"}, {}, now),
+            ({"cache-control": 'max-age="60'}, {}, now),
+            ({"cache-control": "max-age=0"}, {}, now),
+            ({"cache-control": "max-age=60, no-cache"}, {}, now),
+            ({"cache-control": "max-age=60, no-store"}, {}, None),
+            ({"cache-control": "s-maxage=60"}, {}, now),
+            ({"cache-control": 'extension="a,max-age=600"'}, {}, now),
+            ({"cache-control": "max-age=60"}, {"Age": "invalid"}, now),
+            ({"cache-control": "max-age=60"}, {"Age": "61"}, now),
+            ({"cache-control": "max-age=60", "vary": "*"}, {}, now),
+            ({"cache-control": "max-age=60", "vary": "Accept-Encoding"}, {}, now + 60),
+            ({"cache-control": "max-age=60", "vary": "Accept-Language"}, {}, now),
+            ({"expires": formatdate(now + 30, usegmt=True)}, {}, now + 30),
+            ({"expires": "invalid"}, {}, now),
+            ({"cache-control": "max-age=5", "expires": formatdate(now + 60, usegmt=True)}, {}, now + 5),
+        ]
+        for headers, response, expected in cases:
+            with self.subTest(headers=headers, response=response):
+                self.assertEqual(fetch_data._fresh_until(headers, {"Date": date, **response}, now, now), expected)
+
+    def test_request_delay_is_counted_as_age(self):
+        now = 1800000000
+        self.assertEqual(
+            fetch_data._fresh_until(
+                {"cache-control": "max-age=60"}, {"Date": formatdate(now, usegmt=True), "Age": "10"}, now - 5, now
+            ),
+            now + 45,
+        )
 
 
 class DownloaderTests(unittest.TestCase):
@@ -80,15 +121,145 @@ class DownloaderTests(unittest.TestCase):
         self.server.ports = set()
         self.server.delay = 0
 
-    def make_downloader(self):
-        return Downloader(self.directory)
+    def make_downloader(self, revalidate=False):
+        return Downloader(self.directory, revalidate)
 
-    def respond(self, body=b"original", etag='W/"v1"', status=200):
-        self.server.responses.append((status, {"ETag": etag} if etag is not None else {}, body))
+    def respond(self, body=b"original", etag='W/"v1"', status=200, headers=None):
+        fields = {"ETag": etag} if etag is not None else {}
+        fields.update(headers or {})
+        self.server.responses.append((status, fields, body))
 
     def seed(self):
         self.respond()
         self.assertEqual(self.downloader.get(self.url), b"original")
+
+    def clock(self):
+        self.now = time.time()
+        clock = patch("fetch_data.time", SimpleNamespace(time=lambda: self.now))
+        clock.start()
+        self.addCleanup(clock.stop)
+
+    def fresh_response(self, control="max-age=10", **kwargs):
+        headers = {"Cache-Control": control, "Date": formatdate(self.now, usegmt=True)}
+        headers.update(kwargs.pop("headers", {}))
+        self.respond(headers=headers, **kwargs)
+
+    def test_fresh_hit_survives_restart_then_expiry_revalidates(self):
+        self.clock()
+        self.fresh_response()
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.now += 9
+        self.assertEqual(self.make_downloader().get(self.url), b"original")
+        self.assertEqual(len(self.server.requests), 1)
+        self.now += 2
+        self.fresh_response(status=304, body=b"")
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.assertEqual(self.server.requests[-1][1], 'W/"v1"')
+        self.now += 9
+        self.assertEqual(self.make_downloader().get(self.url), b"original")
+        self.assertEqual(len(self.server.requests), 2)
+
+    def test_only_expired_resource_contacts_server(self):
+        self.clock()
+        self.fresh_response("max-age=600")
+        self.downloader.get(self.url)
+        realtime = self.url + "?realtime"
+        self.fresh_response("max-age=5", body=b"snapshot")
+        self.downloader.get(realtime)
+        self.now += 6
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.fresh_response("max-age=5", body=b"updated snapshot")
+        self.assertEqual(self.downloader.get(realtime), b"updated snapshot")
+        self.assertEqual(len(self.server.requests), 3)
+        self.assertTrue(self.server.requests[-1][0].endswith("?realtime"))
+        self.assertEqual(self.server.requests[-1][1], 'W/"v1"')
+
+    def test_fresh_response_without_etag_can_be_reused(self):
+        self.clock()
+        self.fresh_response(etag=None)
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.assertEqual(self.make_downloader().get(self.url), b"original")
+        self.assertEqual(len(self.server.requests), 1)
+        self.now += 11
+        self.fresh_response(etag=None, body=b"new")
+        self.assertEqual(self.downloader.get(self.url), b"new")
+        self.assertIsNone(self.server.requests[-1][1])
+
+    def test_explicit_revalidation_bypasses_freshness(self):
+        self.clock()
+        self.fresh_response("max-age=600")
+        self.downloader.get(self.url)
+        self.respond(status=304, body=b"")
+        self.assertEqual(self.make_downloader(revalidate=True).get(self.url), b"original")
+        self.assertEqual(len(self.server.requests), 2)
+        self.assertEqual(self.server.requests[-1][1], 'W/"v1"')
+
+    def test_no_cache_always_revalidates(self):
+        self.clock()
+        self.fresh_response("max-age=600, no-cache")
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.fresh_response("max-age=600, no-cache", status=304, body=b"")
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.assertEqual(len(self.server.requests), 2)
+
+    def test_no_store_removes_cached_body_and_validator(self):
+        self.seed()
+        self.clock()
+        self.fresh_response("no-store, max-age=600", body=b"private")
+        self.assertEqual(self.downloader.get(self.url), b"private")
+        self.assertEqual(list((self.directory / ".http-cache").iterdir()), [])
+        self.respond()
+        self.downloader.get(self.url)
+        self.assertIsNone(self.server.requests[-1][1])
+
+    def test_age_and_date_reduce_remaining_freshness(self):
+        self.clock()
+        self.fresh_response("max-age=10", headers={"Age": "8"})
+        self.downloader.get(self.url)
+        self.now += 1
+        self.downloader.get(self.url)
+        self.assertEqual(len(self.server.requests), 1)
+        self.now += 2
+        self.fresh_response("max-age=10", headers={"Date": formatdate(self.now - 20, usegmt=True)})
+        self.downloader.get(self.url)
+        self.respond(body=b"new")
+        self.assertEqual(self.downloader.get(self.url), b"new")
+        self.assertEqual(len(self.server.requests), 3)
+
+    def test_304_inherits_policy_but_refreshes_age(self):
+        self.clock()
+        self.fresh_response()
+        self.downloader.get(self.url)
+        self.now += 11
+        self.respond(status=304, body=b"", headers={"Date": formatdate(self.now, usegmt=True)})
+        self.downloader.get(self.url)
+        self.now += 8
+        self.downloader.get(self.url)
+        self.assertEqual(len(self.server.requests), 2)
+
+    def test_304_no_store_discards_cache(self):
+        self.seed()
+        self.respond(status=304, body=b"", headers={"Cache-Control": "no-store"})
+        self.assertEqual(self.downloader.get(self.url), b"original")
+        self.assertEqual(list((self.directory / ".http-cache").iterdir()), [])
+
+    def test_fresh_body_still_requires_matching_digest(self):
+        self.clock()
+        self.fresh_response("max-age=600")
+        self.downloader.get(self.url)
+        next((self.directory / ".http-cache").glob("*.body")).write_bytes(b"corrupt")
+        self.respond(body=b"new")
+        self.assertEqual(self.downloader.get(self.url), b"new")
+        self.assertIsNone(self.server.requests[-1][1])
+
+    def test_clock_rollback_forces_revalidation(self):
+        self.clock()
+        self.fresh_response("max-age=600")
+        self.downloader.get(self.url)
+        self.now -= 100
+        self.respond(status=304, body=b"")
+        self.downloader.get(self.url)
+        self.assertEqual(len(self.server.requests), 2)
 
     def test_etag_survives_restart_and_304_reuses_body(self):
         self.seed()
@@ -225,12 +396,12 @@ class DownloaderTests(unittest.TestCase):
 
 
 class AsyncDownloaderTests(DownloaderTests):
-    def make_downloader(self):
+    def make_downloader(self, revalidate=False):
         runner = asyncio.Runner()
 
         async def create():
             session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5))
-            return session, fetch_data.AsyncDownloader(self.directory, session)
+            return session, fetch_data.AsyncDownloader(self.directory, session, revalidate)
 
         session, downloader = runner.run(create())
 

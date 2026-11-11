@@ -30,7 +30,7 @@ from pyrail import IRail
 from pyrail.cdn.arrow import read_table
 
 
-def download(directory, date, pages, transport="aiohttp", concurrency=4):
+def download(directory, date, pages, transport="aiohttp", concurrency=4, revalidate=False):
     requests = []
     original_open = fetch_data.urlopen
 
@@ -91,14 +91,19 @@ def download(directory, date, pages, transport="aiohttp", concurrency=4):
     with redirect_stdout(StringIO()):
         if transport == "urllib":
             with patch("fetch_data.urlopen", side_effect=record_open):
-                fetch_data.download_sequential(directory, date, pages)
+                fetch_data.download_sequential(directory, date, pages, revalidate)
         else:
-            asyncio.run(fetch_data.download_async(directory, date, pages, concurrency, trace_configs=[trace]))
+            asyncio.run(
+                fetch_data.download_async(
+                    directory, date, pages, concurrency, trace_configs=[trace], revalidate=revalidate
+                )
+            )
     return {
         "ms": round(1000 * (time.perf_counter() - start), 3),
         "connections": connections if transport == "aiohttp" else None,
         "statuses": dict(Counter(str(r["status"]) for r in requests)),
         "conditional_requests": sum(r["conditional"] for r in requests),
+        "fresh_cache_hits": pages + 7 - len(requests),
         "body_bytes": sum(r["body_bytes"] for r in requests),
         "requests": requests,
     }
@@ -154,26 +159,36 @@ def main():
     parser.add_argument("--write", type=Path)
     parser.add_argument("--transport", choices=("aiohttp", "urllib"), default="aiohttp")
     parser.add_argument("--concurrency", type=int, default=4)
-    parser.add_argument("--compare-transports", action="store_true")
+    comparison = parser.add_mutually_exclusive_group()
+    comparison.add_argument("--compare-transports", action="store_true")
+    comparison.add_argument("--compare-freshness", action="store_true")
+    parser.add_argument("--revalidate", action="store_true", help="ignore local freshness and always contact server")
     args = parser.parse_args()
     if args.pages <= 0 or args.repeat <= 0 or args.concurrency <= 0:
         parser.error("--pages, --repeat and --concurrency must be positive")
-    modes = [(args.transport, args.concurrency)]
+    modes = [(args.transport, args.concurrency, args.revalidate)]
     if args.compare_transports:
-        modes = [("urllib", 1), ("aiohttp", 1), ("aiohttp", args.concurrency)]
+        modes = [
+            ("urllib", 1, args.revalidate),
+            ("aiohttp", 1, args.revalidate),
+            ("aiohttp", args.concurrency, args.revalidate),
+        ]
         modes = list(dict.fromkeys(modes))
+    if args.compare_freshness:
+        modes = [(args.transport, args.concurrency, True), (args.transport, args.concurrency, False)]
     variants = []
-    for transport, concurrency in modes:
-        label = f"{transport}-{concurrency}"
+    for transport, concurrency, revalidate in modes:
+        label = f"{transport}-{concurrency}-{'revalidate' if revalidate else 'freshness'}"
         print(f"Priming {label} (excluded from warm results)...", file=sys.stderr, flush=True)
-        prime = download(args.dir, args.date, args.pages, transport, concurrency)
+        prime = download(args.dir, args.date, args.pages, transport, concurrency, revalidate)
         warm = []
         for index in range(args.repeat):
             print(f"Warm {label} run {index + 1}/{args.repeat}...", file=sys.stderr, flush=True)
-            warm.append(download(args.dir, args.date, args.pages, transport, concurrency))
+            warm.append(download(args.dir, args.date, args.pages, transport, concurrency, revalidate))
         variants.append(
             {
                 "transport": transport,
+                "revalidate": revalidate,
                 "concurrency": concurrency,
                 "prime": prime,
                 "warm": warm,
@@ -194,7 +209,12 @@ def main():
         "cdn_variants": variants,
         "api": api,
         "median_ms": {
-            **{f"{v['transport']}-{v['concurrency']}": v["median_ms"] for v in variants},
+            **{
+                f"{v['transport']}-{v['concurrency']}-{'revalidate' if v['revalidate'] else 'freshness'}": v[
+                    "median_ms"
+                ]
+                for v in variants
+            },
             **{
                 label: statistics.median(r["ms"] for r in api if r["query"] == label and not r["prime"])
                 for label in ("short", "long")
@@ -205,7 +225,8 @@ def main():
         "ETag support enabled, no retries. API primes and one-second pacing excluded from warm medians. "
         "Response body bytes exclude HTTP headers and TLS; API aiohttp bytes may be decompressed. "
         "CDN variants share the same disk cache, prime before measurement, and create a fresh session per "
-        "refresh. aiohttp reuses connections within each refresh; urllib is the original baseline.",
+        "refresh. aiohttp reuses connections within each refresh; urllib is the original baseline. "
+        "Fresh cache hits skip network requests unless revalidate is enabled.",
     }
     output = json.dumps(report, indent=2) + "\n"
     print(output, end="")
