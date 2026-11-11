@@ -54,6 +54,7 @@ releases remain on disk until removed. Cache bodies duplicate the selected outpu
 | `compare_all.py` | The comparison above: time, peak memory, installed size and correctness for every reader, plus the realtime parse. Uses `bench_readers.py` and `bench_realtime.py`. |
 | `bench_readers.py` | One reader over all files, as one JSON line (`stdlib`, `pyarrow`, `arro3` or `nanoarrow`). |
 | `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
+| `bench_downloader.py` | Primes an ETag cache, times full warm sample refreshes, and compares them with public iRail API journey requests. |
 | `check_schema_message.py` | Shows that the CDN files start with a record batch, not a Schema message. |
 | `probe_nanoarrow.py` | Shows nanoarrow failing on the CDN file but reading the same table as an IPC stream. |
 | `inspect_extensions.py` | Columns and fill rates of the tables the CDN publishes besides the connection pages (#248). |
@@ -123,3 +124,16 @@ measures alternatives in the simplified model, rather than treating six arbitrar
 See [the follow-up assessment](results/2026-11-11-gaps.md), its raw JSON, and the separate reader/GTFS-RT
 comparison. These results support a pure Python starting point for individual scans, but do not establish
 Home Assistant performance or justify shipping the repeated-scan profile algorithm unchanged.
+
+## Warm ETag downloader versus the API
+
+```bash
+uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --pages 12 --write results.json
+```
+
+This uses `data/downloader-benchmark` by default, separately from the planner's sample. A priming pass is
+excluded from three warm refresh measurements; HTTP statuses and body bytes are recorded to distinguish
+304 cache hits from changed 200 responses. The API comparison uses the public pyrail client, includes model
+parsing, primes each journey, and paces calls one second apart. It needs only normal runtime dependencies.
+A full sample refresh and one journey request are different workloads; refresh costs should be amortized
+across journeys. See [the local measurements](results/2026-11-11-fedora-downloader.md).
