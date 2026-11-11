@@ -1,0 +1,1658 @@
+{
+  "timestamp": "2026-11-11T19:06:48.491614+00:00",
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.12.13",
+  "revision": "dfae4433c8edd202928f83bfba0529dea0f6f31b",
+  "release": "nmbs-sncb-20261111-5c05082d",
+  "query_date": "2026-11-12",
+  "pages": 12,
+  "repeat": 3,
+  "cdn_variants": [
+    {
+      "transport": "urllib",
+      "concurrency": 1,
+      "prime": {
+        "ms": 1908.896,
+        "connections": null,
+        "statuses": {
+          "304": 18,
+          "200": 1
+        },
+        "conditional_requests": 19,
+        "body_bytes": 103289,
+        "requests": [
+          {
+            "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+            "conditional": true,
+            "body_bytes": 103289,
+            "status": 200
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          }
+        ]
+      },
+      "warm": [
+        {
+          "ms": 1612.6,
+          "connections": null,
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        },
+        {
+          "ms": 1801.142,
+          "connections": null,
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        },
+        {
+          "ms": 1679.031,
+          "connections": null,
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        }
+      ],
+      "median_ms": 1679.031
+    },
+    {
+      "transport": "aiohttp",
+      "concurrency": 1,
+      "prime": {
+        "ms": 3621.072,
+        "connections": {
+          "created": 2,
+          "reused": 17
+        },
+        "statuses": {
+          "304": 18,
+          "200": 1
+        },
+        "conditional_requests": 19,
+        "body_bytes": 72626,
+        "requests": [
+          {
+            "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+            "conditional": true,
+            "body_bytes": 72626,
+            "status": 200
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          }
+        ]
+      },
+      "warm": [
+        {
+          "ms": 1355.982,
+          "connections": {
+            "created": 2,
+            "reused": 17
+          },
+          "statuses": {
+            "304": 18,
+            "200": 1
+          },
+          "conditional_requests": 19,
+          "body_bytes": 103460,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 103460,
+              "status": 200
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        },
+        {
+          "ms": 837.644,
+          "connections": {
+            "created": 2,
+            "reused": 17
+          },
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        },
+        {
+          "ms": 801.245,
+          "connections": {
+            "created": 2,
+            "reused": 17
+          },
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        }
+      ],
+      "median_ms": 837.644
+    },
+    {
+      "transport": "aiohttp",
+      "concurrency": 4,
+      "prime": {
+        "ms": 326.681,
+        "connections": {
+          "created": 5,
+          "reused": 14
+        },
+        "statuses": {
+          "304": 19
+        },
+        "conditional_requests": 19,
+        "body_bytes": 0,
+        "requests": [
+          {
+            "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          },
+          {
+            "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+            "conditional": true,
+            "body_bytes": 0,
+            "status": 304
+          }
+        ]
+      },
+      "warm": [
+        {
+          "ms": 319.722,
+          "connections": {
+            "created": 5,
+            "reused": 14
+          },
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        },
+        {
+          "ms": 334.081,
+          "connections": {
+            "created": 5,
+            "reused": 14
+          },
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        },
+        {
+          "ms": 350.934,
+          "connections": {
+            "created": 5,
+            "reused": 14
+          },
+          "statuses": {
+            "304": 19
+          },
+          "conditional_requests": 19,
+          "body_bytes": 0,
+          "requests": [
+            {
+              "url": "https://irail.github.io/iRail-cdn/manifest.jsonld",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/stops.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/routes.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/trips.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/transfers.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/irail.json",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://cdn.routableconnections.com/realtime/sncb/gtfs-rt/trip-updates.pb",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-12T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-13T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T00/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T06/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T12/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            },
+            {
+              "url": "https://irail.github.io/iRail-cdn/releases/nmbs-sncb-20261111-5c05082d/connections/0/2026-11-14T18/00000.arrow",
+              "conditional": true,
+              "body_bytes": 0,
+              "status": 304
+            }
+          ]
+        }
+      ],
+      "median_ms": 334.081
+    }
+  ],
+  "api": [
+    {
+      "query": "short",
+      "prime": true,
+      "body_bytes": 20423,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 420.31,
+      "journeys": 6,
+      "first_arrival": 1794470820
+    },
+    {
+      "query": "long",
+      "prime": true,
+      "body_bytes": 77718,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 657.403,
+      "journeys": 7,
+      "first_arrival": 1794482520
+    },
+    {
+      "query": "short",
+      "prime": false,
+      "body_bytes": 20423,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 39.266,
+      "journeys": 6,
+      "first_arrival": 1794470820
+    },
+    {
+      "query": "long",
+      "prime": false,
+      "body_bytes": 77718,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 41.644,
+      "journeys": 7,
+      "first_arrival": 1794482520
+    },
+    {
+      "query": "short",
+      "prime": false,
+      "body_bytes": 20423,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 97.805,
+      "journeys": 6,
+      "first_arrival": 1794470820
+    },
+    {
+      "query": "long",
+      "prime": false,
+      "body_bytes": 77718,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 52.344,
+      "journeys": 7,
+      "first_arrival": 1794482520
+    },
+    {
+      "query": "short",
+      "prime": false,
+      "body_bytes": 20423,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 44.091,
+      "journeys": 6,
+      "first_arrival": 1794470820
+    },
+    {
+      "query": "long",
+      "prime": false,
+      "body_bytes": 77718,
+      "status": 200,
+      "conditional": false,
+      "etag": null,
+      "ms": 41.595,
+      "journeys": 7,
+      "first_arrival": 1794482520
+    }
+  ],
+  "median_ms": {
+    "urllib-1": 1679.031,
+    "aiohttp-1": 837.644,
+    "aiohttp-4": 334.081,
+    "short": 44.091,
+    "long": 41.644
+  },
+  "scope": "CDN: full sample refresh, HTTP plus disk cache reads/checks/writes, no Arrow decoding/routing. API: public IRail.get_connections, HTTP plus JSON/model parsing, shared session, ETag support enabled, no retries. API primes and one-second pacing excluded from warm medians. Response body bytes exclude HTTP headers and TLS; API aiohttp bytes may be decompressed. CDN variants share the same disk cache, prime before measurement, and create a fresh session per refresh. aiohttp reuses connections within each refresh; urllib is the original baseline."
+}

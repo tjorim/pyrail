@@ -24,7 +24,7 @@ uv sync --group experiments        # pyarrow, arro3-io, nanoarrow, gtfs-realtime
 ## Run the comparison
 
 ```bash
-python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 8    # about 20 MB; `data/` is git-ignored
+uv run --locked python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 8    # about 20 MB; `data/` is git-ignored
 uv run --group experiments python experiments/cdn/compare_all.py data --write experiments/cdn/results/<date>.md
 ```
 
@@ -39,6 +39,14 @@ release, or on other hardware, and add a new file instead of trusting old number
 Every run contacts the server, sending `If-None-Match` when a matching cached body exists. A `304`
 reuses those bytes; a `200` replaces them and its validator. Responses without ETags are downloaded
 unconditionally next time. This implements revalidation, not `Cache-Control` freshness or offline fallback.
+
+The default downloader uses one aiohttp session per refresh. After fetching the manifest, it downloads
+independent resources concurrently, with **at most four requests in flight** across all hosts. TCP/TLS
+connections are reused within the refresh. aiohttp is already a pyrail runtime dependency; the Arrow
+reader still has no third-party dependencies. Use `--concurrency 1` for pooled sequential requests,
+`--concurrency N` to adjust the bound, or `--transport urllib` for the original sequential transport.
+The request timeout is 60 seconds. A failed download cancels the remaining work and leaves `sample.json`
+absent; it is published atomically only after all selected files have been written.
 
 The cache survives restarts and is separate from output filenames such as `pages/p0.arrow`, so changing
 the date or release cannot reuse another URL's validator. Missing/corrupt entries trigger a full download;
@@ -101,7 +109,7 @@ table, realtime and in-seat transfers; it does not validate a production router.
 
 ```bash
 # Twelve pages cover both complete windows for this release; the benchmark rejects insufficient coverage.
-python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 12
+uv run --locked python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 12
 uv run python experiments/cdn/planner_benchmark.py data --write results.json
 # Optional probe: NumPy storage with the same Python scan, not a vectorized or compiled algorithm.
 uv run --with numpy==2.5.4 python experiments/cdn/planner_benchmark.py data --numpy --write results-numpy.json
@@ -128,12 +136,15 @@ Home Assistant performance or justify shipping the repeated-scan profile algorit
 ## Warm ETag downloader versus the API
 
 ```bash
-uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --pages 12 --write results.json
+uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --pages 12 --compare-transports --concurrency 4 --write results.json
 ```
 
 This uses `data/downloader-benchmark` by default, separately from the planner's sample. A priming pass is
-excluded from three warm refresh measurements; HTTP statuses and body bytes are recorded to distinguish
+excluded from three warm refresh measurements per transport; `--compare-transports` measures urllib,
+pooled sequential aiohttp, and pooled aiohttp at the selected concurrency. HTTP statuses, connection
+creation/reuse (aiohttp), and body bytes are recorded to distinguish
 304 cache hits from changed 200 responses. The API comparison uses the public pyrail client, includes model
 parsing, primes each journey, and paces calls one second apart. It needs only normal runtime dependencies.
 A full sample refresh and one journey request are different workloads; refresh costs should be amortized
-across journeys. See [the local measurements](results/2026-11-11-fedora-downloader.md).
+across journeys. See [the original local measurements](results/2026-11-11-fedora-downloader.md) and
+[the pooled/parallel comparison](results/2026-11-11-fedora-pooled-downloader.md).
