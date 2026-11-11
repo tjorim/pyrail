@@ -113,6 +113,15 @@ Findings of the #248, #249 and #261 spikes (field table, realtime versus timetab
   nanoarrow 3 MB, stdlib none) and platform coverage (pyarrow has no armv7 or 32-bit wheels) decide the choice,
   not speed. See the module docstring of `pyrail/cdn/arrow.py` for the decision.
 
+### On a Home Assistant Yellow (Raspberry Pi CM4, aarch64, musl)
+
+Details in [`results/2026-11-11-yellow.md`](results/2026-11-11-yellow.md); measured on a live device with
+other containers running. All 12 files (133k rows): stdlib reader 576 ms and 95 MB peak, pyarrow 372 ms and
+108 MB (190 MB installed), arro3-io 733 ms and 83 MB. About 5 to 9 times slower than x86, same ranking, same
+conclusion. `trips.arrow` alone takes 158 ms, a connection page 16 to 63 ms. Realtime snapshot (77 KB):
+about 1 ms with the `upb` protobuf that Home Assistant core ships, about 200 ms with the pure-Python
+protobuf that a plain `pip install` gets on musl aarch64.
+
 ### Library health, 11 November 2026 (`pypi_health.py`)
 
 | Library | Releases | Last 12 months | Newest | cp313 wheels |
@@ -127,9 +136,9 @@ nearest. Only direct requirements are visible there, and custom integrations wer
 
 ## Not covered
 
-Raspberry Pi / Home Assistant-class measurements: no suitable hardware is currently available. This is
-an explicit validation gap, not an inference from x86 results. GitHub activity, contributor counts and
-download numbers are also not measured here. The routing benchmark still omits footpaths, the transfers
+Journey planning on Home Assistant-class hardware: the reader and realtime numbers were measured on a Home
+Assistant Yellow (see above), but `planner_benchmark.py` was not run there (#261). GitHub activity,
+contributor counts and download numbers are also not measured here. The routing benchmark still omits footpaths, the transfers
 table, realtime and in-seat transfers; it does not validate a production router.
 
 ## Follow-up measurements for #247 and #261

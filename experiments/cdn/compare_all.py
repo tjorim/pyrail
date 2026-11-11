@@ -28,6 +28,14 @@ READERS = [
 ]
 
 
+def device_model() -> str | None:
+    """Return the board model on single-board computers (Raspberry Pi, Home Assistant Yellow), else None."""
+    try:
+        return Path("/proc/device-tree/model").read_text().strip("\x00\n ") or None
+    except OSError:
+        return None
+
+
 def run(script: str, *args: str) -> dict:
     process = subprocess.run([sys.executable, str(HERE / script), *args], capture_output=True, text=True, check=False)  # noqa: S603
     if process.returncode:
@@ -55,7 +63,7 @@ def main() -> None:
         f"- Release `{manifest['releaseId']}` (coverage {manifest['coverageStart'][:10]} to {manifest['coverageEnd'][:10]}).",
         f"- Data: {len(files(data))} files = 4 tables + {pages} consecutive connection pages; every column of every file is decoded into Python lists.",
         f"- Machine: {platform.machine()}, {os.cpu_count()} CPUs, Python {platform.python_version()}, {platform.system()} {platform.release()}. "
-        "**Not a Raspberry Pi or other Home Assistant-class device.**",
+        + (f"Device: {model}." if (model := device_model()) else "**Not a Raspberry Pi or other Home Assistant-class device.**"),
         "- Time: best and median of 3 passes in one process. Peak RSS is the process peak (one pass held in memory at a time), with its value before reading in brackets (the stdlib reader imports `pyrail`, which loads aiohttp).",
         "- Installed size: files of the distribution(s) in this environment; `stdlib` adds nothing.",
         "",
@@ -94,7 +102,7 @@ def main() -> None:
         "",
         "## Not covered",
         "",
-        "Raspberry Pi measurements, GitHub activity and download counts of the libraries, and full production routing (footpaths, realtime and in-seat transfers). See `planner_benchmark.py` for isolated-window memory, arrive-by and departure-profile measurements (#261). Single-run figures: treat differences of a few milliseconds or megabytes as noise.",
+        "GitHub activity and download counts of the libraries, and full production routing (footpaths, realtime and in-seat transfers). See `planner_benchmark.py` for isolated-window memory, arrive-by and departure-profile measurements (#261). Single-run figures: treat differences of a few milliseconds or megabytes as noise.",
         "",
     ]
     report = "\n".join(lines)

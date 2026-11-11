@@ -4,13 +4,14 @@ Run: python experiments/cdn/report_html.py [RESULTS_DIR] [OUTPUT.html]
 
 Each chart uses a log axis (values span microseconds to seconds), labels every bar with its value, and is
 followed by a table with the same numbers. Bars are grouped by what is being compared, not by run, so read
-the notes: the runs happened at different times on one x86_64 machine and are not a latency guarantee.
+the notes: the runs happened at different times on one x86_64 machine (except the Yellow charts) and are not a latency guarantee.
 """
 
 import html
 import json
 import math
 from pathlib import Path
+import re
 import sys
 
 PREFIX = "2026-11-11-fedora-"
@@ -80,6 +81,37 @@ def readers(results: Path):
     return rows
 
 
+def device_comparison(results: Path):
+    """Compare the 12-file reader run on x86_64 with the Home Assistant Yellow run of the same files.
+
+    Returns (time rows, memory rows, realtime rows), each as (label, value) with the median for readers.
+    Both come from the dated Markdown reports: the x86_64 run and the Yellow run. Empty lists if either is missing.
+    """
+    x86_file, yellow_file = results / "2026-11-11.md", results / "2026-11-11-yellow.md"
+    if not (x86_file.exists() and yellow_file.exists()):
+        return [], [], []
+    short = {"pyrail.cdn.arrow.read_table (standard library)": "pyrail (stdlib)", "pyrail.cdn.arrow.read_table (stdlib)": "pyrail (stdlib)"}
+    x86 = {}
+    for line in x86_file.read_text().splitlines():
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) == 7 and cells[3].endswith(" ms") and " / " in cells[3]:
+            x86[short.get(cells[0], cells[0])] = (float(cells[3].split(" / ")[1].split()[0]), float(cells[4].split()[0]))
+    yellow, realtime = {}, []
+    for line in yellow_file.read_text().splitlines():
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        name = short.get(cells[0], re.sub(r" \d[\d.]*$", "", cells[0]))  # drop the version, as "pyarrow 26.0.1"
+        if name in x86 and len(cells) == 6 and cells[1].endswith(" ms") and " / " in cells[1]:
+            yellow[name] = (float(cells[1].split(" / ")[1].split()[0]), float(cells[2].split()[0]))
+        match = re.search(r"\*\*[\d.]+ / ([\d.]+) ms\*\*", line)
+        if match and len(cells) == 5:
+            label = "Home Assistant core (upb, C)" if "upb" in cells[1] else "Plain pip install (pure Python)"
+            realtime.append((f"Realtime snapshot, {label}", float(match.group(1))))
+    names = [n for n in x86 if n in yellow]
+    times = [row for n in names for row in ((f"{n}, Yellow", yellow[n][0]), (f"{n}, x86_64", x86[n][0]))]
+    memory = [row for n in names for row in ((f"{n}, Yellow", yellow[n][1]), (f"{n}, x86_64", x86[n][1]))]
+    return times, memory, realtime
+
+
 def build(results: Path) -> str:
     event = load(results, "event-invalidation")
     short = event["results"][0]["queries"][0]
@@ -128,7 +160,31 @@ def build(results: Path) -> str:
         (f"{w['storage'].replace('python-tuples', 'Python tuples').replace('numpy-int64', 'NumPy int64')}, {w['hours']} h", w["rss_peak_mb"])
         for w in planner
     ]
-    sections = [
+    device_time, device_memory, realtime = device_comparison(results)
+    sections = []
+    if device_time:
+        sections += [
+            bar_chart(
+                device_time,
+                "Reading 12 CDN files (133k rows): Home Assistant Yellow versus x86_64",
+                "Median of three passes. The Yellow is a Raspberry Pi CM4 running Home Assistant OS under normal load, about 5 to 9 times slower than the x86_64 machine, with the same ranking.",
+                highlight=0,
+            ),
+            bar_chart(
+                device_memory,
+                "Peak memory reading the same 12 files, Yellow versus x86_64",
+                "Process peak RSS, one pass held in memory. Memory barely depends on the device; the readers rank the same way.",
+                highlight=0,
+                unit="MB",
+            ),
+            bar_chart(
+                realtime,
+                "Parsing the GTFS Realtime snapshot (77 KB) on the Yellow",
+                "Home Assistant core ships protobuf with the C upb implementation; a plain pip install on musl aarch64 gets the pure-Python wheel.",
+                highlight=0,
+            ),
+        ]
+    sections += [
         bar_chart(
             refresh,
             "Refreshing a 12-page sample from a warm disk cache",
@@ -195,7 +251,7 @@ table {{ border-collapse:collapse; margin-top:8px }} td,th {{ padding:2px 12px 2
 summary {{ cursor:pointer; color:var(--muted); font-size:13px }}
 </style></head><body>
 <h1>iRail CDN spike: benchmark results</h1>
-<p class=meta>{meta}. Single local x86_64 machine, not Raspberry Pi-class hardware. Time charts use log axes (each gridline is ten times the previous one); memory charts start at zero.</p>
+<p class=meta>{meta}. Except for the three Home Assistant Yellow charts at the top, a single local x86_64 machine, not Raspberry Pi-class hardware. Time charts use log axes (each gridline is ten times the previous one); memory charts start at zero.</p>
 {''.join(sections)}
 </body></html>"""
 
