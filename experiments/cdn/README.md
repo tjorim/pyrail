@@ -42,10 +42,17 @@ release, or on other hardware, and add a new file instead of trusting old number
 | `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
 | `check_schema_message.py` | Shows that the CDN files start with a record batch, not a Schema message. |
 | `probe_nanoarrow.py` | Shows nanoarrow failing on the CDN file but reading the same table as an IPC stream. |
+| `inspect_extensions.py` | Columns and fill rates of the tables the CDN publishes besides the connection pages (#248). |
+| `analyze_realtime.py` | How the realtime snapshot lines up with the timetable: coverage, trip-id matching, platforms (#248, #253). |
+| `check_static_gtfs.py` | The official static GTFS behind the CDN: files, version, platform share (#248, #249). |
+| `planner_spike.py` | Earliest-arrival Connection Scan over real pages: timing, memory, check against the live API (#261). |
 | `check_ha_requirements.py` | Does Home Assistant core require any Arrow library? (Direct requirements only.) |
 | `pypi_health.py` | Release cadence and wheel platforms of the candidate libraries. |
 
 ## What the results say (details in `results/`)
+
+Findings of the #248, #249 and #261 spikes (field table, realtime versus timetable, data sources, planner timing):
+[`results/2026-11-11-spikes.md`](results/2026-11-11-spikes.md).
 
 - Every reader that can open the files returns identical values on all of them.
 - The CDN files have no Schema message before the record batches, which is why nanoarrow rejects them
