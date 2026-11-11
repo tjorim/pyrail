@@ -66,3 +66,6 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# CDN experiment data (downloaded by experiments/cdn/fetch_data.py)
+experiments/cdn/data/
