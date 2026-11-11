@@ -1,0 +1,315 @@
+{
+  "timestamp": "2026-11-11T20:19:34.591705+00:00",
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.12.13",
+  "repeat": 3,
+  "revision": "357ffcd405db4c9a4e8e3b40b9b02a3cfecd0ff0",
+  "release": "nmbs-sncb-20261111-5c05082d",
+  "results": [
+    {
+      "mode": "uncached",
+      "hours": 24,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 106.61,
+      "raw_load_samples_ms": [
+        87.677,
+        92.633,
+        89.08
+      ],
+      "raw_load_median_ms": 89.08,
+      "raw_cache_stats": null,
+      "pages": 5,
+      "connections": 48440,
+      "connection_digest": "a657f4fa1f4ff1ee8d9c4574a0f502c9f1a3d7de85840d62a5aeb0f2344b1e2e",
+      "prepare_prime_ms": 69.069,
+      "prepared_cache_stats": null,
+      "decoded_cache_final_stats": null,
+      "prepare_samples_ms": [
+        52.97,
+        53.17,
+        53.927
+      ],
+      "prepare_median_ms": 53.17,
+      "search_samples_ms": {
+        "short": [
+          0.586,
+          0.584,
+          0.601
+        ],
+        "long": [
+          2.0,
+          2.03,
+          1.97
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 109
+    },
+    {
+      "mode": "memory",
+      "hours": 24,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 101.615,
+      "raw_load_samples_ms": [
+        0.618,
+        0.507,
+        0.506
+      ],
+      "raw_load_median_ms": 0.507,
+      "raw_cache_stats": {
+        "entries": 16,
+        "hits": 48,
+        "misses": 16
+      },
+      "pages": 5,
+      "connections": 48440,
+      "connection_digest": "a657f4fa1f4ff1ee8d9c4574a0f502c9f1a3d7de85840d62a5aeb0f2344b1e2e",
+      "prepare_prime_ms": 37.846,
+      "prepared_cache_stats": null,
+      "decoded_cache_final_stats": {
+        "entries": 16,
+        "hits": 69,
+        "misses": 16
+      },
+      "prepare_samples_ms": [
+        19.687,
+        19.712,
+        20.01
+      ],
+      "prepare_median_ms": 19.712,
+      "search_samples_ms": {
+        "short": [
+          0.591,
+          0.568,
+          0.588
+        ],
+        "long": [
+          2.044,
+          2.017,
+          2.005
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 123
+    },
+    {
+      "mode": "prepared",
+      "hours": 24,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 104.728,
+      "raw_load_samples_ms": [
+        0.544,
+        0.507,
+        0.515
+      ],
+      "raw_load_median_ms": 0.515,
+      "raw_cache_stats": {
+        "entries": 16,
+        "hits": 48,
+        "misses": 16
+      },
+      "pages": 5,
+      "connections": 48440,
+      "connection_digest": "a657f4fa1f4ff1ee8d9c4574a0f502c9f1a3d7de85840d62a5aeb0f2344b1e2e",
+      "prepare_prime_ms": 39.1,
+      "prepared_cache_stats": {
+        "entries": 1,
+        "hits": 3,
+        "misses": 1
+      },
+      "decoded_cache_final_stats": {
+        "entries": 16,
+        "hits": 54,
+        "misses": 16
+      },
+      "prepare_samples_ms": [
+        0.182,
+        0.268,
+        0.259
+      ],
+      "prepare_median_ms": 0.259,
+      "search_samples_ms": {
+        "short": [
+          0.587,
+          0.592,
+          0.598
+        ],
+        "long": [
+          2.018,
+          2.093,
+          2.098
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 122
+    },
+    {
+      "mode": "uncached",
+      "hours": 48,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 104.903,
+      "raw_load_samples_ms": [
+        88.916,
+        89.566,
+        88.002
+      ],
+      "raw_load_median_ms": 88.916,
+      "raw_cache_stats": null,
+      "pages": 9,
+      "connections": 92103,
+      "connection_digest": "2a61498d0368ba390489544b4ceb793d9e22c790f095ea4a3247c98a873d7de1",
+      "prepare_prime_ms": 97.656,
+      "prepared_cache_stats": null,
+      "decoded_cache_final_stats": null,
+      "prepare_samples_ms": [
+        83.812,
+        90.376,
+        87.488
+      ],
+      "prepare_median_ms": 87.488,
+      "search_samples_ms": {
+        "short": [
+          0.606,
+          0.706,
+          0.627
+        ],
+        "long": [
+          1.976,
+          2.387,
+          2.096
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 109
+    },
+    {
+      "mode": "memory",
+      "hours": 48,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 101.625,
+      "raw_load_samples_ms": [
+        0.717,
+        0.622,
+        0.51
+      ],
+      "raw_load_median_ms": 0.622,
+      "raw_cache_stats": {
+        "entries": 16,
+        "hits": 48,
+        "misses": 16
+      },
+      "pages": 9,
+      "connections": 92103,
+      "connection_digest": "2a61498d0368ba390489544b4ceb793d9e22c790f095ea4a3247c98a873d7de1",
+      "prepare_prime_ms": 57.263,
+      "prepared_cache_stats": null,
+      "decoded_cache_final_stats": {
+        "entries": 16,
+        "hits": 85,
+        "misses": 16
+      },
+      "prepare_samples_ms": [
+        38.969,
+        35.275,
+        34.066
+      ],
+      "prepare_median_ms": 35.275,
+      "search_samples_ms": {
+        "short": [
+          0.599,
+          0.597,
+          0.579
+        ],
+        "long": [
+          2.047,
+          1.995,
+          1.952
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 134
+    },
+    {
+      "mode": "prepared",
+      "hours": 48,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 102.048,
+      "raw_load_samples_ms": [
+        0.567,
+        0.523,
+        0.528
+      ],
+      "raw_load_median_ms": 0.528,
+      "raw_cache_stats": {
+        "entries": 16,
+        "hits": 48,
+        "misses": 16
+      },
+      "pages": 9,
+      "connections": 92103,
+      "connection_digest": "2a61498d0368ba390489544b4ceb793d9e22c790f095ea4a3247c98a873d7de1",
+      "prepare_prime_ms": 57.56,
+      "prepared_cache_stats": {
+        "entries": 1,
+        "hits": 3,
+        "misses": 1
+      },
+      "decoded_cache_final_stats": {
+        "entries": 16,
+        "hits": 58,
+        "misses": 16
+      },
+      "prepare_samples_ms": [
+        0.333,
+        3.201,
+        0.443
+      ],
+      "prepare_median_ms": 0.443,
+      "search_samples_ms": {
+        "short": [
+          0.605,
+          0.645,
+          0.607
+        ],
+        "long": [
+          2.063,
+          2.1,
+          2.091
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 135
+    }
+  ],
+  "scope": "Fresh processes per mode/window; first raw load excluded from warm medians. Raw loads return all tables. First window preparation is separately timed and excluded from warm medians. memory mode rebuilds/sorts connection tuples; prepared mode reuses immutable tuples and their departure index. RSS is the process high-water mark including digest verification, cache, preparations and searches. No network or full production routing."
+}

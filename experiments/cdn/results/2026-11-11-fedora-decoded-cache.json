@@ -1,0 +1,183 @@
+{
+  "timestamp": "2026-11-11T20:10:05.899479+00:00",
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.12.13",
+  "repeat": 3,
+  "revision": "2612a5acebb16641663832e345e14696f9cc9841",
+  "release": "nmbs-sncb-20261111-5c05082d",
+  "results": [
+    {
+      "mode": "uncached",
+      "hours": 24,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 107.328,
+      "raw_load_samples_ms": [
+        89.479,
+        91.261,
+        88.332
+      ],
+      "raw_load_median_ms": 89.479,
+      "raw_cache_stats": null,
+      "pages": 5,
+      "connections": 48440,
+      "connection_digest": "4a88802bab88c56ad10b5fbcd00ffa7f8494641f5152d8622c1d6e5dcf310a53",
+      "prepare_samples_ms": [
+        69.63,
+        59.34,
+        53.672
+      ],
+      "prepare_median_ms": 59.34,
+      "search_samples_ms": {
+        "short": [
+          0.8,
+          0.596,
+          0.583
+        ],
+        "long": [
+          2.869,
+          2.03,
+          1.987
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 109
+    },
+    {
+      "mode": "memory",
+      "hours": 24,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 100.273,
+      "raw_load_samples_ms": [
+        0.547,
+        0.524,
+        0.476
+      ],
+      "raw_load_median_ms": 0.524,
+      "raw_cache_stats": {
+        "entries": 16,
+        "hits": 48,
+        "misses": 16
+      },
+      "pages": 5,
+      "connections": 48440,
+      "connection_digest": "4a88802bab88c56ad10b5fbcd00ffa7f8494641f5152d8622c1d6e5dcf310a53",
+      "prepare_samples_ms": [
+        31.631,
+        19.195,
+        19.003
+      ],
+      "prepare_median_ms": 19.195,
+      "search_samples_ms": {
+        "short": [
+          0.618,
+          0.554,
+          0.557
+        ],
+        "long": [
+          2.367,
+          1.961,
+          1.932
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 120
+    },
+    {
+      "mode": "uncached",
+      "hours": 48,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 94.356,
+      "raw_load_samples_ms": [
+        87.576,
+        87.95,
+        86.529
+      ],
+      "raw_load_median_ms": 87.576,
+      "raw_cache_stats": null,
+      "pages": 9,
+      "connections": 92103,
+      "connection_digest": "b13ccb9b6f2fdb620d3be0795b62beb296b0d3b15c826ed1aee23b51b18ba57f",
+      "prepare_samples_ms": [
+        95.707,
+        80.619,
+        82.218
+      ],
+      "prepare_median_ms": 82.218,
+      "search_samples_ms": {
+        "short": [
+          0.566,
+          0.588,
+          0.623
+        ],
+        "long": [
+          1.938,
+          2.049,
+          1.964
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 109
+    },
+    {
+      "mode": "memory",
+      "hours": 48,
+      "files": 16,
+      "arrow_digest": "083c0d0b1ab5d8626fc3d8f815e92262cd435ed340f086a0dbc8d2a59bf92511",
+      "prime_ms": 100.818,
+      "raw_load_samples_ms": [
+        0.555,
+        0.544,
+        0.501
+      ],
+      "raw_load_median_ms": 0.544,
+      "raw_cache_stats": {
+        "entries": 16,
+        "hits": 48,
+        "misses": 16
+      },
+      "pages": 9,
+      "connections": 92103,
+      "connection_digest": "b13ccb9b6f2fdb620d3be0795b62beb296b0d3b15c826ed1aee23b51b18ba57f",
+      "prepare_samples_ms": [
+        44.077,
+        33.424,
+        33.546
+      ],
+      "prepare_median_ms": 33.546,
+      "search_samples_ms": {
+        "short": [
+          0.686,
+          0.586,
+          0.582
+        ],
+        "long": [
+          2.122,
+          2.026,
+          1.953
+        ]
+      },
+      "arrivals": {
+        "short": 1794470820,
+        "long": 1794482520
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 138
+    }
+  ],
+  "scope": "Fresh processes per mode/window; first raw load excluded from warm medians. Raw loads return all tables; planner preparation reuses Arrow columns but rebuilds/sorts connection tuples. RSS is the process high-water mark including digest verification, cache, preparations and searches. No network or full production routing."
+}

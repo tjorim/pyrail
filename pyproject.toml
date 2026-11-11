@@ -30,6 +30,8 @@ Changelog = "https://github.com/tjorim/pyrail/releases"
 
 [dependency-groups]
 test = [
+    # Only the reference that pyrail/cdn/arrow.py is tested against; it is not a runtime dependency.
+    "pyarrow>=26",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",
     "pytest-cov>=7.1.0",
@@ -38,6 +40,12 @@ dev = [
     "ruff>=0.17.4",
     "ty>=0.0.84",
 ]
+experiments = [
+    "arro3-io>=0.9.1",
+    "gtfs-realtime-bindings>=3",
+    "nanoarrow>=0.9",
+    "pyarrow>=26",
+]
 
 [tool.uv]
 default-groups = ["dev", "test"]
@@ -45,6 +53,7 @@ default-groups = ["dev", "test"]
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+extend-exclude = ["experiments"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -99,6 +108,9 @@ source = ["pyrail"]
 show_missing = true
 skip_covered = true
 fail_under = 92
+
+[tool.ty.src]
+exclude = ["experiments"]
 
 [tool.ty.rules]
 all = "error"
