@@ -60,23 +60,30 @@ print(f"service dates in the feed: {dates}; trips running on them in the pages: 
 print("trip schedule_relationship (0 scheduled, 1 added, 3 canceled):", dict(Counter(u.trip.schedule_relationship for u in updates)))
 
 outcome = Counter()
+resolved = {}  # (trip index, service date) -> the trip update that resolved to it
 for update in updates:
     trip_id = update.trip.trip_id
+    date = update.trip.start_date
     if trip_id in by_id:
         outcome["exact match with the documented template"] += 1
-        continue
-    # candidates must run on THIS update's own start_date
-    candidates = [i for i in by_prefix.get(trip_id.rsplit(":", 1)[0], []) if i in running[update.trip.start_date]]
-    outcome["no exact match; unique match by id without last field + running on the update's start_date" if len(candidates) == 1
-            else f"no exact match; {len(candidates)} candidates running on the update's start_date"] += 1
+        trip = by_id[trip_id]
+    else:
+        # candidates must run on THIS update's own start_date
+        candidates = [i for i in by_prefix.get(trip_id.rsplit(":", 1)[0], []) if i in running[date]]
+        trip = candidates[0] if len(candidates) == 1 else None
+        outcome["no exact match; unique match by id without last field + running on the update's start_date" if trip is not None
+                else f"no exact match; {len(candidates)} candidates running on the update's start_date"] += 1
+    if trip is not None and trip in running[date]:
+        resolved[trip, date] = update
 for label, count in outcome.items():
     print(f"  {count:4}  {label}")
 print("last field of the trip ids that do not match exactly:",
       Counter(u.trip.trip_id.rsplit(":", 1)[1] for u in updates if u.trip.trip_id not in by_id).most_common(3))
 
-with_platform = sum(any("_" in s.stop_id for s in u.stop_time_update) for u in updates)
-print(f"platform coverage: {with_platform} of {total} running trips ({100 * with_platform / max(1, total):.0f}%) have at least "
-      "one realtime stop update that names a platform (a ratio of snapshot trips, not of stops)")
+with_platform = sum(any("_" in s.stop_id for s in u.stop_time_update) for u in resolved.values())
+print(f"{len(resolved)} distinct (trip, service date) pairs among the updates resolve to a trip running that day; "
+      f"{with_platform} of them have at least one stop update that names a platform")
+print(f"platform coverage: {with_platform} of {total} running trips ({100 * with_platform / max(1, total):.0f}%)")
 stops = [s for u in updates for s in u.stop_time_update]
 print(f"stop updates: {len(stops)}; with a platform suffix in stop_id: {sum('_' in s.stop_id for s in stops)}; "
       f"skipped stops: {sum(s.schedule_relationship == 1 for s in stops)}")
