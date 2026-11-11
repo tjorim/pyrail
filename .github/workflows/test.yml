@@ -29,3 +29,6 @@ jobs:
 
     - name: Run tests
       run: uv run --locked pytest --cov=pyrail --cov-report=term-missing:skip-covered
+
+    - name: Check CDN benchmark model
+      run: uv run --locked python -m unittest discover -s experiments/cdn -p 'test_*.py'

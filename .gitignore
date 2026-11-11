@@ -69,3 +69,4 @@ target/
 
 # CDN experiment data (downloaded by experiments/cdn/fetch_data.py)
 experiments/cdn/data/
+/data/

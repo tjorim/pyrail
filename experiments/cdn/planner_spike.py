@@ -12,11 +12,12 @@ Run from the repository root:
 
 import argparse
 from bisect import bisect_left
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 import time
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 from _common import data_dir, rss_mb
 from pyrail.cdn.arrow import read_table
@@ -26,12 +27,17 @@ DAY = 24 * 3600
 
 
 def load(data: Path):
-    """Return stops, the manifest's page list for the pages we have, and a loader for one page."""
+    """Return stops, the exact sampled page metadata, and matching local files."""
     manifest = json.loads((data / "manifest.jsonld").read_text())
     stops = read_table((data / "stops.arrow").read_bytes())
-    files = sorted((data / "pages").glob("p*.arrow"), key=lambda p: int(p.stem[1:]))
-    first = next(i for i, p in enumerate(manifest["connections"]["pages"]) if p["minDepartureTime"][:10] >= "2026-11-12")
-    pages = manifest["connections"]["pages"][first : first + len(files)]
+    sample_path = data / "sample.json"
+    if not sample_path.exists():
+        raise ValueError("missing sample.json: re-run fetch_data.py to record the exact downloaded pages")
+    sample = json.loads(sample_path.read_text())
+    if sample["releaseId"] != manifest["releaseId"]:
+        raise ValueError("sample.json and manifest.jsonld refer to different releases")
+    pages = [page["metadata"] for page in sample["pages"]]
+    files = [data / "pages" / page["file"] for page in sample["pages"]]
     return stops, pages, files
 
 
@@ -60,10 +66,10 @@ def decode_pages(pages, files, t_from: int, t_to: int):
                 strict=True,
             )
         )
-    return connections, decoded
+    return [c for c in connections if t_from <= c[0] < t_to], decoded
 
 
-def earliest_arrival(connections, deps, min_transfer, n_stops, source, target, t0):
+def earliest_arrival(connections, deps, min_transfer, n_stops, source, target, t0, *, early_stop=True):
     """Plain Connection Scan: earliest arrival at target when leaving source at or after t0, or INF."""
     arrival = [INF] * n_stops
     arrival[source] = t0
@@ -71,7 +77,7 @@ def earliest_arrival(connections, deps, min_transfer, n_stops, source, target, t
     best = INF
     for index in range(bisect_left(deps, t0), len(connections)):
         dep, arr, dep_stop, arr_stop, trip, date, pickup, dropoff = connections[index]
-        if dep >= best:
+        if early_stop and dep >= best:
             break
         key = (trip, date)
         if key in reached:
@@ -91,7 +97,7 @@ def earliest_arrival(connections, deps, min_transfer, n_stops, source, target, t
 
 
 def api_arrival(source_iri: str, target_iri: str, t0: int):
-    local = datetime.fromtimestamp(t0, UTC) + timedelta(hours=1)  # Brussels is UTC+1 in November
+    local = datetime.fromtimestamp(t0, ZoneInfo("Europe/Brussels"))
     number = lambda iri: iri.rsplit("/", 1)[1]  # noqa: E731
     url = (
         f"https://api.irail.be/connections/?from={number(source_iri)}&to={number(target_iri)}"
@@ -105,6 +111,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", nargs="?", default="data")
     parser.add_argument("--api", action="store_true")
+    parser.add_argument("--date", help="query date; defaults to the sampled date")
     args = parser.parse_args()
     data = data_dir([args.dir])
 
@@ -113,15 +120,27 @@ def main() -> None:
     arlon = stops["name"].index("Arlon")
     station = lambda number: index[f"http://irail.be/stations/NMBS/{number}"]  # noqa: E731
     queries = [
-        ("Brussels-South to Antwerpen-Centraal (short)", station("008814001"), station("008821006")),
-        ("Gent-Sint-Pieters to Liege-Guillemins (medium)", station("008892007"), station("008841004")),
+        (
+            "Brussels-South to Antwerpen-Centraal (short)",
+            station("008814001"),
+            station("008821006"),
+        ),
+        (
+            "Gent-Sint-Pieters to Liege-Guillemins (medium)",
+            station("008892007"),
+            station("008841004"),
+        ),
         ("Oostende to Arlon (long, transfers)", station("008891702"), arlon),
     ]
-    t0 = int(datetime(2026, 11, 12, 7, 0, tzinfo=UTC).timestamp())  # 08:00 Brussels time
+    date = args.date or json.loads((data / "sample.json").read_text())["date"]
+    t0 = int(datetime.fromisoformat(f"{date}T08:00:00").replace(tzinfo=ZoneInfo("Europe/Brussels")).timestamp())
     min_transfer = stops["minTransferTime"]
 
     print(f"rss at start: {rss_mb()} MB; query time {datetime.fromtimestamp(t0, UTC):%Y-%m-%d %H:%MZ}")
-    for window_name, window in (("24 h window", DAY), ("48 h window (worst case)", 2 * DAY)):
+    for window_name, window in (
+        ("24 h window", DAY),
+        ("48 h window (worst case)", 2 * DAY),
+    ):
         start = time.perf_counter()
         connections, decoded = decode_pages(pages, files, t0, t0 + window)
         decode_ms = (time.perf_counter() - start) * 1000
@@ -129,24 +148,43 @@ def main() -> None:
         deps = [c[0] for c in connections]  # already sorted: pages and rows are in departure order
         assert deps == sorted(deps)  # noqa: S101
         prep_ms = (time.perf_counter() - start) * 1000
-        print(f"\n== {window_name}: {decoded} pages, {len(connections)} connections; decode {decode_ms:.0f} ms, "
-              f"list prep {prep_ms:.0f} ms, rss {rss_mb()} MB")
+        print(
+            f"\n== {window_name}: {decoded} pages, {len(connections)} connections; decode {decode_ms:.0f} ms, "
+            f"list prep {prep_ms:.0f} ms, rss {rss_mb()} MB"
+        )
         for label, source, target in queries:
             times = []
             for _ in range(5):
                 start = time.perf_counter()
-                result = earliest_arrival(connections, deps, min_transfer, len(stops["iri"]), source, target, t0)
+                result = earliest_arrival(
+                    connections,
+                    deps,
+                    min_transfer,
+                    len(stops["iri"]),
+                    source,
+                    target,
+                    t0,
+                )
                 times.append((time.perf_counter() - start) * 1000)
-            # six alternatives, proxied by six consecutive searches each starting 10 minutes after the previous
+            # Six independent searches, not a departure profile; planner_benchmark.py measures actual profiles.
             start = time.perf_counter()
             for k in range(6):
-                earliest_arrival(connections, deps, min_transfer, len(stops["iri"]), source, target, t0 + 600 * k)
+                earliest_arrival(
+                    connections,
+                    deps,
+                    min_transfer,
+                    len(stops["iri"]),
+                    source,
+                    target,
+                    t0 + 600 * k,
+                )
             six_ms = (time.perf_counter() - start) * 1000
             arrival = datetime.fromtimestamp(result, UTC).strftime("%H:%MZ") if result < INF else "none"
-            line = f"   {label}: earliest arrival {arrival}; 1 search {min(times):.0f} ms (best of 5); 6 searches {six_ms:.0f} ms"
+            line = f"   {label}: earliest arrival {arrival}; 1 search {min(times):.0f} ms (best of 5); 6 independent searches {six_ms:.0f} ms"
             if args.api and window == DAY:
                 line += f"; API says {datetime.fromtimestamp(api_arrival(stops['iri'][source], stops['iri'][target], t0), UTC):%H:%MZ}"
             print(line)
 
 
-main()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,286 @@
+{
+  "timestamp": "2026-11-11T18:44:44.756762+00:00",
+  "machine": "x86_64",
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.12.13",
+  "cpus": 16,
+  "release": "nmbs-sncb-20261111-5c05082d",
+  "sample_date": "2026-11-12",
+  "model": "no footpaths, transfers table, realtime, or in-seat transfers; not a production router",
+  "windows": [
+    {
+      "storage": "python-tuples",
+      "numpy_version": null,
+      "numpy_conversion": null,
+      "hours": 24,
+      "pages": 5,
+      "connections": 48440,
+      "decode": {
+        "best_ms": 199.128,
+        "median_ms": 199.128
+      },
+      "sort": {
+        "best_ms": 6.747,
+        "median_ms": 6.747
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 70,
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "early_stop": {
+            "best_ms": 1.531,
+            "median_ms": 1.556
+          },
+          "full_scan": {
+            "best_ms": 26.53,
+            "median_ms": 27.121
+          },
+          "arrive_by": {
+            "best_ms": 1.249,
+            "median_ms": 1.282
+          },
+          "latest_departure": 1794549540,
+          "profile": {
+            "best_ms": 769.733,
+            "median_ms": 769.733
+          },
+          "profile_scans": 701,
+          "pareto_journeys": 55
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "early_stop": {
+            "best_ms": 5.898,
+            "median_ms": 6.141
+          },
+          "full_scan": {
+            "best_ms": 25.879,
+            "median_ms": 26.488
+          },
+          "arrive_by": {
+            "best_ms": 2.457,
+            "median_ms": 3.234
+          },
+          "latest_departure": 1794521040,
+          "profile": {
+            "best_ms": 293.35,
+            "median_ms": 293.35
+          },
+          "profile_scans": 60,
+          "pareto_journeys": 15
+        },
+        {
+          "query": "unreachable",
+          "arrival": null,
+          "early_stop": {
+            "best_ms": 28.079,
+            "median_ms": 28.344
+          },
+          "full_scan": {
+            "best_ms": 26.567,
+            "median_ms": 27.06
+          }
+        }
+      ]
+    },
+    {
+      "storage": "python-tuples",
+      "numpy_version": null,
+      "numpy_conversion": null,
+      "hours": 48,
+      "pages": 9,
+      "connections": 92103,
+      "decode": {
+        "best_ms": 292.942,
+        "median_ms": 292.942
+      },
+      "sort": {
+        "best_ms": 12.382,
+        "median_ms": 12.382
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 80,
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "early_stop": {
+            "best_ms": 1.564,
+            "median_ms": 1.752
+          },
+          "full_scan": {
+            "best_ms": 51.704,
+            "median_ms": 53.219
+          },
+          "arrive_by": {
+            "best_ms": 0.587,
+            "median_ms": 0.618
+          },
+          "latest_departure": 1794635880,
+          "profile": {
+            "best_ms": 1443.866,
+            "median_ms": 1443.866
+          },
+          "profile_scans": 1375,
+          "pareto_journeys": 111
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "early_stop": {
+            "best_ms": 4.843,
+            "median_ms": 4.891
+          },
+          "full_scan": {
+            "best_ms": 39.077,
+            "median_ms": 41.337
+          },
+          "arrive_by": {
+            "best_ms": 3.507,
+            "median_ms": 3.589
+          },
+          "latest_departure": 1794595320,
+          "profile": {
+            "best_ms": 409.325,
+            "median_ms": 409.325
+          },
+          "profile_scans": 114,
+          "pareto_journeys": 32
+        },
+        {
+          "query": "unreachable",
+          "arrival": null,
+          "early_stop": {
+            "best_ms": 29.857,
+            "median_ms": 31.193
+          },
+          "full_scan": {
+            "best_ms": 26.606,
+            "median_ms": 27.734
+          }
+        }
+      ]
+    },
+    {
+      "storage": "numpy-int64",
+      "numpy_version": "2.5.4",
+      "numpy_conversion": {
+        "best_ms": 18.05,
+        "median_ms": 18.05
+      },
+      "hours": 24,
+      "pages": 5,
+      "connections": 48440,
+      "decode": {
+        "best_ms": 106.145,
+        "median_ms": 106.145
+      },
+      "sort": {
+        "best_ms": 2.84,
+        "median_ms": 2.84
+      },
+      "rss_before_mb": 51,
+      "rss_peak_mb": 81,
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "early_stop": {
+            "best_ms": 4.702,
+            "median_ms": 4.725
+          },
+          "full_scan": {
+            "best_ms": 71.654,
+            "median_ms": 71.922
+          }
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "early_stop": {
+            "best_ms": 17.627,
+            "median_ms": 17.662
+          },
+          "full_scan": {
+            "best_ms": 71.254,
+            "median_ms": 71.58
+          }
+        },
+        {
+          "query": "unreachable",
+          "arrival": null,
+          "early_stop": {
+            "best_ms": 74.37,
+            "median_ms": 74.8
+          },
+          "full_scan": {
+            "best_ms": 71.715,
+            "median_ms": 72.005
+          }
+        }
+      ]
+    },
+    {
+      "storage": "numpy-int64",
+      "numpy_version": "2.5.4",
+      "numpy_conversion": {
+        "best_ms": 33.69,
+        "median_ms": 33.69
+      },
+      "hours": 48,
+      "pages": 9,
+      "connections": 92103,
+      "decode": {
+        "best_ms": 155.808,
+        "median_ms": 155.808
+      },
+      "sort": {
+        "best_ms": 7.762,
+        "median_ms": 7.762
+      },
+      "rss_before_mb": 52,
+      "rss_peak_mb": 94,
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "early_stop": {
+            "best_ms": 4.773,
+            "median_ms": 4.812
+          },
+          "full_scan": {
+            "best_ms": 135.565,
+            "median_ms": 136.417
+          }
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "early_stop": {
+            "best_ms": 17.595,
+            "median_ms": 17.675
+          },
+          "full_scan": {
+            "best_ms": 134.258,
+            "median_ms": 134.738
+          }
+        },
+        {
+          "query": "unreachable",
+          "arrival": null,
+          "early_stop": {
+            "best_ms": 140.944,
+            "median_ms": 141.914
+          },
+          "full_scan": {
+            "best_ms": 135.006,
+            "median_ms": 135.657
+          }
+        }
+      ]
+    }
+  ]
+}

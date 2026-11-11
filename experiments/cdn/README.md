@@ -2,7 +2,8 @@
 
 Scripts behind the spike in [#247](https://github.com/tjorim/pyrail/issues/247) (reading the iRail CDN's Arrow
 files and GTFS Realtime feed) and the plan in [#246](https://github.com/tjorim/pyrail/issues/246). They are
-**not** part of the package: ruff, ty, the test suite and the build all skip this directory.
+**not** part of the package: ruff, ty, pytest and the build skip this directory. CI runs the standalone
+benchmark model checks with unittest; these do not need experiment dependencies.
 
 All explored libraries are installed with one command, as the `experiments` dependency group in
 `pyproject.toml` (pinned in `uv.lock`; not part of the default groups, so CI and normal development don't
@@ -46,6 +47,8 @@ release, or on other hardware, and add a new file instead of trusting old number
 | `analyze_realtime.py` | How the realtime snapshot lines up with the timetable: coverage, trip-id matching, platforms (#248, #253). |
 | `check_static_gtfs.py` | The official static GTFS behind the CDN: files, version, platform share (#248, #249). |
 | `planner_spike.py` | Earliest-arrival Connection Scan over real pages: timing, memory, check against the live API (#261). |
+| `planner_benchmark.py` | Isolated 24/48-hour workers: sorting, early stop versus full scan, unreachable target, arrive-by and departure profiles; optional NumPy storage probe. |
+| `test_planner_benchmark.py` | Synthetic checks of the benchmark routing model; run separately with unittest (see below). |
 | `check_ha_requirements.py` | Does Home Assistant core require any Arrow library? (Direct requirements only.) |
 | `pypi_health.py` | Release cadence and wheel platforms of the candidate libraries. |
 
@@ -75,5 +78,35 @@ nearest. Only direct requirements are visible there, and custom integrations wer
 
 ## Not covered
 
-GitHub activity, contributor counts and download numbers (not reachable from the sandbox), Raspberry Pi
-measurements, and memory for a realistic route-planning query ([#261](https://github.com/tjorim/pyrail/issues/261)).
+Raspberry Pi / Home Assistant-class measurements: no suitable hardware is currently available. This is
+an explicit validation gap, not an inference from x86 results. GitHub activity, contributor counts and
+download numbers are also not measured here. The routing benchmark still omits footpaths, the transfers
+table, realtime and in-seat transfers; it does not validate a production router.
+
+## Follow-up measurements for #247 and #261
+
+```bash
+# Twelve pages cover both complete windows for this release; the benchmark rejects insufficient coverage.
+python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 12
+uv run python experiments/cdn/planner_benchmark.py data --write results.json
+# Optional probe: NumPy storage with the same Python scan, not a vectorized or compiled algorithm.
+uv run --with numpy==2.5.4 python experiments/cdn/planner_benchmark.py data --numpy --write results-numpy.json
+uv run python -m unittest discover -s experiments/cdn -p 'test_*.py'
+```
+
+Choose a date within current CDN coverage. `fetch_data.py` records the release, date and exact page mapping
+in `sample.json`; rerun it for older downloads that lack this file. It removes stale downloaded pages after
+a successful refresh. `planner_spike.py --date YYYY-MM-DD` can override its default sampled query date.
+
+Each benchmark window and storage variant runs in a fresh process, so a 48-hour peak cannot leak into a
+24-hour result. RSS is the process high-water mark, including decoding, sorting, conversion and searches;
+it is not retained heap size. Decode, sorting, conversion and profiles are single samples; individual scans
+report best and median of five repetitions. NumPy workers skip arrive-by and profiles and check that their
+arrivals match the tuple workers. Run on an idle machine and repeat before treating small differences as
+meaningful. There is no network I/O inside timed sections.
+
+The profile baseline scans once for every distinct source departure and removes dominated journeys. It
+measures alternatives in the simplified model, rather than treating six arbitrary searches as alternatives.
+See [the follow-up assessment](results/2026-11-11-gaps.md), its raw JSON, and the separate reader/GTFS-RT
+comparison. These results support a pure Python starting point for individual scans, but do not establish
+Home Assistant performance or justify shipping the repeated-scan profile algorithm unchanged.

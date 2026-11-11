@@ -24,8 +24,9 @@ def files(path: Path) -> list[Path]:
 
 
 def rss_mb() -> int:
-    """Peak resident set size of this process in MB (Linux reports KB)."""
-    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
+    """Peak resident set size in MiB (macOS reports bytes; Linux reports KiB)."""
+    divisor = 2**20 if sys.platform == "darwin" else 1024
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // divisor
 
 
 def version(distribution: str) -> str:

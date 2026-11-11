@@ -90,7 +90,7 @@ def main() -> None:
         "",
         "## Not covered",
         "",
-        "Raspberry Pi measurements, GitHub activity and download counts of the libraries, and memory for a realistic route-planning query (#261). Single-run figures: treat differences of a few milliseconds or megabytes as noise.",
+        "Raspberry Pi measurements, GitHub activity and download counts of the libraries, and full production routing (footpaths, realtime and in-seat transfers). See `planner_benchmark.py` for isolated-window memory, arrive-by and departure-profile measurements (#261). Single-run figures: treat differences of a few milliseconds or megabytes as noise.",
         "",
     ]
     report = "\n".join(lines)

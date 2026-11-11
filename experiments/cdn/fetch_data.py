@@ -32,12 +32,24 @@ def main() -> None:
     parser.add_argument("--pages", type=int, default=8)
     args = parser.parse_args()
 
+    if args.pages <= 0:
+        parser.error("--pages must be positive")
+
     out: Path = args.dir
     (out / "pages").mkdir(parents=True, exist_ok=True)
+    # A partial refresh must not retain metadata claiming that the old sample is complete.
+    (out / "sample.json").unlink(missing_ok=True)
     raw = get(MANIFEST)
     (out / "manifest.jsonld").write_bytes(raw)
     manifest = json.loads(raw)
-    print("release", manifest["releaseId"], "coverage", manifest["coverageStart"], "to", manifest["coverageEnd"])
+    print(
+        "release",
+        manifest["releaseId"],
+        "coverage",
+        manifest["coverageStart"],
+        "to",
+        manifest["coverageEnd"],
+    )
 
     for name in ("stops", "routes", "trips", "transfers"):
         (out / f"{name}.arrow").write_bytes(get(urljoin(MANIFEST, manifest[name])))
@@ -49,10 +61,17 @@ def main() -> None:
         msg = f"only {len(pages)} pages from {args.date} on; pick an earlier --date"
         raise SystemExit(msg)
     total = 0
+    sample = {"releaseId": manifest["releaseId"], "date": args.date, "pages": []}
     for index, page in enumerate(pages[: args.pages]):
         data = get(urljoin(MANIFEST, page["@id"]))
         total += len(data)
-        (out / "pages" / f"p{index}.arrow").write_bytes(data)
+        filename = f"p{index}.arrow"
+        (out / "pages" / filename).write_bytes(data)
+        sample["pages"].append({"file": filename, "metadata": page})
+    (out / "sample.json").write_text(json.dumps(sample, indent=2) + "\n")
+    for stale in (out / "pages").glob("p*.arrow"):
+        if stale.name not in {page["file"] for page in sample["pages"]}:
+            stale.unlink()
     print(f"wrote tables, realtime snapshot and {args.pages} pages ({total / 2**20:.1f} MB) to {out}")
 
 
