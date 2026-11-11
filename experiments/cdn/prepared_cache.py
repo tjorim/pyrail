@@ -1,7 +1,7 @@
 """Bounded caching for the spike's prepared connection windows (not a routing API)."""
 
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 import json
 from pathlib import Path
@@ -15,6 +15,7 @@ class PreparedWindow:
     connections: tuple
     departures: tuple
     pages: int
+    version: object = field(default_factory=object, init=False, compare=False, repr=False)
 
 
 def _sources(pages, files, start, end):

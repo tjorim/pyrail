@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 from _common import data_dir, rss_mb
+from journey_cache import JourneyResultCache
 from prepared_cache import PreparedConnectionCache
 from pyrail.cdn.arrow import read_table
 from pyrail.cdn.cache import DecodedTableCache
@@ -114,6 +115,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", nargs="?", default="data")
     parser.add_argument("--api", action="store_true")
+    parser.add_argument("--no-journey-cache", action="store_true", help="scan on every repeated journey query")
     parser.add_argument("--no-prepared-cache", action="store_true", help="rebuild connection windows on each load")
     parser.add_argument("--no-decoded-cache", action="store_true", help="decode Arrow files on every load")
     parser.add_argument("--date", help="query date; defaults to the sampled date")
@@ -124,6 +126,7 @@ def main() -> None:
     prepared_cache = (
         None if args.no_prepared_cache or args.no_decoded_cache else PreparedConnectionCache(decoded_cache=cache)
     )
+    journeys = JourneyResultCache() if prepared_cache is not None and not args.no_journey_cache else None
     stops, pages, files = load(data, cache)
     index = {iri: i for i, iri in enumerate(stops["iri"])}
     arlon = stops["name"].index("Arlon")
@@ -164,35 +167,40 @@ def main() -> None:
             f"\n== {window_name}: {decoded} pages, {len(connections)} connections; "
             f"load/prepare {preparation_ms:.0f} ms, rss {rss_mb()} MB"
         )
+
+        def search(source, target, departure):
+            if journeys is not None:
+                return journeys.query(
+                    prepared_cache,
+                    pages,
+                    files,
+                    t0,
+                    t0 + window,
+                    release_id=sample["releaseId"],
+                    min_transfer=min_transfer,
+                    n_stops=len(stops["iri"]),
+                    source=source,
+                    target=target,
+                    departure=departure,
+                )
+            return earliest_arrival(connections, deps, min_transfer, len(stops["iri"]), source, target, departure)
+
         for label, source, target in queries:
             times = []
             for _ in range(5):
                 start = time.perf_counter()
-                result = earliest_arrival(
-                    connections,
-                    deps,
-                    min_transfer,
-                    len(stops["iri"]),
-                    source,
-                    target,
-                    t0,
-                )
+                result = search(source, target, t0)
                 times.append((time.perf_counter() - start) * 1000)
             # Six independent searches, not a departure profile; planner_benchmark.py measures actual profiles.
             start = time.perf_counter()
             for k in range(6):
-                earliest_arrival(
-                    connections,
-                    deps,
-                    min_transfer,
-                    len(stops["iri"]),
-                    source,
-                    target,
-                    t0 + 600 * k,
-                )
+                search(source, target, t0 + 600 * k)
             six_ms = (time.perf_counter() - start) * 1000
             arrival = datetime.fromtimestamp(result, UTC).strftime("%H:%MZ") if result < INF else "none"
-            line = f"   {label}: earliest arrival {arrival}; 1 search {min(times):.0f} ms (best of 5); 6 independent searches {six_ms:.0f} ms"
+            line = (
+                f"   {label}: earliest arrival {arrival}; 1 query {min(times):.3f} ms (best of 5; "
+                f"result cache {'on' if journeys is not None else 'off'}); 6 queries {six_ms:.3f} ms"
+            )
             if args.api and window == DAY:
                 line += f"; API says {datetime.fromtimestamp(api_arrival(stops['iri'][source], stops['iri'][target], t0), UTC):%H:%MZ}"
             print(line)

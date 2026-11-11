@@ -1,0 +1,361 @@
+{
+  "timestamp": "2026-11-11T20:25:58.221291+00:00",
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.12.13",
+  "repeat": 5,
+  "revision": "260e8ce3dfe9ceab462d0c78d1d8c17f1439d820",
+  "release": "nmbs-sncb-20261111-5c05082d",
+  "results": [
+    {
+      "hours": 24,
+      "pages": 5,
+      "connections": 48440,
+      "initial_window_preparation": {
+        "samples_ms": [
+          79.201848
+        ],
+        "median_ms": 79.201848
+      },
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "scan": {
+            "samples_ms": [
+              0.541839,
+              0.514358,
+              0.505922,
+              0.50484,
+              0.501774
+            ],
+            "median_ms": 0.505922
+          },
+          "validated_scan": {
+            "samples_ms": [
+              0.724804,
+              0.696881,
+              0.714634,
+              0.676503,
+              0.688335
+            ],
+            "median_ms": 0.696881
+          },
+          "initial_result_miss": {
+            "samples_ms": [
+              0.524407
+            ],
+            "median_ms": 0.524407
+          },
+          "result_hit": {
+            "samples_ms": [
+              0.006452,
+              0.00556,
+              0.00504,
+              0.004949,
+              0.004949
+            ],
+            "median_ms": 0.00504
+          },
+          "validated_result_hit": {
+            "samples_ms": [
+              0.183676,
+              0.167164,
+              0.166654,
+              0.164008,
+              0.16491
+            ],
+            "median_ms": 0.166654
+          }
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "scan": {
+            "samples_ms": [
+              2.010042,
+              1.947314,
+              2.110511,
+              1.996196,
+              1.942575
+            ],
+            "median_ms": 1.996196
+          },
+          "validated_scan": {
+            "samples_ms": [
+              2.979156,
+              2.12566,
+              2.132824,
+              2.299266,
+              2.339492
+            ],
+            "median_ms": 2.299266
+          },
+          "initial_result_miss": {
+            "samples_ms": [
+              2.313643
+            ],
+            "median_ms": 2.313643
+          },
+          "result_hit": {
+            "samples_ms": [
+              0.007845,
+              0.005962,
+              0.005189,
+              0.00509,
+              0.00516
+            ],
+            "median_ms": 0.005189
+          },
+          "validated_result_hit": {
+            "samples_ms": [
+              0.291378,
+              0.187663,
+              0.21759,
+              0.29214,
+              0.21271
+            ],
+            "median_ms": 0.21759
+          }
+        },
+        {
+          "query": "unreachable",
+          "arrival": 1000000000000,
+          "scan": {
+            "samples_ms": [
+              10.101697,
+              9.727072,
+              9.667631,
+              10.233025,
+              9.409916
+            ],
+            "median_ms": 9.727072
+          },
+          "validated_scan": {
+            "samples_ms": [
+              9.731922,
+              10.574828,
+              10.208679,
+              9.803326,
+              9.770985
+            ],
+            "median_ms": 9.803326
+          },
+          "initial_result_miss": {
+            "samples_ms": [
+              9.128787
+            ],
+            "median_ms": 9.128787
+          },
+          "result_hit": {
+            "samples_ms": [
+              0.006993,
+              0.00512,
+              0.004939,
+              0.004919,
+              0.004899
+            ],
+            "median_ms": 0.004939
+          },
+          "validated_result_hit": {
+            "samples_ms": [
+              0.267163,
+              0.167405,
+              0.163478,
+              0.163418,
+              0.15953
+            ],
+            "median_ms": 0.163478
+          }
+        }
+      ],
+      "result_cache": {
+        "entries": 3,
+        "hits": 30,
+        "misses": 3
+      },
+      "window_cache": {
+        "entries": 1,
+        "hits": 30,
+        "misses": 1
+      },
+      "rss_before_mb": 42,
+      "rss_peak_mb": 85
+    },
+    {
+      "hours": 48,
+      "pages": 9,
+      "connections": 92103,
+      "initial_window_preparation": {
+        "samples_ms": [
+          119.879829
+        ],
+        "median_ms": 119.879829
+      },
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "scan": {
+            "samples_ms": [
+              0.583288,
+              0.519718,
+              0.516281,
+              0.513917,
+              0.517133
+            ],
+            "median_ms": 0.517133
+          },
+          "validated_scan": {
+            "samples_ms": [
+              0.892589,
+              0.822878,
+              0.825313,
+              0.82335,
+              0.815605
+            ],
+            "median_ms": 0.82335
+          },
+          "initial_result_miss": {
+            "samples_ms": [
+              0.530148
+            ],
+            "median_ms": 0.530148
+          },
+          "result_hit": {
+            "samples_ms": [
+              0.006903,
+              0.036558,
+              0.00533,
+              0.005189,
+              0.00521
+            ],
+            "median_ms": 0.00533
+          },
+          "validated_result_hit": {
+            "samples_ms": [
+              0.309422,
+              0.289985,
+              0.287942,
+              0.300194,
+              0.288362
+            ],
+            "median_ms": 0.289985
+          }
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "scan": {
+            "samples_ms": [
+              2.143103,
+              2.034729,
+              1.99872,
+              2.025782,
+              2.077129
+            ],
+            "median_ms": 2.034729
+          },
+          "validated_scan": {
+            "samples_ms": [
+              4.667983,
+              2.221721,
+              2.245334,
+              2.363587,
+              2.363728
+            ],
+            "median_ms": 2.363587
+          },
+          "initial_result_miss": {
+            "samples_ms": [
+              2.021233
+            ],
+            "median_ms": 2.021233
+          },
+          "result_hit": {
+            "samples_ms": [
+              0.005651,
+              0.005551,
+              0.004939,
+              0.004899,
+              0.004969
+            ],
+            "median_ms": 0.004969
+          },
+          "validated_result_hit": {
+            "samples_ms": [
+              0.314051,
+              0.279206,
+              0.291669,
+              0.275368,
+              0.283553
+            ],
+            "median_ms": 0.283553
+          }
+        },
+        {
+          "query": "unreachable",
+          "arrival": 1000000000000,
+          "scan": {
+            "samples_ms": [
+              19.931543,
+              19.37162,
+              19.828179,
+              19.213573,
+              19.210426
+            ],
+            "median_ms": 19.37162
+          },
+          "validated_scan": {
+            "samples_ms": [
+              20.166015,
+              19.230104,
+              18.885165,
+              19.830523,
+              19.050456
+            ],
+            "median_ms": 19.230104
+          },
+          "initial_result_miss": {
+            "samples_ms": [
+              18.412886
+            ],
+            "median_ms": 18.412886
+          },
+          "result_hit": {
+            "samples_ms": [
+              0.007454,
+              0.00536,
+              0.00518,
+              0.005169,
+              0.00517
+            ],
+            "median_ms": 0.00518
+          },
+          "validated_result_hit": {
+            "samples_ms": [
+              0.390966,
+              0.334038,
+              0.295586,
+              0.298312,
+              0.324601
+            ],
+            "median_ms": 0.324601
+          }
+        }
+      ],
+      "result_cache": {
+        "entries": 3,
+        "hits": 30,
+        "misses": 3
+      },
+      "window_cache": {
+        "entries": 1,
+        "hits": 30,
+        "misses": 1
+      },
+      "rss_before_mb": 42,
+      "rss_peak_mb": 107
+    }
+  ],
+  "scope": "Same prepared snapshot and queries for baseline and result reuse. Raw hit timings assume an already validated snapshot; validated timings include current page metadata/file-stat checks. Initial preparation and first result miss are separate. No HTTP/realtime/full itinerary."
+}

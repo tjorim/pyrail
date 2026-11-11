@@ -81,6 +81,9 @@ releases remain on disk until removed. Cache bodies duplicate the selected outpu
 | `bench_readers.py` | One reader over all files, as one JSON line (`stdlib`, `pyarrow`, `arro3` or `nanoarrow`). |
 | `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
 | `bench_decoded_cache.py` | Isolated-process comparison of uncached, decoded-table and prepared-window reuse. |
+| `journey_cache.py` | Bounded earliest-arrival result cache with snapshot/query versioning. |
+| `test_journey_cache.py` | Result-key, transfer/source invalidation, eviction and snapshot-retention checks. |
+| `bench_journey_cache.py` | Direct scan/result hits and version-validated query timings, including first misses. |
 | `prepared_cache.py` | Bounded immutable connection-window and departure-index cache for the planner spike. |
 | `test_prepared_cache.py` | Window cache reuse, invalidation, immutability and eviction checks. |
 | `bench_downloader.py` | Primes an ETag cache, times full warm sample refreshes, and compares them with public iRail API journey requests. |
@@ -264,3 +267,43 @@ uv run --locked python experiments/cdn/bench_decoded_cache.py data --write resul
 See [the prepared-window measurements](results/2026-11-11-fedora-prepared-cache.md). This optimization
 avoids repeated preparation of the same window; it does not change scan complexity, implement missing
 routing features, or reduce the filesystem downloader's refresh time.
+
+## Repeated earliest-arrival results
+
+`JourneyResultCache` is experiment-only: it caches the immutable earliest-arrival timestamps returned by
+this prototype, including unreachable results. It does not cache full itineraries, arrive-by searches or
+profiles. It defaults to 128 LRU entries and is explicitly owned by a long-lived caller:
+
+```python
+from journey_cache import JourneyResultCache
+
+journeys = JourneyResultCache(max_results=128)
+arrival = journeys.query(windows, pages, files, start, end,
+                         release_id=release_id, min_transfer=transfer_times,
+                         n_stops=n_stops, source=source, target=target, departure=departure)
+```
+
+`query` validates the prepared window against current page versions before reusing a result. Keys include
+a unique immutable snapshot version, a tuple copy of minimum transfer times, stop count, endpoints,
+exact departure time and scan options. Changed versions/inputs require a scan. Keys retain the small version
+token rather than the prepared window, so result entries cannot pin evicted connection arrays in memory.
+There is no rounding of departure times and no module-global cache. Calls with different inputs are misses.
+
+For a snapshot already validated by the caller, `earliest_arrival(window, ...)` skips repeated file checks.
+It must not be used as a replacement for version validation after refreshes. Callers must reload current
+stop/transfer data and pass current release/page metadata; mutable transfer-time changes are captured in
+the key. Realtime is not implemented by the spike: adding delays/cancellations/other dynamic inputs must
+also add their versions to the result key or clear the result cache when they change. No stale-on-error
+fallback is provided, and failed scans are not cached. Concurrent threads require external synchronization.
+
+The planner CLI enables this layer with prepared caching; `--no-journey-cache` disables only result reuse.
+Its repeated-query output identifies whether the result cache is enabled. Both lower cache layers can be
+disabled with their existing flags. New processes and first/different queries still pay scan/preparation costs.
+
+```bash
+uv run --locked python experiments/cdn/bench_journey_cache.py data --write results.json
+```
+
+The benchmark shows direct result hits separately from complete version-validated lookups, and records
+first misses and prepared-window construction separately. Cached/baseline arrivals must agree. See
+[the local results](results/2026-11-11-fedora-journey-cache.md).
