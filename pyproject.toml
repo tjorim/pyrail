@@ -40,6 +40,12 @@ dev = [
     "ruff>=0.17.4",
     "ty>=0.0.84",
 ]
+experiments = [
+    "arro3-io>=0.9.1",
+    "gtfs-realtime-bindings>=3",
+    "nanoarrow>=0.9",
+    "pyarrow>=26",
+]
 
 [tool.uv]
 default-groups = ["dev", "test"]

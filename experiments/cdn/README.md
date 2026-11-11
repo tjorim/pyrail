@@ -1,63 +1,60 @@
 # CDN experiments
 
-Throwaway scripts behind the spike in [#247](https://github.com/tjorim/pyrail/issues/247) (reading the iRail
-CDN's Arrow files and GTFS Realtime feed) and the plan in [#246](https://github.com/tjorim/pyrail/issues/246).
-They are **not** part of the package: ruff, ty, the test suite and the build all skip this directory.
-They exist so the measurements in #247 can be repeated when the CDN data, the libraries or the hardware
-change. Re-run them, don't trust the numbers below forever.
+Scripts behind the spike in [#247](https://github.com/tjorim/pyrail/issues/247) (reading the iRail CDN's Arrow
+files and GTFS Realtime feed) and the plan in [#246](https://github.com/tjorim/pyrail/issues/246). They are
+**not** part of the package: ruff, ty, the test suite and the build all skip this directory.
 
-## Setup
+All explored libraries are installed with one command, as the `experiments` dependency group in
+`pyproject.toml` (pinned in `uv.lock`; not part of the default groups, so CI and normal development don't
+install them):
 
 ```bash
-python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 8   # about 20 MB; `data/` is git-ignored
+uv sync --group experiments        # pyarrow, arro3-io, nanoarrow, gtfs-realtime-bindings (+ protobuf)
 ```
 
-Pick a `--date` inside the manifest's coverage. Each script takes the data directory as its last argument
-(default `data`). Scripts that import `pyrail` run from the repository root with `uv run`; extra libraries are
-added with `uv run --with ...` so nothing is installed into the project.
+| Library | Used for |
+|---|---|
+| `pyarrow` | Reference reader; also in the `test` group, where the unit tests compare the stdlib reader with it. |
+| `arro3-io` (+ `arro3-core`) | Candidate reader and first fallback. |
+| `nanoarrow` | Candidate reader; cannot open the CDN files (see below). |
+| `gtfs-realtime-bindings` (+ `protobuf`) | GTFS Realtime decoding. |
+| `pyrail.cdn.arrow` | The standard-library reader in this repo. |
+
+## Run the comparison
+
+```bash
+python experiments/cdn/fetch_data.py data --date 2026-11-12 --pages 8    # about 20 MB; `data/` is git-ignored
+uv run --group experiments python experiments/cdn/compare_all.py data --write experiments/cdn/results/<date>.md
+```
+
+Pick a `--date` inside the manifest's coverage. `compare_all.py` runs every reader in its own process, checks
+that the values they return are identical to pyarrow's (it exits with an error if not), and writes a Markdown
+report. **Results are dated files in [`results/`](results/): re-run after a new CDN release, a library
+release, or on other hardware, and add a new file instead of trusting old numbers.**
 
 ## Scripts
 
-| Script | Question it answers | Run |
-|---|---|---|
-| `fetch_data.py` | Downloads the tables, the realtime snapshot and consecutive connection pages. | `python experiments/cdn/fetch_data.py data` |
-| `check_schema_message.py` | Do the CDN files start with a Schema message? (No: a record batch.) | `uv run python experiments/cdn/check_schema_message.py data` |
-| `probe_nanoarrow.py` | Does nanoarrow read the files? (No, but it reads the same table as an IPC stream.) | `uv run --with nanoarrow python experiments/cdn/probe_nanoarrow.py data` |
-| `compare_readers.py` | Does `pyrail.cdn.arrow.read_table` return the same values as pyarrow and arro3? | `uv run --with arro3-io python experiments/cdn/compare_readers.py data` |
-| `bench_readers.py` | Time and peak memory of one reader (`stdlib`, `pyarrow` or `arro3`) over all files. | `uv run python experiments/cdn/bench_readers.py stdlib data` |
-| `bench_realtime.py` | Cost of parsing the GTFS Realtime snapshot. | `uv run --with gtfs-realtime-bindings python experiments/cdn/bench_realtime.py data` |
-| `check_ha_requirements.py` | Does Home Assistant core require any Arrow library? | `python experiments/cdn/check_ha_requirements.py` |
-| `pypi_health.py` | Release cadence and wheel platforms of the candidate libraries. | `python experiments/cdn/pypi_health.py` |
+| Script | What it does |
+|---|---|
+| `fetch_data.py` | Downloads the tables, the realtime snapshot and consecutive connection pages. |
+| `compare_all.py` | The comparison above: time, peak memory, installed size and correctness for every reader, plus the realtime parse. Uses `bench_readers.py` and `bench_realtime.py`. |
+| `bench_readers.py` | One reader over all files, as one JSON line (`stdlib`, `pyarrow`, `arro3` or `nanoarrow`). |
+| `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
+| `check_schema_message.py` | Shows that the CDN files start with a record batch, not a Schema message. |
+| `probe_nanoarrow.py` | Shows nanoarrow failing on the CDN file but reading the same table as an IPC stream. |
+| `check_ha_requirements.py` | Does Home Assistant core require any Arrow library? (Direct requirements only.) |
+| `pypi_health.py` | Release cadence and wheel platforms of the candidate libraries. |
 
-## Results (11 November 2026)
+## What the results say (details in `results/`)
 
-Release `nmbs-sncb-20261111-5c05082d`; x86_64 sandbox, 4 cores, 16 GB, Python 3.13. **No Raspberry Pi or other
-Home Assistant-class hardware was measured.** The figures are one run each, so treat differences of a few
-milliseconds or megabytes as noise.
+- Every reader that can open the files returns identical values on all of them.
+- The CDN files have no Schema message before the record batches, which is why nanoarrow rejects them
+  (`Unexpected message type at start of input (expected Schema)`).
+- Memory is comparable; speed ranks pyarrow, stdlib reader, arro3. Install size (pyarrow 164 MB, arro3 33 MB,
+  nanoarrow 3 MB, stdlib none) and platform coverage (pyarrow has no armv7 or 32-bit wheels) decide the choice,
+  not speed. See the module docstring of `pyrail/cdn/arrow.py` for the decision.
 
-`bench_readers.py`: 12 files (4 tables, 8 connection pages), 133,153 rows, every column decoded to Python lists
-including the `iri` strings. Peak RSS is shown as "start -> end"; the stdlib reader's start is higher because
-importing `pyrail` pulls in aiohttp.
-
-| Reader | Time | Peak RSS | Installed size |
-|---|---|---|---|
-| `pyrail.cdn.arrow.read_table` (stdlib) | 80 ms | 36 -> 90 MB | none |
-| pyarrow 26.0.1 | 46 ms | 36 -> 96 MB | 166 MB |
-| arro3-io 0.9.1 | 154 ms | 41 -> 71 MB | 34 MB (with arro3-core) |
-| nanoarrow 0.9.0 | not possible | | 3 MB |
-
-- All three readers that can open the files return identical values on all 12 files.
-- The files contain no Schema message before the record batches (`check_schema_message.py`), which is why
-  nanoarrow rejects them: `Unexpected message type at start of input (expected Schema)`. The same table written
-  as an IPC stream works.
-- Realtime snapshot: about 108 KB, 360 trip entities, parsed in under 1 ms with `gtfs-realtime-bindings`
-  (peak RSS 45 MB). Stop ids carry the platform as a suffix (`8896800_1`).
-- Memory is similar for all three; speed ranks pyarrow, stdlib, arro3. Neither is large enough to decide the
-  choice; the 166 MB installed size and the missing armv7 wheels of pyarrow do.
-- The earlier figures in #247 (64 ms and 53 MB for 8 pages) measured pages only and started from a leaner
-  process, so they are not comparable with this table.
-
-Library health, from `pypi_health.py` (counts relative to 11 November 2026):
+### Library health, 11 November 2026 (`pypi_health.py`)
 
 | Library | Releases | Last 12 months | Newest | cp313 wheels |
 |---|---|---|---|---|

@@ -1,6 +1,6 @@
 """Release cadence, wheel platforms and size of the Arrow-related packages, from PyPI (stdlib only).
 
-Run: python pypi_health.py [package ...]
+Run: python experiments/cdn/pypi_health.py [package ...]
 Release counts are relative to today. GitHub activity, contributors and download counts are not covered.
 """
 

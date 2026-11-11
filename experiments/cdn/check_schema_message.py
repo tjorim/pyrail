@@ -1,6 +1,6 @@
 """Show that the CDN files have no Schema message in front of the record batches (needs pyarrow).
 
-Run: uv run --with pyarrow python check_schema_message.py [DIR]
+Run: uv run --group experiments python experiments/cdn/check_schema_message.py [DIR]
 """
 
 import pyarrow as pa

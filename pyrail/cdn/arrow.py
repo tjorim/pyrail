@@ -20,6 +20,8 @@ release ``nmbs-sncb-20261110-5d71e5b6``; the numbers and method are in tjorim/py
   (34 MB installed, wheels for armv7 and i686). It is pre-1.0 and one more dependency, so it is the first
   fallback to try, but only once a CDN release needs something this reader lacks, for example compression or
   dictionary encoding. Add it behind this module's :func:`read_table` interface, with that file as the test.
+
+The scripts, dependency group and dated results for all of these are in ``experiments/cdn``.
 """
 
 from collections.abc import Callable

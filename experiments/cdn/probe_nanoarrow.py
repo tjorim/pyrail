@@ -1,6 +1,6 @@
 """Try nanoarrow on the CDN files, and on the same table re-written as an IPC stream.
 
-Run: uv run --with nanoarrow --with pyarrow python probe_nanoarrow.py [DIR]
+Run: uv run --group experiments python experiments/cdn/probe_nanoarrow.py [DIR]
 Expected: the CDN file fails ("expected Schema"), the re-written stream works.
 """
 

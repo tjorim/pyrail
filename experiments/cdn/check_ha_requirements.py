@@ -1,6 +1,6 @@
 """Look for Arrow-related libraries in Home Assistant core's requirement files (stdlib only).
 
-Run: python check_ha_requirements.py
+Run: python experiments/cdn/check_ha_requirements.py
 Limits: only direct requirements are listed in these files, so a transitive use is not visible; custom
 integrations (HACS) and add-ons are not covered.
 """
