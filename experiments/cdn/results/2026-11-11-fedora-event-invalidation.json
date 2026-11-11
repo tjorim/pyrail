@@ -1,0 +1,389 @@
+{
+  "timestamp": "2026-11-11T20:36:10.018407+00:00",
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.12.13",
+  "repeat": 20,
+  "revision": "ee570e8191cf11059ee7af8e0ceeaf657e1095b5",
+  "release": "nmbs-sncb-20261111-5c05082d",
+  "results": [
+    {
+      "hours": 24,
+      "pages": 5,
+      "connections": 48440,
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "validated_initial_miss": {
+            "samples_ms": [
+              0.794485
+            ],
+            "median_ms": 0.794485
+          },
+          "event_initial_miss": {
+            "samples_ms": [
+              0.544966
+            ],
+            "median_ms": 0.544966
+          },
+          "validated_hit": {
+            "samples_ms": [
+              0.20183,
+              0.179929,
+              0.174389,
+              0.169108,
+              0.193604,
+              0.171973,
+              0.17016,
+              0.16998,
+              0.170441,
+              0.180059,
+              0.169138,
+              0.166975,
+              0.17031,
+              0.167956,
+              0.168698,
+              0.183626,
+              0.168137,
+              0.168287,
+              0.165611,
+              0.166684
+            ],
+            "median_ms": 0.17007
+          },
+          "event_hit": {
+            "samples_ms": [
+              0.006953,
+              0.005821,
+              0.00527,
+              0.00535,
+              0.00519,
+              0.00512,
+              0.00519,
+              0.005199,
+              0.00516,
+              0.00514,
+              0.005169,
+              0.00516,
+              0.00516,
+              0.00518,
+              0.00514,
+              0.00516,
+              0.005169,
+              0.00515,
+              0.005139,
+              0.00519
+            ],
+            "median_ms": 0.005169
+          }
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "validated_initial_miss": {
+            "samples_ms": [
+              2.264492
+            ],
+            "median_ms": 2.264492
+          },
+          "event_initial_miss": {
+            "samples_ms": [
+              1.904645
+            ],
+            "median_ms": 1.904645
+          },
+          "validated_hit": {
+            "samples_ms": [
+              0.204104,
+              0.219423,
+              0.173476,
+              0.208783,
+              0.177895,
+              0.17517,
+              0.16997,
+              0.169469,
+              0.17005,
+              0.176913,
+              0.179017,
+              0.169269,
+              0.17034,
+              0.16981,
+              0.167675,
+              0.168207,
+              0.193204,
+              0.16987,
+              0.169849,
+              0.161915
+            ],
+            "median_ms": 0.17019499999999999
+          },
+          "event_hit": {
+            "samples_ms": [
+              0.005961,
+              0.00525,
+              0.005019,
+              0.00498,
+              0.00513,
+              0.004999,
+              0.00495,
+              0.00493,
+              0.00493,
+              0.004929,
+              0.004959,
+              0.004929,
+              0.004929,
+              0.004919,
+              0.004929,
+              0.004929,
+              0.004929,
+              0.004939,
+              0.004929,
+              0.004949
+            ],
+            "median_ms": 0.0049345
+          }
+        }
+      ],
+      "initial_publication": {
+        "samples_ms": [
+          75.694655
+        ],
+        "median_ms": 75.694655
+      },
+      "invalidation": {
+        "samples_ms": [
+          0.003006
+        ],
+        "median_ms": 0.003006
+      },
+      "no_change_republication": {
+        "samples_ms": [
+          1.690212
+        ],
+        "median_ms": 1.690212
+      },
+      "after_event": [
+        {
+          "query": "short",
+          "first_result_after_event": {
+            "samples_ms": [
+              0.514478
+            ],
+            "median_ms": 0.514478
+          }
+        },
+        {
+          "query": "long",
+          "first_result_after_event": {
+            "samples_ms": [
+              1.903933
+            ],
+            "median_ms": 1.903933
+          }
+        }
+      ],
+      "blocked_during_refresh": true,
+      "generations": [
+        1,
+        2
+      ],
+      "event_result_cache": {
+        "entries": 2,
+        "hits": 40,
+        "misses": 4
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 85
+    },
+    {
+      "hours": 48,
+      "pages": 9,
+      "connections": 92103,
+      "queries": [
+        {
+          "query": "short",
+          "arrival": 1794470820,
+          "validated_initial_miss": {
+            "samples_ms": [
+              0.902399
+            ],
+            "median_ms": 0.902399
+          },
+          "event_initial_miss": {
+            "samples_ms": [
+              0.495213
+            ],
+            "median_ms": 0.495213
+          },
+          "validated_hit": {
+            "samples_ms": [
+              0.316787,
+              0.286659,
+              0.280128,
+              0.2926,
+              0.279456,
+              0.279526,
+              0.282291,
+              0.28143,
+              0.275839,
+              0.276761,
+              0.285197,
+              0.275148,
+              0.273915,
+              0.27645,
+              0.315344,
+              0.278885,
+              0.277953,
+              0.284496,
+              0.29752,
+              0.276901
+            ],
+            "median_ms": 0.279827
+          },
+          "event_hit": {
+            "samples_ms": [
+              0.006663,
+              0.00543,
+              0.00503,
+              0.005099,
+              0.00497,
+              0.004939,
+              0.004989,
+              0.004929,
+              0.004889,
+              0.004909,
+              0.004939,
+              0.004879,
+              0.00505,
+              0.005159,
+              0.00516,
+              0.005149,
+              0.00516,
+              0.00522,
+              0.00519,
+              0.00519
+            ],
+            "median_ms": 0.0050745
+          }
+        },
+        {
+          "query": "long",
+          "arrival": 1794482520,
+          "validated_initial_miss": {
+            "samples_ms": [
+              2.523921
+            ],
+            "median_ms": 2.523921
+          },
+          "event_initial_miss": {
+            "samples_ms": [
+              2.08259
+            ],
+            "median_ms": 2.08259
+          },
+          "validated_hit": {
+            "samples_ms": [
+              0.41425,
+              0.347103,
+              0.292069,
+              0.292802,
+              0.30848,
+              0.290137,
+              0.287411,
+              0.289414,
+              0.318009,
+              0.289445,
+              0.284656,
+              0.30805,
+              0.282431,
+              0.284756,
+              0.301648,
+              0.293693,
+              0.288463,
+              0.287722,
+              0.304112,
+              0.283344
+            ],
+            "median_ms": 0.291103
+          },
+          "event_hit": {
+            "samples_ms": [
+              0.006171,
+              0.005541,
+              0.00533,
+              0.00524,
+              0.00543,
+              0.00524,
+              0.00519,
+              0.00517,
+              0.00516,
+              0.005169,
+              0.00521,
+              0.00521,
+              0.005169,
+              0.00514,
+              0.005189,
+              0.00519,
+              0.005189,
+              0.00518,
+              0.00516,
+              0.005169
+            ],
+            "median_ms": 0.0051895
+          }
+        }
+      ],
+      "initial_publication": {
+        "samples_ms": [
+          115.122027
+        ],
+        "median_ms": 115.122027
+      },
+      "invalidation": {
+        "samples_ms": [
+          0.003146
+        ],
+        "median_ms": 0.003146
+      },
+      "no_change_republication": {
+        "samples_ms": [
+          3.41629
+        ],
+        "median_ms": 3.41629
+      },
+      "after_event": [
+        {
+          "query": "short",
+          "first_result_after_event": {
+            "samples_ms": [
+              0.560304
+            ],
+            "median_ms": 0.560304
+          }
+        },
+        {
+          "query": "long",
+          "first_result_after_event": {
+            "samples_ms": [
+              2.059496
+            ],
+            "median_ms": 2.059496
+          }
+        }
+      ],
+      "blocked_during_refresh": true,
+      "generations": [
+        1,
+        2
+      ],
+      "event_result_cache": {
+        "entries": 2,
+        "hits": 40,
+        "misses": 4
+      },
+      "rss_before_mb": 41,
+      "rss_peak_mb": 107
+    }
+  ],
+  "scope": "One fresh process per window; identical earliest-arrival queries for both paths. Event-owned query hits perform no filesystem checks. Cold publication, invalidation, no-change republication and first result misses are separate. Local completed sample; no HTTP download, realtime overlay or full itinerary. All writers must notify lifecycle."
+}

@@ -81,6 +81,9 @@ releases remain on disk until removed. Cache bodies duplicate the selected outpu
 | `bench_readers.py` | One reader over all files, as one JSON line (`stdlib`, `pyarrow`, `arro3` or `nanoarrow`). |
 | `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
 | `bench_decoded_cache.py` | Isolated-process comparison of uncached, decoded-table and prepared-window reuse. |
+| `snapshot_lifecycle.py` | Refresh tickets, single-writer downloader coordination and atomic immutable snapshot publication. |
+| `test_snapshot_lifecycle.py` | Event ordering, failures/cancellation, writer serialization and no-filesystem queries. |
+| `bench_snapshot_lifecycle.py` | Per-query validation versus owned event-driven queries; publication costs shown separately. |
 | `journey_cache.py` | Bounded earliest-arrival result cache with snapshot/query versioning. |
 | `test_journey_cache.py` | Result-key, transfer/source invalidation, eviction and snapshot-retention checks. |
 | `bench_journey_cache.py` | Direct scan/result hits and version-validated query timings, including first misses. |
@@ -307,3 +310,59 @@ uv run --locked python experiments/cdn/bench_journey_cache.py data --write resul
 The benchmark shows direct result hits separately from complete version-validated lookups, and records
 first misses and prepared-window construction separately. Cached/baseline arrivals must agree. See
 [the local results](results/2026-11-11-fedora-journey-cache.md).
+
+## Event-driven invalidation (explicit ownership)
+
+`SnapshotSession` owns the decoded, prepared and result caches and binds stops/transfer times to an immutable
+published window. Queries use that snapshot without any file reads, stats or page metadata serialization.
+Use this only when **every write is coordinated by the session**:
+
+```python
+from snapshot_lifecycle import SnapshotSession
+
+session = SnapshotSession()
+await session.refresh(data, date, page_count, start, end, concurrency=4)
+arrival = session.query(source, target, departure)
+```
+
+`refresh` serializes downloader writes, invalidates queries/results before touching files, then validates the
+completed sample and publishes one new snapshot reference. Missing/inconsistent sample metadata, read/
+decode errors, failed downloads and cancellation leave queries unavailable; callers can retry after a successful
+refresh. No last-good/stale fallback is used. Source/target and departure-window bounds are checked in memory.
+
+For an already completed local sample or an external coordinator, use the explicit event protocol:
+
+```python
+ticket = session.begin_refresh()  # before any file writes: queries now fail closed
+try:
+    # Write a complete sample, serialized against every other writer.
+    snapshot = session.publish(ticket, data, start, end)
+except BaseException:
+    session.fail_refresh(ticket)
+    raise
+```
+
+Tickets prevent superseded/completed callbacks from publishing or clearing newer state. Each publication gets
+a new generation/result version, including no-change refreshes; result entries are cleared at refresh start.
+Prepared/decoded caches stay bounded and can reuse unchanged files during publication. Metadata/stops are
+checked before and after preparing the candidate; all fields are published together after validation. Manual
+coordinators must serialize writers; the supplied async `refresh` wrapper does this for its own calls.
+
+This is an event protocol, **not a filesystem watcher**. Unannounced edits remain invisible to queries until
+an explicit refresh event. Use the per-query-validation path when writers are not controlled. One event-loop
+owner is required; external threads need synchronization around the whole lifecycle. Retained old snapshots
+are immutable but are not a substitute for querying through the session. Future realtime overlays must be
+included in publication/invalidation before claiming complete realtime journey results.
+
+The planner CLI offers explicit `--event-driven` mode for a completed, exclusively owned sample. It publishes
+once per window and labels event mode in output. Default CLI behavior continues validating per query. Cache
+bypass flags cannot be combined with event mode.
+
+```bash
+uv run --locked python experiments/cdn/planner_spike.py data --event-driven
+uv run --locked python experiments/cdn/bench_snapshot_lifecycle.py data --write results.json
+```
+
+The benchmark uses completed local samples (no HTTP), separately reports initial publication, invalidation,
+no-change republication and first result misses, and compares warm event-owned queries with per-query
+validation. See [the local event-lifecycle results](results/2026-11-11-fedora-event-invalidation.md).

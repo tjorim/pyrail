@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 from _common import data_dir, rss_mb
 from journey_cache import JourneyResultCache
 from prepared_cache import PreparedConnectionCache
+from snapshot_lifecycle import SnapshotSession
 from pyrail.cdn.arrow import read_table
 from pyrail.cdn.cache import DecodedTableCache
 
@@ -115,18 +116,28 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", nargs="?", default="data")
     parser.add_argument("--api", action="store_true")
+    parser.add_argument("--event-driven", action="store_true", help="validate only at owned snapshot publication")
     parser.add_argument("--no-journey-cache", action="store_true", help="scan on every repeated journey query")
     parser.add_argument("--no-prepared-cache", action="store_true", help="rebuild connection windows on each load")
     parser.add_argument("--no-decoded-cache", action="store_true", help="decode Arrow files on every load")
     parser.add_argument("--date", help="query date; defaults to the sampled date")
     args = parser.parse_args()
+    if args.event_driven and (args.no_journey_cache or args.no_prepared_cache or args.no_decoded_cache):
+        parser.error("--event-driven requires all memory cache layers")
     data = data_dir([args.dir])
+    events = SnapshotSession() if args.event_driven else None
 
-    cache = None if args.no_decoded_cache else DecodedTableCache()
+    cache = events.decoded if events is not None else (None if args.no_decoded_cache else DecodedTableCache())
     prepared_cache = (
         None if args.no_prepared_cache or args.no_decoded_cache else PreparedConnectionCache(decoded_cache=cache)
     )
-    journeys = JourneyResultCache() if prepared_cache is not None and not args.no_journey_cache else None
+    if events is not None:
+        prepared_cache = events.windows
+    journeys = (
+        events.results
+        if events is not None
+        else (JourneyResultCache() if prepared_cache is not None and not args.no_journey_cache else None)
+    )
     stops, pages, files = load(data, cache)
     index = {iri: i for i, iri in enumerate(stops["iri"])}
     arlon = stops["name"].index("Arlon")
@@ -155,7 +166,11 @@ def main() -> None:
         ("48 h window (worst case)", 2 * DAY),
     ):
         start = time.perf_counter()
-        if prepared_cache is not None:
+        if events is not None:
+            published = events.publish(events.begin_refresh(), data, t0, t0 + window)
+            prepared = published.window
+            connections, deps, decoded = prepared.connections, prepared.departures, prepared.pages
+        elif prepared_cache is not None:
             prepared = prepared_cache.prepare(pages, files, t0, t0 + window, release_id=sample["releaseId"])
             connections, deps, decoded = prepared.connections, prepared.departures, prepared.pages
         else:
@@ -169,6 +184,8 @@ def main() -> None:
         )
 
         def search(source, target, departure):
+            if events is not None:
+                return events.query(source, target, departure)
             if journeys is not None:
                 return journeys.query(
                     prepared_cache,
@@ -199,7 +216,8 @@ def main() -> None:
             arrival = datetime.fromtimestamp(result, UTC).strftime("%H:%MZ") if result < INF else "none"
             line = (
                 f"   {label}: earliest arrival {arrival}; 1 query {min(times):.3f} ms (best of 5; "
-                f"result cache {'on' if journeys is not None else 'off'}); 6 queries {six_ms:.3f} ms"
+                f"result cache {'on' if journeys is not None else 'off'}; "
+                f"event invalidation {'on' if events is not None else 'off'}); 6 queries {six_ms:.3f} ms"
             )
             if args.api and window == DAY:
                 line += f"; API says {datetime.fromtimestamp(api_arrival(stops['iri'][source], stops['iri'][target], t0), UTC):%H:%MZ}"
