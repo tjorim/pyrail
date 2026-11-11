@@ -10,6 +10,7 @@ import pyarrow as pa
 import pyarrow.ipc as pa_ipc
 import pytest
 
+from pyrail.cdn import arrow
 from pyrail.cdn.arrow import ArrowError, read_table
 from pyrail.exceptions import PyRailError
 
@@ -230,3 +231,71 @@ class TestMalformed:
         broken = raw[:200] + raw[footer_start:]
         with pytest.raises(ArrowError):
             read_table(broken)
+
+
+def _block_fields(raw: bytes | bytearray) -> list[int]:
+    """Return the file positions of the Block structs in the footer (offset at +0, metadata at +8, body at +16)."""
+    buf = memoryview(bytes(raw))
+    footer_length = struct.unpack_from("<i", buf, len(buf) - 10)[0]
+    footer = arrow._root(buf, len(buf) - 10 - footer_length)
+    start, count = footer.vector(3)
+    return [start + 24 * index for index in range(count)]
+
+
+class TestBatchBounds:
+    """Buffers and field nodes must stay inside what their record batch declares."""
+
+    @staticmethod
+    def _file(rows: int = 7, *, batch_size: int | None = None) -> bytearray:
+        table = _table(number=(pa.int32(), list(range(rows))), text=(pa.string(), [str(i) for i in range(rows)]))
+        return bytearray(_write(table, batch_size=batch_size))
+
+    def test_unchanged_file_reads(self) -> None:
+        """Check: the helper file itself is valid."""
+        raw = self._file()
+        assert read_table(raw) == pa_ipc.open_file(raw).read_all().to_pydict()
+
+    def test_zero_length_body_rejects_buffers_that_point_into_the_file(self) -> None:
+        """A block that declares an empty body cannot borrow bytes from elsewhere in the file."""
+        raw = self._file()
+        (block,) = _block_fields(raw)
+        struct.pack_into("<q", raw, block + 16, 0)
+        with pytest.raises(ArrowError, match="record batch body"):
+            read_table(raw)
+
+    def test_body_shorter_than_its_buffers(self) -> None:
+        """A truncated body is rejected even though the missing bytes exist later in the file."""
+        raw = self._file(100)
+        (block,) = _block_fields(raw)
+        declared = struct.unpack_from("<q", raw, block + 16)[0]
+        struct.pack_into("<q", raw, block + 16, declared // 2)
+        with pytest.raises(ArrowError, match="record batch body"):
+            read_table(raw)
+
+    def test_first_block_cannot_read_into_the_next(self) -> None:
+        """With several batches, a short first body does not spill into the second batch."""
+        raw = self._file(30, batch_size=10)
+        first, _second, _third = _block_fields(raw)
+        struct.pack_into("<q", raw, first + 16, 8)
+        with pytest.raises(ArrowError, match="record batch body"):
+            read_table(raw)
+
+    @pytest.mark.parametrize("body_length", [-1, 2**40])
+    def test_body_outside_the_file(self, body_length: int) -> None:
+        """Negative or oversized body lengths are rejected."""
+        raw = self._file()
+        (block,) = _block_fields(raw)
+        struct.pack_into("<q", raw, block + 16, body_length)
+        with pytest.raises(ArrowError, match="block lies outside the file"):
+            read_table(raw)
+
+    @pytest.mark.parametrize("declared", [0, 6, 8])
+    def test_field_node_length_must_match_the_row_count(self, declared: int) -> None:
+        """A field node that disagrees with the batch length is rejected, not decoded."""
+        raw = self._file(7)
+        node = struct.pack("<qq", 7, 0)  # one field node: length 7 rows, no nulls
+        assert raw.count(node) == 2  # one per column
+        position = raw.index(node)
+        struct.pack_into("<q", raw, position, declared)
+        with pytest.raises(ArrowError, match="field node length"):
+            read_table(raw)

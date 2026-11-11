@@ -216,8 +216,8 @@ def _decode_column(
     return values, used
 
 
-def _read_batch(buf: memoryview, columns: list[_Column], block: tuple[int, int]) -> dict[str, list[Any]]:
-    offset, meta_length = block
+def _read_batch(buf: memoryview, columns: list[_Column], block: tuple[int, int, int]) -> dict[str, list[Any]]:
+    offset, meta_length, body_length = block
     message = _root(buf, offset + 8)  # skip the 0xFFFFFFFF continuation marker and the metadata length
     if message.scalar(1, "<B") != _HEADER_RECORD_BATCH:
         msg = "block does not hold a record batch"
@@ -233,6 +233,7 @@ def _read_batch(buf: memoryview, columns: list[_Column], block: tuple[int, int])
     nodes_start, nodes_count = batch.vector(1)
     buffers_start, buffers_count = batch.vector(2)
     body = offset + meta_length
+    body_end = body + body_length
     if nodes_count != len(columns):
         msg = "record batch does not match the schema"
         raise ArrowError(msg)
@@ -248,11 +249,14 @@ def _read_batch(buf: memoryview, columns: list[_Column], block: tuple[int, int])
             buffer_offset = _unpack("<q", buf, buffers_start + 16 * (first + k))
             length = _unpack("<q", buf, buffers_start + 16 * (first + k) + 8)
             start = body + buffer_offset
-            if buffer_offset < 0 or length < 0 or start + length > len(buf):
-                msg = "buffer lies outside the file"
+            if buffer_offset < 0 or length < 0 or start + length > body_end:
+                msg = "buffer lies outside the record batch body"
                 raise ArrowError(msg)
             return start, length
 
+        if _unpack("<q", buf, nodes_start + 16 * index) != rows:
+            msg = f"field node length of column {column.name!r} does not match the row count"
+            raise ArrowError(msg)
         null_count = _unpack("<q", buf, nodes_start + 16 * index + 8)
         values, used = _decode_column(buf, column.kind, rows, null_count, buffer_at)
         first_buffer += used
@@ -286,7 +290,8 @@ def _read_file(buf: memoryview) -> dict[str, list[Any]]:
     if footer_length <= 0 or footer_length > len(buf) - _TAIL_SIZE:
         msg = "footer length is out of range"
         raise ArrowError(msg)
-    footer = _root(buf, len(buf) - _TAIL_SIZE - footer_length)
+    footer_start = len(buf) - _TAIL_SIZE - footer_length
+    footer = _root(buf, footer_start)
     schema = footer.table(1)
     if schema is None:
         msg = "footer has no schema"
@@ -305,9 +310,10 @@ def _read_file(buf: memoryview) -> dict[str, list[Any]]:
         block = blocks_start + _BLOCK_SIZE * index
         offset = _unpack("<q", buf, block)
         meta_length = _unpack("<i", buf, block + 8)
-        if offset < 0 or meta_length <= 0 or offset + meta_length > len(buf):
+        body_length = _unpack("<q", buf, block + 16)
+        if offset < 0 or meta_length <= 0 or body_length < 0 or offset + meta_length + body_length > footer_start:
             msg = "record batch block lies outside the file"
             raise ArrowError(msg)
-        for name, values in _read_batch(buf, columns, (offset, meta_length)).items():
+        for name, values in _read_batch(buf, columns, (offset, meta_length, body_length)).items():
             table[name].extend(values)
     return table
