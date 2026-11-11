@@ -21,15 +21,17 @@ from zoneinfo import ZoneInfo
 
 from _common import data_dir, rss_mb
 from pyrail.cdn.arrow import read_table
+from pyrail.cdn.cache import DecodedTableCache
 
 INF = 10**12
 DAY = 24 * 3600
 
 
-def load(data: Path):
+def load(data: Path, cache=None):
     """Return stops, the exact sampled page metadata, and matching local files."""
     manifest = json.loads((data / "manifest.jsonld").read_text())
-    stops = read_table((data / "stops.arrow").read_bytes())
+    stops_path = data / "stops.arrow"
+    stops = cache.read(stops_path) if cache is not None else read_table(stops_path.read_bytes())
     sample_path = data / "sample.json"
     if not sample_path.exists():
         raise ValueError("missing sample.json: re-run fetch_data.py to record the exact downloaded pages")
@@ -41,7 +43,7 @@ def load(data: Path):
     return stops, pages, files
 
 
-def decode_pages(pages, files, t_from: int, t_to: int):
+def decode_pages(pages, files, t_from: int, t_to: int, cache=None):
     """Decode the pages that can hold departures in [t_from, t_to) into one list of connections sorted by departure."""
     connections = []
     decoded = 0
@@ -52,7 +54,7 @@ def decode_pages(pages, files, t_from: int, t_to: int):
         if high < t_from or low >= t_to:
             continue
         decoded += 1
-        t = read_table(path.read_bytes())
+        t = cache.read(path) if cache is not None else read_table(path.read_bytes())
         connections.extend(
             zip(
                 (epoch + o for o in t["departureTimeOffset"]),
@@ -111,11 +113,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", nargs="?", default="data")
     parser.add_argument("--api", action="store_true")
+    parser.add_argument("--no-decoded-cache", action="store_true", help="decode Arrow files on every load")
     parser.add_argument("--date", help="query date; defaults to the sampled date")
     args = parser.parse_args()
     data = data_dir([args.dir])
 
-    stops, pages, files = load(data)
+    cache = None if args.no_decoded_cache else DecodedTableCache()
+    stops, pages, files = load(data, cache)
     index = {iri: i for i, iri in enumerate(stops["iri"])}
     arlon = stops["name"].index("Arlon")
     station = lambda number: index[f"http://irail.be/stations/NMBS/{number}"]  # noqa: E731
@@ -142,7 +146,7 @@ def main() -> None:
         ("48 h window (worst case)", 2 * DAY),
     ):
         start = time.perf_counter()
-        connections, decoded = decode_pages(pages, files, t0, t0 + window)
+        connections, decoded = decode_pages(pages, files, t0, t0 + window, cache)
         decode_ms = (time.perf_counter() - start) * 1000
         start = time.perf_counter()
         deps = [c[0] for c in connections]  # already sorted: pages and rows are in departure order

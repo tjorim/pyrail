@@ -80,6 +80,7 @@ releases remain on disk until removed. Cache bodies duplicate the selected outpu
 | `compare_all.py` | The comparison above: time, peak memory, installed size and correctness for every reader, plus the realtime parse. Uses `bench_readers.py` and `bench_realtime.py`. |
 | `bench_readers.py` | One reader over all files, as one JSON line (`stdlib`, `pyarrow`, `arro3` or `nanoarrow`). |
 | `bench_realtime.py` | Parses the GTFS Realtime snapshot. |
+| `bench_decoded_cache.py` | Isolated-process comparison of repeated Arrow loads and planner preparation, with/without decoded-table caching. |
 | `bench_downloader.py` | Primes an ETag cache, times full warm sample refreshes, and compares them with public iRail API journey requests. |
 | `check_schema_message.py` | Shows that the CDN files start with a record batch, not a Schema message. |
 | `probe_nanoarrow.py` | Shows nanoarrow failing on the CDN file but reading the same table as an IPC stream. |
@@ -188,3 +189,37 @@ uv run --locked python experiments/cdn/bench_downloader.py --date 2026-11-12 --p
 This compares unconditional atomic replacement with byte-checked publication, on the same fresh HTTP
 cache. File-write counts include output files, HTTP cache files and sample-marker contents; renames and
 unlinks are not counted as body writes. See [the local results](results/2026-11-11-fedora-unchanged-files.md).
+
+## Decoded Arrow memory cache
+
+`pyrail.cdn.cache.DecodedTableCache` is an explicitly owned, bounded LRU cache:
+
+```python
+from pyrail.cdn.cache import DecodedTableCache
+
+cache = DecodedTableCache(max_entries=16)
+stops = cache.read("data/stops.arrow")  # read-only mapping, immutable column tuples
+same_stops = cache.read("data/stops.arrow")  # stat check; no Arrow read/decode
+cache.clear()  # releases the cache's references; callers may still hold snapshots
+```
+
+Keep the same cache object alive across queries. A new process/cache must decode its first loads.
+Entries invalidate when device/inode, size, mtime or ctime changes; atomic downloader replacements are
+therefore visible even when size and mtime match. Unchanged-file publication preserves cache hits.
+Missing files and decode errors propagate rather than serving an older snapshot. File metadata checks
+are not a cryptographic integrity check. The cache is bounded by entry count, not bytes, and use from
+concurrent threads requires external synchronization. Cache hits/misses are exposed for measurement.
+
+The planner spike now owns a cache by default and shares it between stop/page loads; use
+`planner_spike.py --no-decoded-cache` to disable it. `load` and `decode_pages` also accept an optional
+caller-owned cache. The existing planner benchmark keeps its uncached baseline by default.
+
+```bash
+uv run --locked python experiments/cdn/bench_decoded_cache.py data --write results.json
+```
+
+The new benchmark uses a fresh process per mode/window, verifies equal table/connection digests and
+arrival results, and reports both raw table reloads and complete connection-list preparation. Raw Arrow
+caching does not cache the derived sorted connection lists or full journey results. It does not speed up
+`fetch_data.py` directly: that downloader copies Arrow files without decoding them. Retaining decoded
+columns trades resident memory for CPU and file I/O savings. See [the local results](results/2026-11-11-fedora-decoded-cache.md).
