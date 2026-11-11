@@ -98,6 +98,11 @@ releases remain on disk until removed. Cache bodies duplicate the selected outpu
 | `planner_spike.py` | Earliest-arrival Connection Scan over real pages: timing, memory, check against the live API (#261). |
 | `planner_benchmark.py` | Isolated 24/48-hour workers: sorting, early stop versus full scan, unreachable target, arrive-by and departure profiles; optional NumPy storage probe. |
 | `test_planner_benchmark.py` | Synthetic checks of the benchmark routing model; run separately with unittest (see below). |
+| `disturbances_feed.py` | Rebuilds the API's `/disturbances` response from NMBS's RSS feed, with a last-known-status fallback; `--compare` diffs it against the live API (#263). |
+| `test_disturbances_feed.py` | Offline checks of the conversion and the fallback; run with unittest like the other `test_*.py`. |
+| `decode_alerts.py` | Decodes the official GTFS-RT service-alerts feed (Belgian Mobility) and diffs it with the RSS feed (#264). Needs `gtfs-realtime-bindings`. |
+| `test_decode_alerts.py` | Offline checks; the protobuf parts are skipped without `gtfs-realtime-bindings`. |
+| `verify_status_clock.py` | How often `left` / `arrived` computed from the clock equals the live API's flags (#265). |
 | `check_ha_requirements.py` | Does Home Assistant core require any Arrow library? (Direct requirements only.) |
 | `pypi_health.py` | Release cadence and wheel platforms of the candidate libraries. |
 
