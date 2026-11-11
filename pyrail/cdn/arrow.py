@@ -21,6 +21,9 @@ release ``nmbs-sncb-20261110-5d71e5b6``; the numbers and method are in tjorim/py
   fallback to try, but only once a CDN release needs something this reader lacks, for example compression or
   dictionary encoding. Add it behind this module's :func:`read_table` interface, with that file as the test.
 
+On a Home Assistant Yellow (Raspberry Pi CM4) this reader decoded the 12 sample files (133k rows) in about
+0.6 s with a 95 MB peak, against 0.37 s and 108 MB for pyarrow (190 MB installed there).
+
 The scripts, dependency group and dated results for all of these are in ``experiments/cdn``.
 """
 
