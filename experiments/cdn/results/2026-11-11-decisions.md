@@ -56,13 +56,18 @@ scheduled departure plus delay is not after now; `arrived` likewise with the arr
 | vehicle stops, `left` | 137 / 139 (99%) |
 | vehicle stops, `arrived` | 136 / 139 (98%) |
 
-- All 7 disagreements have the same direction: the clock says "already" and the API still says "not yet". The API
-  flips at the physical event, so the clock is early by seconds (5 of 7 within 90 s) and in one case 262 s. It is
-  never late. In practice: a train shown as departed can be up to a few minutes early.
+- All 7 disagreements have the same direction: the clock says "already" and the API still says "not yet". None
+  went the other way in this sample. The script records, for each disagreement, how long ago the predicted moment
+  was **when it sampled**: 0, 24, 24, 29, 89, 121 and 262 seconds. That is how long the API flag had already
+  been lagging at that moment, not a bound on the error: the flag may have stayed wrong for longer afterwards.
+  So the estimate can show a train as departed when it has not, and this sample cannot say by how much at most.
 - One evening and a small sample, at a quiet hour; a rush-hour run would show more.
-- What matters downstream: Home Assistant uses `connection[0].departure.left` to skip a connection that has
-  already left. For that use the clock rule is the right answer by construction, and the planner would not
-  offer a departed connection in the first place.
+- What this means downstream: Home Assistant uses `connection[0].departure.left` to skip a connection that has
+  already left. With the clock estimate, `left` can be `True` once scheduled departure plus delay has passed even
+  though the train is still at the platform (2 to 5% of the checks above), and Home Assistant would then skip a
+  connection that is still usable. Whether the CDN backend's planner would have offered that connection anyway is
+  **not established**; do not rely on it as a safeguard. Options for #250: accept the error and document it, or
+  add a grace period before `left` becomes `True`. The sample is too small to choose a value.
 - iRail's own CDN spec argues against inferring status from the clock ("Do not infer `reported` from the clock
   having passed"). That is about publishing observed states as data. pyrail's `left` is a convenience flag, so the
   approximation is acceptable if the docs say it is estimated. Cancelled calls: `left` stays false.
@@ -96,7 +101,7 @@ Not posted anywhere; for the maintainer to paste or ask me to post.
 
 **#260 (release and migration guide)**
 - [ ] Not supported on the CDN backend: `get_composition`. `occupancy` is always `None`; `is_extra` / `is_extra_stop`
-      are always `None`; `left` / `arrived` are estimates from the clock (95 to 99% agreement, early by up to a few minutes).
+      are always `None`; `left` / `arrived` are estimates from the clock (95 to 99% agreement; the estimate can say "left" before the train has, see above).
 - [ ] Tell the Home Assistant NMBS maintainers: the `extra_train` attribute becomes `None`; `occupancy` and composition
       are not used by the integration.
 - [ ] Disturbances: depends on the licence answer in #263 / #264.

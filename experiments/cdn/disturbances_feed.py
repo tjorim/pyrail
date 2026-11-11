@@ -8,7 +8,8 @@ answers with the same document, so this script uses HTTPS:
 and converts every RSS `<item>` into one disturbance. This script does the same with the standard library only,
 keeps the last good answer on disk for outages, and can compare the result with the live API.
 
-    uv run python experiments/cdn/disturbances_feed.py [LANG]            # print the rebuilt response (JSON)
+    uv run python experiments/cdn/disturbances_feed.py [LANG]            # print the rebuilt response (JSON); stored in
+                                                                         # CACHE_DIR, and served from there if the feed is down
     uv run python experiments/cdn/disturbances_feed.py [LANG] --compare  # diff against api.irail.be
 
 Findings are in results/2026-11-11-disturbances.md.
@@ -31,6 +32,7 @@ API = "https://api.irail.be/disturbances/?format=json&lang={lang}"
 USER_AGENT = "pyrail-experiments"
 LANGUAGES = ("nl", "fr", "de", "en")
 READ_MORE = {"nl": "Lees meer", "fr": "Lire plus", "en": "Read more", "de": "Weiterlesen"}  # iRail's wording
+CACHE_DIR = Path(tempfile.gettempdir()) / "pyrail-experiments-disturbances"  # used by the command line only
 STALE_AFTER = 12 * 3600  # iRail keeps its backup answer for 12 hours; so do we
 
 _LINK = re.compile(r'<a\s+href="([^"]+)"[^>]*>([^<]+)</a>')
@@ -52,6 +54,19 @@ def clean(html: str) -> str:
     return _SPACE.sub(" ", _TAG.sub("", html)).strip()
 
 
+def _parse_date(value: str | None, what: str) -> datetime:
+    """Parse an RFC 822 date with a zone; anything else is a `FeedError`, so the cached answer stays in use."""
+    try:
+        parsed = parsedate_to_datetime(value or "")
+    except (TypeError, ValueError) as err:
+        msg = f"bad {what} date {value!r}"
+        raise FeedError(msg) from err
+    if parsed.tzinfo is None:  # a naive time would be read in the local zone: that is a guess
+        msg = f"{what} date {value!r} has no time zone"
+        raise FeedError(msg)
+    return parsed
+
+
 def convert(xml: bytes | str, lang: str = "en") -> dict:
     """Convert the RSS document to the API's response shape (`DisturbancesApiResponse.from_dict` input)."""
     try:
@@ -62,13 +77,16 @@ def convert(xml: bytes | str, lang: str = "en") -> dict:
     if root.tag != "rss":
         msg = f"expected <rss>, got <{root.tag}>"
         raise FeedError(msg)
+    if root.find("channel") is None:  # an empty <channel> is a valid "no disturbances"; no <channel> is not a feed
+        msg = "no <channel> in the feed"
+        raise FeedError(msg)
 
     disturbances = []
     for index, item in enumerate(root.iterfind("./channel/item")):
         title = (item.findtext("title") or "").strip()
         description = item.findtext("description") or ""
         item_link = (item.findtext("link") or "").strip()
-        published = parsedate_to_datetime(item.findtext("pubDate") or "")
+        published = _parse_date(item.findtext("pubDate"), "item")
 
         links = [{"id": str(i), "link": url, "text": text} for i, (url, text) in enumerate(_LINK.findall(description))]
         if not links:  # an item without links of its own gets a "read more" pointing at the feed's link
@@ -89,7 +107,7 @@ def convert(xml: bytes | str, lang: str = "en") -> dict:
         )
 
     channel_date = root.findtext("./channel/pubDate")
-    stamp = parsedate_to_datetime(channel_date) if channel_date else datetime.now(UTC)
+    stamp = _parse_date(channel_date, "channel") if channel_date else datetime.now(UTC)
     return {"version": "1.4", "timestamp": str(int(stamp.timestamp())), "disturbance": disturbances}
 
 
@@ -167,10 +185,18 @@ def main(argv: list[str]) -> int:
     if lang not in LANGUAGES:
         print(f"language must be one of {LANGUAGES}", file=sys.stderr)
         return 2
-    rebuilt = convert(fetch(lang), lang)
     if "--compare" not in argv:
+        # plain output goes through the fallback: a good answer is stored, and the stored one is used if the feed is down
+        try:
+            rebuilt, cached = LastKnownStatus(CACHE_DIR).get(lang)
+        except FeedError as err:
+            print(f"no answer: {err}", file=sys.stderr)
+            return 1
+        if cached:
+            print(f"feed unavailable: showing the last known status from {CACHE_DIR}", file=sys.stderr)
         print(json.dumps(rebuilt, ensure_ascii=False, indent=2))
         return 0
+    rebuilt = convert(fetch(lang), lang)  # comparing needs a fresh answer: a stale one would prove nothing
     request = Request(API.format(lang=lang), headers={"User-Agent": USER_AGENT})  # noqa: S310
     with urlopen(request, timeout=30) as response:  # noqa: S310
         live = json.loads(response.read())

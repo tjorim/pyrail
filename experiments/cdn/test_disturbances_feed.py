@@ -59,9 +59,17 @@ class ConvertTests(unittest.TestCase):
         self.assertEqual(clean("a&nbsp;b".replace("&nbsp;", " ") + "<br>c<br />d <b>e</b>  f"), "a b\nc\nd e f")
 
     def test_rejects_garbage(self):
-        for body in (b"<html>captcha</html>", b"not xml", b""):
+        for body in (b"<html>captcha</html>", b"not xml", b"", b"<rss/>", b'<rss version="2.0"></rss>'):
             with self.subTest(body=body), self.assertRaises(FeedError):
                 convert(body)
+
+    def test_bad_dates_are_feed_errors(self):
+        for date in ("", "garbage", "Tue, 10 Nov 2026 16:48:07"):  # missing, unparseable, no time zone
+            with self.subTest(date=date), self.assertRaises(FeedError):
+                convert(rss(item("t", "d", WORKS, date=date)))
+        bad_channel = rss(item("t", "d", WORKS)).replace("Wed, 11 Nov 2026 22:48:00 +0100", "garbage")
+        with self.assertRaises(FeedError):
+            convert(bad_channel)
 
     @unittest.skipUnless(RECORDED.exists(), "recorded sample missing")
     def test_recorded_sample_matches_the_api_shape(self):
@@ -116,6 +124,15 @@ class FallbackTests(unittest.TestCase):
         self.now += 3601
         with self.assertRaises(FeedError):
             self.status.get("en", self.down)  # stored, but too old to trust
+
+    def test_invalid_feed_does_not_replace_the_stored_answer(self):
+        first, _ = self.status.get("en", self.up)
+        for body in (b"<rss/>", rss(item("t", "d", WORKS, date="garbage")).encode()):
+            again, cached = self.status.get("en", lambda lang, body=body: body)
+            self.assertTrue(cached)
+            self.assertEqual(again, first)
+        _, cached = self.status.get("en", self.down)  # and the stored answer is still the first one
+        self.assertTrue(cached)
 
     def test_corrupt_cache_file_raises_instead_of_crashing(self):
         self.status.get("en", self.up)
