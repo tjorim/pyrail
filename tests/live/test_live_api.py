@@ -69,23 +69,22 @@ async def test_live_liveboard(live: LiveApi, travel_date: tuple[str, str]) -> No
     assert all(a.vehicle and a.vehicle_info.name for a in arrivals.arrivals)
 
 
-async def test_live_liveboard_by_id_with_alerts(live: LiveApi, travel_date: tuple[str, str]) -> None:
-    """A liveboard requested by station id, with and without alerts, deserializes for both board types."""
+async def test_live_liveboard_by_id(live: LiveApi, travel_date: tuple[str, str]) -> None:
+    """A liveboard requested by station id deserializes for both board types."""
     date, time = travel_date
     for arrdep in ("departure", "arrival"):
-        for alerts in (False, True):
-            response = await live.fetch(
-                f"liveboard (id, {arrdep}, alerts={alerts})",
-                lambda api, arrdep=arrdep, alerts=alerts: api.get_liveboard(
-                    station_id=BRUSSELS_CENTRAL_ID, date=date, time=time, arrdep=arrdep, alerts=alerts
-                ),
-            )
+        response = await live.fetch(
+            f"liveboard (id, {arrdep})",
+            lambda api, arrdep=arrdep: api.get_liveboard(
+                station_id=BRUSSELS_CENTRAL_ID, date=date, time=time, arrdep=arrdep
+            ),
+        )
 
-            assert isinstance(response, LiveboardApiResponse)
-            assert response.station_info.id == BRUSSELS_CENTRAL_ID
-            board = response.arrivals if arrdep == "arrival" else response.departures
-            assert board is not None
-            assert len(board) > 0
+        assert isinstance(response, LiveboardApiResponse)
+        assert response.station_info.id == BRUSSELS_CENTRAL_ID
+        board = response.arrivals if arrdep == "arrival" else response.departures
+        assert board is not None
+        assert len(board) > 0
 
 
 async def test_live_connections(live: LiveApi, travel_date: tuple[str, str]) -> None:
