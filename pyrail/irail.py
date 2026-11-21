@@ -238,6 +238,7 @@ class IRail:
     def clear_etag_cache(self) -> None:
         """Clear the ETag cache.
 
+        The cache stays empty while the API sends no ETags, as is currently the case.
         A response that was already in flight when the cache was cleared
         does not repopulate it.
         """
@@ -423,7 +424,8 @@ class IRail:
         if response.status == HTTPStatus.BAD_REQUEST:
             error_message = await response.text()
             with contextlib.suppress(ValueError, AttributeError):
-                error_message = (await response.json(content_type=None)).get("error", error_message)
+                body = await response.json(content_type=None)
+                error_message = body.get("message") or body.get("error") or error_message
             raise InvalidRequestError(error_message)
         if response.status == HTTPStatus.NOT_FOUND:
             raise NotFoundError(await response.text())
@@ -523,7 +525,9 @@ class IRail:
 
         Notes:
             - Implements rate limiting using a token-based mechanism
-            - Supports ETag-based conditional requests
+            - Supports ETag-based conditional requests. They only take effect once the API sends an
+              ETag. The V1 API does not at the moment (checked 2026-11-21), so every request returns
+              fresh data and a 304, which makes the endpoint methods return None, does not occur
             - Raises RateLimitError immediately on rate limit (429) responses, without waiting or retrying
             - Retries network failures, timeouts and server errors with exponential backoff.
               Every attempt, including retries, goes through the rate limiter and the request timeout
@@ -621,8 +625,6 @@ class IRail:
         date: str | None = None,
         time: str | None = None,
         arrdep: Literal["departure", "arrival"] = "departure",
-        *,
-        alerts: bool = False,
     ) -> LiveboardApiResponse | None:
         """Retrieve a liveboard for a specific train station.
 
@@ -635,8 +637,6 @@ class IRail:
             date (str, optional): Date for the liveboard in format 'DDMMYY', in Belgian local time. Defaults to current date.
             time (str, optional): Time for the liveboard in format 'HHMM', in Belgian local time. Defaults to current time.
             arrdep (str, optional): Type of board to retrieve. Either 'departure' (default) or 'arrival'.
-            alerts (bool, optional): Whether to request service alerts. Defaults to False. The iRail API currently
-                ignores this for liveboards: the response has the same shape either way and carries no alerts.
 
         Returns:
             LiveboardApiResponse or None: A LiveboardApiResponse object containing liveboard information, or None if the data is not modified.
@@ -663,7 +663,6 @@ class IRail:
             "date": date,
             "time": time,
             "arrdep": arrdep,
-            "alerts": "true" if alerts else "false",
         }
         params = {k: v for k, v in extra_params.items() if v is not None}
         self._validate_values(params)
@@ -740,16 +739,12 @@ class IRail:
         self,
         vehicle_id: str,
         date: str | None = None,
-        *,
-        alerts: bool = False,
     ) -> VehicleApiResponse | None:
         """Retrieve detailed information about a specific train vehicle.
 
         Args:
             vehicle_id (str): Unique identifier of the train vehicle to retrieve information for.
             date (str, optional): Specific date for which vehicle information is requested. Defaults to None (current date).
-            alerts (bool, optional): Whether to request service alerts. Defaults to False. The iRail API currently
-                ignores this for vehicles: the response has the same shape either way and carries no alerts.
 
         Returns:
             VehicleApiResponse or None: A VehicleApiResponse object containing vehicle details, or None if the data is not modified.
@@ -768,7 +763,7 @@ class IRail:
                 vehicle_info = await client.get_vehicle("BE.NMBS.IC1832")
 
         """
-        extra_params: dict[str, Any] = {"id": vehicle_id, "date": date, "alerts": "true" if alerts else "false"}
+        extra_params: dict[str, Any] = {"id": vehicle_id, "date": date}
         params = {k: v for k, v in extra_params.items() if v is not None}
         self._validate_values(params)
         if vehicle_id is None:
@@ -784,13 +779,13 @@ class IRail:
     async def get_composition(
         self,
         vehicle_id: str,
-        data: str | None = None,
+        date: str | None = None,
     ) -> CompositionApiResponse | None:
         """Retrieve the composition details of a specific train.
 
         Args:
             vehicle_id (str): The unique identifier of the train for which composition details are requested.
-            data (str, optional): Additional data parameter to get all raw unfiltered data as iRail fetches it from the NMBS (set to 'all'). Defaults to None, which requests the filtered data.
+            date (str, optional): Date of the train in format 'DDMMYY', in Belgian local time. Defaults to None (current date).
 
         Returns:
             CompositionApiResponse or None: A CompositionApiResponse object containing train composition details, or None if the data is not modified.
@@ -809,8 +804,9 @@ class IRail:
                 composition = await client.get_composition('S51507')
 
         """
-        extra_params: dict[str, str | None] = {"id": vehicle_id, "data": data}
+        extra_params: dict[str, str | None] = {"id": vehicle_id, "date": date}
         params = {k: v for k, v in extra_params.items() if v is not None}
+        self._validate_values(params)
         if vehicle_id is None:
             msg = "vehicle_id must be provided"
             raise ValueError(msg)
@@ -821,13 +817,8 @@ class IRail:
             params,
         )
 
-    async def get_disturbances(self, line_break_character: str | None = None) -> DisturbancesApiResponse | None:
+    async def get_disturbances(self) -> DisturbancesApiResponse | None:
         """Retrieve information about current disturbances on the rail network.
-
-        Args:
-            line_break_character (str, optional): A custom character to use for line breaks in the
-                disturbance description. Defaults to None, which sends no lineBreakCharacter and
-                lets the API choose.
 
         Returns:
             DisturbancesApiResponse or None: A DisturbancesApiResponse object containing disturbance information, or None if the data is not modified.
@@ -847,9 +838,4 @@ class IRail:
                     print(f"Current disturbances: {disturbances}")
 
         """
-        extra_params = {"lineBreakCharacter": line_break_character}
-        return await self._do_request(
-            "disturbances",
-            DisturbancesApiResponse.from_dict,
-            {k: v for k, v in extra_params.items() if v is not None},
-        )
+        return await self._do_request("disturbances", DisturbancesApiResponse.from_dict)
