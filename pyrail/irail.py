@@ -238,6 +238,7 @@ class IRail:
     def clear_etag_cache(self) -> None:
         """Clear the ETag cache.
 
+        The cache stays empty while the API sends no ETags, as is currently the case.
         A response that was already in flight when the cache was cleared
         does not repopulate it.
         """
@@ -524,7 +525,9 @@ class IRail:
 
         Notes:
             - Implements rate limiting using a token-based mechanism
-            - Supports ETag-based conditional requests
+            - Supports ETag-based conditional requests. They only take effect once the API sends an
+              ETag. The V1 API does not at the moment (checked 2026-11-21), so every request returns
+              fresh data and a 304, which makes the endpoint methods return None, does not occur
             - Raises RateLimitError immediately on rate limit (429) responses, without waiting or retrying
             - Retries network failures, timeouts and server errors with exponential backoff.
               Every attempt, including retries, goes through the rate limiter and the request timeout
