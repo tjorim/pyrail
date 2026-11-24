@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import re
 from typing import TYPE_CHECKING, Literal, override
 
@@ -26,6 +26,10 @@ from .vehicle import build_vehicle, service_day
 
 if TYPE_CHECKING:
     from .realtime import Connection, RealtimeLoader
+
+_JOURNEY_LIMIT = 6
+_INITIAL_JOURNEY_WINDOW = timedelta(hours=6)
+_MAX_JOURNEY_WINDOW = timedelta(hours=12)
 
 _STATION_IRI = re.compile(r"https?://irail\.be/stations/NMBS/([0-9]+)")
 
@@ -140,11 +144,33 @@ class CdnBackend(Backend):
             raise NotSupportedError(msg)
         instant = query_time(date, time)
         arrive_by = timesel == "arrival"
-        span = timedelta(hours=6)
+        options = await self._journey_options(
+            from_station,
+            to_station,
+            instant,
+            _INITIAL_JOURNEY_WINDOW,
+            arrive_by=arrive_by,
+            trains_only=type_of_transport != "all",
+        )
+        if sum(not connection.departure.canceled for connection in options.connections) >= _JOURNEY_LIMIT:
+            return options
+        return await self._journey_options(
+            from_station,
+            to_station,
+            instant,
+            _MAX_JOURNEY_WINDOW,
+            arrive_by=arrive_by,
+            trains_only=type_of_transport != "all",
+        )
+
+    async def _journey_options(
+        self, origin: str, destination: str, instant: datetime, span: timedelta, *, arrive_by: bool, trains_only: bool
+    ) -> ConnectionsApiResponse:
         window = (instant - span, instant + timedelta(seconds=1)) if arrive_by else (instant, instant + span)
         timetable = await self._timetable_loader().load(
             tables=("stops", "trips", "transfers"),
             window=window,
+            window_anchor=instant,
             margin=timedelta(hours=1),
             extensions=("stations", "tripEnrichment"),
         )
@@ -153,11 +179,11 @@ class CdnBackend(Backend):
             timetable,
             rows,
             _station_details(timetable, self.lang),
-            from_station,
-            to_station,
+            origin,
+            destination,
             instant,
             arrive_by=arrive_by,
-            trains_only=type_of_transport != "all",
+            trains_only=trains_only,
         )
 
     @override

@@ -255,10 +255,14 @@ async def test_cdn_connections_returns_public_journey_models() -> None:
     departure_time = datetime.fromtimestamp(_EPOCH, local).strftime("%H%M")
     arrival_time = datetime.fromtimestamp(_EPOCH + 540, local).strftime("%H%M")
     async with IRail(backend=CdnBackend(session=session)) as api:
-        with patch("pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=timetable)):
+        with patch("pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=timetable)) as load:
             forward = await api.get_connections("Origin", "Destination", "241126", departure_time)
             reverse = await api.get_connections("Origin", "Destination", "241126", arrival_time, timesel="arrival")
             canceled = await api.get_connections("Origin", "Exchange", "241126", departure_time)
+    windows = [call.kwargs["window"] for call in load.await_args_list[:2]]
+    assert windows[0][0] == windows[1][0]
+    assert (windows[0][1] - windows[0][0]).total_seconds() == 6 * 3600
+    assert (windows[1][1] - windows[1][0]).total_seconds() == 12 * 3600
     assert forward is not None
     assert reverse is not None
     assert forward.connections == reverse.connections
