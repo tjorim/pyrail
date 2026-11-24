@@ -127,10 +127,9 @@ def build_liveboard(
     station = _lookup_station(stations, query)
     by_iri = {stop.at_id: stop for stop in stations.values()}
     stop_iris = timetable.tables["stops"]["iri"]
+    parents = timetable.tables["stops"]["parentIdx"]
     station_indices = {index for index, iri in enumerate(stop_iris) if iri == station.at_id}
-    stop_ids = station_indices | {
-        index for index, parent in enumerate(timetable.tables["stops"]["parentIdx"]) if parent in station_indices
-    }
+    stop_ids = station_indices | {index for index, parent in enumerate(parents) if parent in station_indices}
     vehicles = trip_vehicles(timetable)
     ends = _run_ends(rows)
     headsigns = _headsigns(timetable, lang)
@@ -149,7 +148,9 @@ def build_liveboard(
             continue
         vehicle = vehicles.get(row.trip_index)
         first, last = ends[row.trip_index, row.service_date]
-        other = by_iri.get(stop_iris[first.departure_stop if is_arrival else last.arrival_stop])
+        endpoint = first.departure_stop if is_arrival else last.arrival_stop
+        parent = parents[endpoint]
+        other = by_iri.get(stop_iris[parent if parent >= 0 else endpoint])
         if other is None or vehicle is None:
             continue
         if not is_arrival:

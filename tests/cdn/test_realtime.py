@@ -155,6 +155,21 @@ def _endpoint_timetable() -> Timetable:
 async def test_cdn_liveboard_at_the_public_entry_point(*, select_by_id: bool) -> None:
     """Serve arrivals and departures in a Belgian time window, with translated headsigns."""
     timetable = _endpoint_timetable()
+    page, rows = timetable.pages[0]
+    stops = timetable.tables["stops"]
+    platforms = {
+        **stops,
+        "iri": (*stops["iri"], f"{stops['iri'][0]}_1", f"{stops['iri'][4]}_2"),
+        "name": (*stops["name"], "Origin platform", "Destination platform"),
+        "parentIdx": (*stops["parentIdx"], 0, 4),
+        "lat": (*stops["lat"], 51.0, 51.0),
+        "lon": (*stops["lon"], 4.0, 4.0),
+    }
+    timetable = replace(
+        timetable,
+        tables={**timetable.tables, "stops": platforms},
+        pages=((page, {**rows, "departureStopIdx": (5, 1, 2, 3, 5), "arrivalStopIdx": (1, 2, 3, 6, 1)}),),
+    )
     session = MagicMock(spec=ClientSession, closed=False)
     session.get.return_value = _response(200, _feed().SerializeToString())
     board_time = datetime.fromtimestamp(_EPOCH, ZoneInfo("Europe/Brussels")).strftime("%H%M")

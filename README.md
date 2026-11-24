@@ -98,6 +98,12 @@ include stations absent from the API, and some published IDs or translations dif
 Install `pyrail[cdn]` to use CDN departure and arrival boards. A board covers one
 hour starting at the requested Belgian local time. The CDN estimates `left` and
 `arrived` using the timetable and realtime delay; canceled calls retain a false status.
+The CDN board combines the published timetable with GTFS Realtime. The V1 liveboard
+uses SNCB's RIV feed, so the two boards can list different calls. For example, the CDN
+showed S103861 and S103883 at Brussels-Central at noon on November 25 and 26, 2026.
+The V1 board omitted both trains, although the V1 vehicle endpoint confirmed their
+November 25 calls at the same scheduled times. The CDN keeps those scheduled calls visible.
+
 Vehicle lookups use the Belgian service date and return the first run of the requested
 vehicle number on that date. If the train continues under a different vehicle number,
 request that run separately. This keeps the lookup scoped to the requested train;
