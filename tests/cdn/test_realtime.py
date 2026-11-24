@@ -11,11 +11,12 @@ from aiohttp import ClientSession
 from google.transit import gtfs_realtime_pb2 as gtfs
 import pytest
 
-from pyrail import CdnBackend, IRail
+from pyrail import CdnBackend, IRail, NotFoundError
 from pyrail.cdn.board import query_time
 from pyrail.cdn.manifest import ConnectionPage, Manifest, RealtimeFeed
 from pyrail.cdn.realtime import RealtimeLoader, apply_realtime
 from pyrail.cdn.timetable import Timetable
+from pyrail.cdn.vehicle import service_day
 
 _DAY = 20261124
 _EPOCH = 1795500000
@@ -130,13 +131,11 @@ async def test_polling_is_conditional_serialized_and_retains_previous_snapshot()
     }
 
 
-@pytest.mark.parametrize("select_by_id", [True, False])
-async def test_cdn_liveboard_at_the_public_entry_point(*, select_by_id: bool) -> None:
-    """Serve arrivals and departures in a Belgian time window, with translated headsigns."""
+def _endpoint_timetable() -> Timetable:
     base = _timetable()
     names = ("Origin", "Exchange", "Skipped", "Later", "Destination")
     irail_iris = tuple(f"http://irail.be/stations/NMBS/{number:09d}" for number in range(1, 6))
-    timetable = replace(
+    return replace(
         base,
         tables={
             "stops": {"iri": irail_iris, "name": names, "parentIdx": (-1,) * 5, "lat": (51.0,) * 5, "lon": (4.0,) * 5},
@@ -150,6 +149,12 @@ async def test_cdn_liveboard_at_the_public_entry_point(*, select_by_id: bool) ->
             "headsigns": {"headsign": ("Destination",), "translationEn": ("Translated terminus",)},
         },
     )
+
+
+@pytest.mark.parametrize("select_by_id", [True, False])
+async def test_cdn_liveboard_at_the_public_entry_point(*, select_by_id: bool) -> None:
+    """Serve arrivals and departures in a Belgian time window, with translated headsigns."""
+    timetable = _endpoint_timetable()
     session = MagicMock(spec=ClientSession, closed=False)
     session.get.return_value = _response(200, _feed().SerializeToString())
     board_time = datetime.fromtimestamp(_EPOCH, ZoneInfo("Europe/Brussels")).strftime("%H%M")
@@ -183,3 +188,38 @@ def test_board_time_crosses_the_service_day_at_belgian_midnight() -> None:
     assert query_time("241126", "0015") == datetime(2026, 11, 23, 23, 15, tzinfo=UTC)
     with pytest.raises(ValueError, match="does not exist"):
         query_time("290326", "0230")
+
+
+async def test_cdn_vehicle_returns_dated_stops_and_realtime() -> None:
+    """Reconstruct each stop once with its arrival and departure, including both endpoints."""
+    timetable = _endpoint_timetable()
+    session = MagicMock(spec=ClientSession, closed=False)
+    session.get.return_value = _response(200, _feed().SerializeToString())
+    async with IRail(backend=CdnBackend(session=session)) as api:
+        with patch("pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=timetable)):
+            run = await api.get_vehicle("be.nmbs.s102056", date="241126")
+            canceled = await api.get_vehicle("L1234", date="241126")
+            with pytest.raises(NotFoundError, match="not found on 20261125"):
+                await api.get_vehicle("S102056", date="251126")
+    assert run is not None
+    assert run.vehicle == "BE.NMBS.S102056"
+    assert run.vehicle_info.latitude == run.stops[0].station_info.latitude
+    assert [stop.station for stop in run.stops] == ["Origin", "Exchange", "Skipped", "Later", "Destination"]
+    assert run.stops[0].platform == "2"
+    assert run.stops[0].departure_delay == 60
+    assert run.stops[2].arrival_canceled
+    assert run.stops[2].departure_canceled
+    assert not run.stops[2].left
+    assert run.stops[3].arrival_delay == 10
+    assert run.stops[3].departure_delay == 20
+    assert run.stops[-1].departure_connection is None
+    assert canceled is not None
+    assert all(stop.canceled for stop in canceled.stops)
+
+
+def test_service_day_duration_across_dst() -> None:
+    """A Belgian service day is bounded by local midnights even across a clock change."""
+    day, (start, end) = service_day("290326")
+    assert day == 20260329
+    assert start == datetime(2026, 3, 28, 23, tzinfo=UTC)
+    assert end == datetime(2026, 3, 29, 22, tzinfo=UTC)

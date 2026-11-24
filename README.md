@@ -80,7 +80,7 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-### CDN stations and liveboards
+### CDN stations, liveboards and vehicles
 
 Use the experimental CDN backend for station listings.
 
@@ -98,6 +98,10 @@ include stations absent from the API, and some published IDs or translations dif
 Install `pyrail[cdn]` to use CDN departure and arrival boards. A board covers one
 hour starting at the requested Belgian local time. The CDN estimates `left` and
 `arrived` using the timetable and realtime delay; canceled calls retain a false status.
+Vehicle lookups use the Belgian service date and return the first run of the requested
+vehicle number on that date. If the train continues under a different vehicle number,
+request that run separately. This keeps the lookup scoped to the requested train;
+in-seat transfer rules belong to journey planning.
 Calls the CDN backend cannot serve raise `NotSupportedError`.
 
 ### Response Objects
