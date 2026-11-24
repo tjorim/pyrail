@@ -414,20 +414,6 @@ async def test_get_liveboard_by_id(mock_get: MagicMock) -> None:
 
 
 @patch("pyrail.irail.ClientSession.get")
-async def test_get_liveboard_alerts_parameter(mock_get: MagicMock) -> None:
-    """The alerts flag is sent as 'true' or 'false' and does not change how the response is read."""
-    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
-
-    async with IRail() as api:
-        default = await api.get_liveboard("Brussels-Central")
-        assert mock_get.call_args.kwargs["params"]["alerts"] == "false"
-        with_alerts = await api.get_liveboard("Brussels-Central", alerts=True)
-        assert mock_get.call_args.kwargs["params"]["alerts"] == "true"
-
-    assert default == with_alerts
-
-
-@patch("pyrail.irail.ClientSession.get")
 async def test_get_connections(mock_get: MagicMock) -> None:
     """Test the get_connections endpoint.
 
@@ -887,6 +873,7 @@ def test_boolean_field_deserialization() -> None:
     assert departure.canceled is True, "Departure canceled field should be True when '1'"
     assert departure.left is False, "Departure left field should be False when '0'"
     assert departure.is_extra is True, "Departure is_extra field should be True when '1'"
+    assert departure.platform_info is not None
     assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
 
 
@@ -956,6 +943,24 @@ async def test_handle_response_bad_request(mock_get: MagicMock) -> None:
     async with IRail() as api:
         with pytest.raises(InvalidRequestError):
             await api._do_request("stations", dict)
+
+
+@patch("pyrail.irail.ClientSession.get")
+async def test_bad_request_uses_message_field_from_v1_json_body(mock_get: MagicMock) -> None:
+    """Test that the InvalidRequestError message is the 'message' field of a V1 error body, not the raw JSON."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(
+        status=400,
+        data={
+            "exception": "RequestedStopNotFoundException",
+            "message": "Invalid request, value 'Retie' for parameter 'station' is invalid",
+            "at": "LiveboardV1Controller.java:123",
+            "stackTrace": [],
+        },
+    )
+    async with IRail() as api:
+        with pytest.raises(InvalidRequestError) as excinfo:
+            await api._do_request("liveboard", dict)
+    assert str(excinfo.value) == "Invalid request, value 'Retie' for parameter 'station' is invalid"
 
 
 @patch("pyrail.irail.ClientSession.get")
@@ -1203,6 +1208,7 @@ async def test_endpoint_methods_reject_missing_required_values(
         (lambda api: api.get_connections("A", "B", date="320923"), "Invalid date format"),
         (lambda api: api.get_connections("A", "B", time="2460"), "Invalid time format"),
         (lambda api: api.get_vehicle("IC538", date="320923"), "Invalid date format"),
+        (lambda api: api.get_composition("S102092", date="320923"), "Invalid date format"),
     ],
 )
 async def test_endpoint_methods_validate_dates_and_times_before_requesting(

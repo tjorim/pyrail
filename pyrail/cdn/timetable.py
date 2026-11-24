@@ -3,8 +3,8 @@
 from asyncio import Lock
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from http import HTTPStatus
 import json
@@ -18,8 +18,8 @@ from aiohttp import ClientError, ClientSession
 from pyrail.exceptions import ApiUnavailableError, InvalidResponseError
 
 from .arrow import ArrowError, read_table
-from .manifest import MANIFEST_URL, SCHEMA_VERSION, TABLES, ConnectionPage, Manifest, parse_manifest
-from .schema import COLUMNS
+from .manifest import MANIFEST_URL, SCHEMA_VERSION, TABLES, ConnectionPage, Manifest, parse_extensions, parse_manifest
+from .schema import COLUMNS, EXTENSION_COLUMNS
 
 type Table = Mapping[str, tuple[Any, ...]]
 type Window = tuple[datetime, datetime]
@@ -33,6 +33,7 @@ class Timetable:
     manifest: Manifest
     tables: Mapping[str, Table]
     pages: tuple[tuple[ConnectionPage, Table], ...]
+    extensions: Mapping[str, Table] = field(default_factory=lambda: MappingProxyType({}))
 
 
 @dataclass(slots=True)
@@ -83,6 +84,7 @@ class TimetableLoader:
         self._manifest_url = manifest_url
         self._max_entries = max_entries
         self._manifest: OrderedDict[CacheKey, _Cached[Manifest]] = OrderedDict()
+        self._catalogs: OrderedDict[CacheKey, _Cached[Mapping[str, str]]] = OrderedDict()
         self._tables: OrderedDict[CacheKey, _Cached[Table]] = OrderedDict()
         self._lock = Lock()
         self._last_usable: Timetable | None = None
@@ -92,7 +94,14 @@ class TimetableLoader:
         """Return the last snapshot whose requested data passed validation."""
         return self._last_usable
 
-    async def load(self, *, tables: Sequence[str] = TABLES, window: Window | None = None) -> Timetable:
+    async def load(
+        self,
+        *,
+        tables: Sequence[str] = TABLES,
+        window: Window | None = None,
+        extensions: Sequence[str] = (),
+        margin: timedelta = timedelta(),
+    ) -> Timetable:
         """Load the selected core tables and the pages overlapping a departure window.
 
         Omit the window for table-only calls. A malformed or incompatible response
@@ -101,6 +110,9 @@ class TimetableLoader:
         if unknown := set(tables).difference(TABLES):
             msg = f"Unknown timetable tables: {sorted(unknown)}"
             raise ValueError(msg)
+        if unknown := set(extensions).difference(EXTENSION_COLUMNS):
+            msg = f"Unknown iRail extensions: {sorted(unknown)}"
+            raise ValueError(msg)
         async with self._lock:
             manifest = await self._fetch(
                 self._manifest,
@@ -108,28 +120,58 @@ class TimetableLoader:
                 _decode_manifest,
                 max_entries=1,
             )
-            pages = () if window is None else manifest.pages_between(*window)
+            pages = ()
+            if window is not None:
+                pages = manifest.pages_between(*window)
+                if margin > timedelta():
+                    start, end = window
+                    pages = manifest.pages_between(
+                        max(manifest.coverage_start, start - margin), min(manifest.coverage_end, end + margin)
+                    )
+            catalog = await self._load_catalog(manifest) if extensions else {}
             snapshot = Timetable(
                 manifest,
                 MappingProxyType(
                     {name: await self._load_table(manifest, name, manifest.tables[name]) for name in tables}
                 ),
                 tuple([(page, await self._load_table(manifest, "connections", page.url)) for page in pages]),
+                MappingProxyType(
+                    {
+                        name: await self._load_table(manifest, name, catalog[name])
+                        for name in extensions
+                        if name in catalog
+                    }
+                ),
             )
             self._last_usable = snapshot
             return snapshot
 
+    async def _load_catalog(self, manifest: Manifest) -> Mapping[str, str]:
+        if manifest.extensions_url is None:
+            return dict[str, str]()
+
+        def decode(data: bytes, response_url: str) -> Mapping[str, str]:
+            return parse_extensions(_decode_json(data, response_url), response_url, manifest.release_id)
+
+        return await self._fetch(
+            self._catalogs, (manifest.release_id, "extensions", manifest.extensions_url), decode, max_entries=1
+        )
+
     async def _load_table(self, manifest: Manifest, name: str, url: str) -> Table:
+        version, columns = (
+            ("1-alpha", EXTENSION_COLUMNS[name]) if name in EXTENSION_COLUMNS else (SCHEMA_VERSION, COLUMNS[name])
+        )
+
         def decode(data: bytes, response_url: str) -> Table:
             try:
                 values = read_table(
                     data,
                     expected_metadata={
-                        "schemaVersion": SCHEMA_VERSION,
+                        "schemaVersion": version,
                         "releaseId": manifest.release_id,
                         "dataset": name,
                     },
-                    expected_columns=COLUMNS[name],
+                    expected_columns=columns,
                 )
             except ArrowError as error:
                 msg = f"Incompatible {name} table from {response_url}: {error}"
@@ -184,10 +226,13 @@ class TimetableLoader:
         return value
 
 
-def _decode_manifest(data: bytes, response_url: str) -> Manifest:
+def _decode_json(data: bytes, response_url: str) -> Any:
     try:
-        document = json.loads(data)
+        return json.loads(data)
     except (ValueError, UnicodeError) as error:
-        msg = f"Malformed iRail CDN manifest JSON from {response_url}"
+        msg = f"Malformed iRail CDN JSON from {response_url}"
         raise InvalidResponseError(msg) from error
-    return parse_manifest(document, response_url)
+
+
+def _decode_manifest(data: bytes, response_url: str) -> Manifest:
+    return parse_manifest(_decode_json(data, response_url), response_url)
