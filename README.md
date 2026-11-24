@@ -98,7 +98,9 @@ print(stations.version, stations.timestamp)
 print(len(stations.stations))
 ```
 
-pyRail only changes the type of values, not their meaning: string flags become `bool`, epoch strings become `datetime`, names are snake_case, and count-only wrappers such as `departures.departure` are flattened. Data is never converted or derived.
+The HTTP backend converts string flags to `bool` and epoch strings to `datetime`. Python attributes use snake_case, while the models retain the existing iRail JSON aliases for deserialization. Response models flatten count-only wrappers such as `departures.departure`.
+
+**Breaking change for the next major release.** Applications should handle `None` for unknown occupancy, extra-train and extra-stop flags, platform details (including whether the platform is the normal one), and vehicle coordinates. Use keyword arguments when constructing affected models directly. Connection alerts and remarks default to empty lists. For a future CDN backend, `left` and `arrived` will remain booleans estimated from the timetable and realtime delay.
 
 All response types, including the nested ones, are exported from the package root, so `from pyrail import StationsApiResponse` works.
 
