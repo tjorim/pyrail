@@ -21,6 +21,9 @@ dependencies = [
     "mashumaro[orjson]>=3.23",
 ]
 
+[project.optional-dependencies]
+cdn = ["gtfs-realtime-bindings>=3"]
+
 [project.urls]
 Homepage = "https://github.com/tjorim/pyrail"
 Repository = "https://github.com/tjorim/pyrail"
@@ -30,6 +33,7 @@ Changelog = "https://github.com/tjorim/pyrail/releases"
 
 [dependency-groups]
 test = [
+    "gtfs-realtime-bindings>=3",
     # Only the reference that pyrail/cdn/arrow.py is tested against; it is not a runtime dependency.
     "pyarrow>=26",
     "pytest>=9.2.0",

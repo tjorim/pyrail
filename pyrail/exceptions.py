@@ -64,3 +64,7 @@ class InvalidResponseError(PyRailError):
         """Initialize the exception with a message and the optional HTTP status of the response."""
         super().__init__(message)
         self.status: int | None = status
+
+
+class NotSupportedError(PyRailError):
+    """Raised when the selected backend cannot answer an operation."""

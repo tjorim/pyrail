@@ -20,6 +20,7 @@ class ConnectionPage:
     """An immutable connection page and its inclusive departure bounds."""
 
     url: str
+    epoch_seconds: int
     minimum: datetime
     maximum: datetime
 
@@ -46,6 +47,7 @@ class Manifest:
     pages: tuple[ConnectionPage, ...]
     realtime: tuple[RealtimeFeed, ...]
     extensions_url: str | None
+    generated_at: datetime
 
     def pages_between(self, start: datetime, end: datetime) -> tuple[ConnectionPage, ...]:
         """Return pages overlapping the half-open departure window [start, end)."""
@@ -90,6 +92,14 @@ def _instant(data: dict[str, Any], key: str) -> datetime:
     return value.astimezone(UTC)
 
 
+def _epoch(page: dict[str, Any]) -> int:
+    value = page["epochSeconds"]
+    if type(value) is not int:
+        msg = "epochSeconds must be an integer"
+        raise ValueError(msg)
+    return value
+
+
 def _optional_template(feed: dict[str, Any], key: str) -> str | None:
     return _text(feed[key], key) if key in feed else None
 
@@ -103,7 +113,12 @@ def parse_manifest(data: Any, base_url: str) -> Manifest:
         start = _instant(data, "coverageStart")
         end = _instant(data, "coverageEnd")
         pages = tuple(
-            ConnectionPage(_url(page, base_url), _instant(page, "minDepartureTime"), _instant(page, "maxDepartureTime"))
+            ConnectionPage(
+                _url(page, base_url),
+                _epoch(page),
+                _instant(page, "minDepartureTime"),
+                _instant(page, "maxDepartureTime"),
+            )
             for page in data["connections"]["pages"]
         )
         if start >= end or any(not start <= page.minimum <= page.maximum < end for page in pages):
@@ -127,7 +142,22 @@ def parse_manifest(data: Any, base_url: str) -> Manifest:
                 for feed in data.get("realtime", ())
             ),
             extensions_url=None if extensions is None else _url(extensions, base_url),
+            generated_at=_instant(data, "generatedAt"),
         )
     except (AttributeError, KeyError, TypeError, ValueError, ZoneInfoNotFoundError) as error:
         msg = f"Invalid iRail CDN manifest from {base_url}: {error}"
+        raise InvalidResponseError(msg) from error
+
+
+def parse_extensions(data: Any, base_url: str, release_id: str) -> Mapping[str, str]:
+    """Read the file links from a matching iRail extension catalog."""
+    try:
+        if data["releaseId"] != release_id:
+            msg = f"Extension catalog does not belong to release {release_id}"
+            raise InvalidResponseError(msg)
+        return MappingProxyType(
+            {name: _url(entry["path"], base_url) for name, entry in data["files"].items() if isinstance(entry, dict)}
+        )
+    except (AttributeError, KeyError, TypeError, ValueError) as error:
+        msg = f"Invalid iRail extension catalog from {base_url}: {error}"
         raise InvalidResponseError(msg) from error
