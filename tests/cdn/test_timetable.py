@@ -32,11 +32,13 @@ def _manifest(release: str, *, version: str = "2-alpha") -> dict[str, Any]:
             "pages": [
                 {
                     "@id": f"{release}/page1.arrow",
+                    "epochSeconds": 1795500000,
                     "minDepartureTime": "2026-11-24T06:00:00Z",
                     "maxDepartureTime": "2026-11-24T08:00:00Z",
                 },
                 {
                     "@id": f"{release}/page2.arrow",
+                    "epochSeconds": 1795500000,
                     "minDepartureTime": "2026-11-24T09:00:00Z",
                     "maxDepartureTime": "2026-11-24T12:00:00Z",
                 },

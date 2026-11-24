@@ -20,6 +20,7 @@ class ConnectionPage:
     """An immutable connection page and its inclusive departure bounds."""
 
     url: str
+    epoch_seconds: int
     minimum: datetime
     maximum: datetime
 
@@ -90,6 +91,14 @@ def _instant(data: dict[str, Any], key: str) -> datetime:
     return value.astimezone(UTC)
 
 
+def _epoch(page: dict[str, Any]) -> int:
+    value = page["epochSeconds"]
+    if type(value) is not int:
+        msg = "epochSeconds must be an integer"
+        raise ValueError(msg)
+    return value
+
+
 def _optional_template(feed: dict[str, Any], key: str) -> str | None:
     return _text(feed[key], key) if key in feed else None
 
@@ -103,7 +112,12 @@ def parse_manifest(data: Any, base_url: str) -> Manifest:
         start = _instant(data, "coverageStart")
         end = _instant(data, "coverageEnd")
         pages = tuple(
-            ConnectionPage(_url(page, base_url), _instant(page, "minDepartureTime"), _instant(page, "maxDepartureTime"))
+            ConnectionPage(
+                _url(page, base_url),
+                _epoch(page),
+                _instant(page, "minDepartureTime"),
+                _instant(page, "maxDepartureTime"),
+            )
             for page in data["connections"]["pages"]
         )
         if start >= end or any(not start <= page.minimum <= page.maximum < end for page in pages):
