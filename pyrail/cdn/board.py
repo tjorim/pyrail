@@ -145,7 +145,7 @@ def build_liveboard(
         effective = row.arrival if is_arrival else row.departure
         skipped = row.arrival_skipped if is_arrival else row.departure_skipped
         rule = row.drop_off_type if is_arrival else row.pickup_type
-        if stop not in stop_ids or not window_start <= effective < window_end or (rule == 1 and not skipped):
+        if stop not in stop_ids or not window_start <= effective <= window_end or (rule == 1 and not skipped):
             continue
         vehicle = vehicles.get(row.trip_index)
         first, last = ends[row.trip_index, row.service_date]
