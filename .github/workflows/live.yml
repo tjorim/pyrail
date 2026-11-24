@@ -3,6 +3,7 @@ name: Live API Smoke Tests
 on:
   schedule:
     - cron: "17 6 * * *"
+    - cron: "31 7 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -10,6 +11,7 @@ permissions:
 
 jobs:
   live:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 6 * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -24,4 +26,22 @@ jobs:
         enable-cache: true
 
     - name: Run live smoke tests
-      run: uv run --locked pytest -m live
+      run: uv run --locked pytest -m live tests/live/test_live_api.py
+
+  cdn-parity:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '31 7 * * 1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      with:
+        working-directory: .
+        enable-cache: true
+
+    - name: Compare live API and CDN data
+      run: uv run --locked pytest -m live --log-cli-level=INFO tests/live/test_cdn_parity.py

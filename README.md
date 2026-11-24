@@ -327,6 +327,10 @@ The vehicle and composition requests use a vehicle id taken from a Brussels-Cent
 - `API REJECTED REQUEST`: the API answered HTTP 400 or 404, for example an invalid parameter or a stale vehicle id. This is a request problem, not an outage.
 - `API INCOMPATIBLE`: iRail answered successfully but the response no longer deserializes. The message names the endpoint and the error, and the models in `pyrail/models.py` probably need updating.
 
+The weekly CDN parity job compares stations, liveboards and dated vehicles against the
+API. It reports differences in catalog coverage, scheduled calls and realtime fields in the
+job log. Run it locally with `uv run --locked pytest -m live --log-cli-level=INFO tests/live/test_cdn_parity.py`.
+
 ### Code Style
 
 We use ruff for code formatting and linting. To check your code style, run:
