@@ -80,7 +80,7 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-### CDN stations
+### CDN stations and liveboards
 
 Use the experimental CDN backend for station listings.
 
@@ -95,6 +95,9 @@ The CDN result combines parent timetable stops with the curated station catalog.
 The catalog supplies standard names and available translations. The station IDs use
 the digits in each published station IRI, keeping leading zeros. The CDN catalog can
 include stations absent from the API, and some published IDs or translations differ.
+Install `pyrail[cdn]` to use CDN departure and arrival boards. A board covers one
+hour starting at the requested Belgian local time. The CDN estimates `left` and
+`arrived` using the timetable and realtime delay; canceled calls retain a false status.
 Calls the CDN backend cannot serve raise `NotSupportedError`.
 
 ### Response Objects

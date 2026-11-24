@@ -1,13 +1,18 @@
 """Exercise GTFS Realtime matching, connection overlays and polling offline."""
 
 import asyncio
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession
 from google.transit import gtfs_realtime_pb2 as gtfs
+import pytest
 
+from pyrail import CdnBackend, IRail
+from pyrail.cdn.board import query_time
 from pyrail.cdn.manifest import ConnectionPage, Manifest, RealtimeFeed
 from pyrail.cdn.realtime import RealtimeLoader, apply_realtime
 from pyrail.cdn.timetable import Timetable
@@ -20,8 +25,6 @@ _FEED = RealtimeFeed("https://example.org/realtime.pb", "https://example.org/tri
 
 
 def _timetable() -> Timetable:
-    from zoneinfo import ZoneInfo  # noqa: PLC0415
-
     page = ConnectionPage("https://example.org/page.arrow", _EPOCH, _MINIMUM, _MAXIMUM)
     return Timetable(
         Manifest("example", ZoneInfo("Europe/Brussels"), _MINIMUM, _MAXIMUM, {}, (page,), (_FEED,), None, _MINIMUM),
@@ -125,3 +128,58 @@ async def test_polling_is_conditional_serialized_and_retains_previous_snapshot()
         "If-None-Match": '"one"',
         "If-Modified-Since": "Tue, 24 Nov 2026 00:00:00 GMT",
     }
+
+
+@pytest.mark.parametrize("select_by_id", [True, False])
+async def test_cdn_liveboard_at_the_public_entry_point(*, select_by_id: bool) -> None:
+    """Serve arrivals and departures in a Belgian time window, with translated headsigns."""
+    base = _timetable()
+    names = ("Origin", "Exchange", "Skipped", "Later", "Destination")
+    irail_iris = tuple(f"http://irail.be/stations/NMBS/{number:09d}" for number in range(1, 6))
+    timetable = replace(
+        base,
+        tables={
+            "stops": {"iri": irail_iris, "name": names, "parentIdx": (-1,) * 5, "lat": (51.0,) * 5, "lon": (4.0,) * 5},
+            "trips": {**base.tables["trips"], "headsign": ("Destination", "Exchange")},
+        },
+        extensions={
+            "tripEnrichment": {
+                "tripIdx": (0, 1),
+                "vehicleIri": ("http://irail.be/vehicle/S102056", "http://irail.be/vehicle/L1234"),
+            },
+            "headsigns": {"headsign": ("Destination",), "translationEn": ("Translated terminus",)},
+        },
+    )
+    session = MagicMock(spec=ClientSession, closed=False)
+    session.get.return_value = _response(200, _feed().SerializeToString())
+    board_time = datetime.fromtimestamp(_EPOCH, ZoneInfo("Europe/Brussels")).strftime("%H%M")
+    async with IRail(backend=CdnBackend(session=session)) as api:
+        with patch("pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=timetable)):
+            board = await api.get_liveboard(
+                station_id="BE.NMBS.000000001" if select_by_id else None,
+                station=None if select_by_id else "origin",
+                date="241126",
+                time=board_time,
+            )
+            arrivals = await api.get_liveboard(station="Exchange", date="241126", time=board_time, arrdep="arrival")
+    assert board is not None
+    assert board.departures is not None
+    assert board.arrivals is None
+    assert board.station == "Origin"
+    assert [entry.vehicle for entry in board.departures] == ["BE.NMBS.S102056", "BE.NMBS.L1234"]
+    assert board.departures[0].station == "Translated terminus"
+    assert board.departures[0].vehicle_info.short_name == "S10 2056"
+    assert board.departures[0].platform == "2"
+    assert board.departures[1].canceled
+    assert not board.departures[1].left
+    assert arrivals is not None
+    assert arrivals.arrivals is not None
+    assert arrivals.departures is None
+    assert arrivals.arrivals[0].station == "Origin"
+
+
+def test_board_time_crosses_the_service_day_at_belgian_midnight() -> None:
+    """Interpret midnight in Belgian time and reject the spring clock gap."""
+    assert query_time("241126", "0015") == datetime(2026, 11, 23, 23, 15, tzinfo=UTC)
+    with pytest.raises(ValueError, match="does not exist"):
+        query_time("290326", "0230")

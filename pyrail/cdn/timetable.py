@@ -4,7 +4,7 @@ from asyncio import Lock
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from http import HTTPStatus
 import json
@@ -95,7 +95,12 @@ class TimetableLoader:
         return self._last_usable
 
     async def load(
-        self, *, tables: Sequence[str] = TABLES, window: Window | None = None, extensions: Sequence[str] = ()
+        self,
+        *,
+        tables: Sequence[str] = TABLES,
+        window: Window | None = None,
+        extensions: Sequence[str] = (),
+        margin: timedelta = timedelta(),
     ) -> Timetable:
         """Load the selected core tables and the pages overlapping a departure window.
 
@@ -115,7 +120,14 @@ class TimetableLoader:
                 _decode_manifest,
                 max_entries=1,
             )
-            pages = () if window is None else manifest.pages_between(*window)
+            pages = ()
+            if window is not None:
+                pages = manifest.pages_between(*window)
+                if margin > timedelta():
+                    start, end = window
+                    pages = manifest.pages_between(
+                        max(manifest.coverage_start, start - margin), min(manifest.coverage_end, end + margin)
+                    )
             catalog = await self._load_catalog(manifest) if extensions else {}
             snapshot = Timetable(
                 manifest,

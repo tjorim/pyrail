@@ -50,6 +50,13 @@ COLUMNS = {
 
 
 EXTENSION_COLUMNS = {
+    "tripEnrichment": {"tripIdx": "i", "vehicleIri": "utf8"},
+    "headsigns": {
+        "headsign": "utf8",
+        "translationDe": "utf8",
+        "translationEn": "utf8",
+        "translationNl": "utf8",
+    },
     "stations": {
         "iri": "utf8",
         "name": "utf8",

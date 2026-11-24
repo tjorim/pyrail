@@ -1,16 +1,23 @@
 """iRail backend that reads the published Linked Connections timetable."""
 
+from __future__ import annotations
+
+from datetime import timedelta
 import re
-from typing import override
+from typing import TYPE_CHECKING, Literal, override
 
 from aiohttp import ClientSession
 
 from pyrail.backend import Backend
 from pyrail.exceptions import NotSupportedError
-from pyrail.models import StationDetails, StationsApiResponse
+from pyrail.models import LiveboardApiResponse, StationDetails, StationsApiResponse
 
+from .board import build_liveboard, query_time
 from .manifest import MANIFEST_URL, SCHEMA_VERSION
-from .timetable import Table, TimetableLoader
+from .timetable import Table, Timetable, TimetableLoader
+
+if TYPE_CHECKING:
+    from .realtime import Connection, RealtimeLoader
 
 _STATION_IRI = re.compile(r"https?://irail\.be/stations/NMBS/([0-9]+)")
 
@@ -31,6 +38,7 @@ class CdnBackend(Backend):
         self._owns_session = session is None
         self._manifest_url = manifest_url
         self._loader: TimetableLoader | None = None
+        self._realtime: RealtimeLoader | None = None
 
     def _timetable_loader(self) -> TimetableLoader:
         if self._session is None:
@@ -54,18 +62,66 @@ class CdnBackend(Backend):
             await self._session.close()
             self._session = None
         self._loader = None
+        self._realtime = None
 
     @override
     async def get_stations(self) -> StationsApiResponse:
         """Return journey stations and their names in the selected language."""
         timetable = await self._timetable_loader().load(tables=("stops",), extensions=("stations",))
-        stations = {}
-        _add_stations(stations, timetable.tables["stops"], "name")
-        if (curated := timetable.extensions.get("stations")) is not None:
-            _add_stations(stations, curated, f"alternative{self.lang.title()}")
+        stations = _station_details(timetable, self.lang)
         return StationsApiResponse(
             version=SCHEMA_VERSION, timestamp=timetable.manifest.generated_at, stations=list(stations.values())
         )
+
+    @override
+    async def get_liveboard(
+        self,
+        station: str | None = None,
+        station_id: str | None = None,
+        date: str | None = None,
+        time: str | None = None,
+        arrdep: Literal["departure", "arrival"] = "departure",
+    ) -> LiveboardApiResponse:
+        """Build the requested hour of station calls from the scheduled and realtime data."""
+        if (station is None) == (station_id is None):
+            msg = "Provide exactly one of station or station_id"
+            raise ValueError(msg)
+        if arrdep not in ("departure", "arrival"):
+            msg = "arrdep must be departure or arrival"
+            raise ValueError(msg)
+        start = query_time(date, time)
+        end = start + timedelta(hours=1)
+        timetable = await self._timetable_loader().load(
+            tables=("stops", "trips"),
+            window=(start, end),
+            margin=timedelta(hours=8),
+            extensions=("stations", "headsigns", "tripEnrichment"),
+        )
+        rows = await self._connections(timetable)
+        stations = _station_details(timetable, self.lang)
+        return build_liveboard(
+            timetable,
+            rows,
+            stations,
+            station if station is not None else station_id or "",
+            self.lang,
+            start,
+            end,
+            arrdep,
+        )
+
+    async def _connections(self, timetable: Timetable) -> tuple[Connection, ...]:
+        if self._realtime is None:
+            try:
+                from .realtime import RealtimeLoader  # noqa: PLC0415
+            except ImportError as error:
+                msg = "Install pyrail[cdn] to use CDN liveboards and realtime updates"
+                raise NotSupportedError(msg) from error
+            if self._session is None:
+                msg = "The CDN session is closed"
+                raise RuntimeError(msg)
+            self._realtime = RealtimeLoader(self._session)
+        return await self._realtime.connections(timetable)
 
     @override
     async def get_composition(self, vehicle_id: str, date: str | None = None) -> None:
@@ -74,6 +130,14 @@ class CdnBackend(Backend):
             "Train composition needs SNCB's private RIV API. Use the iRail API backend while api.irail.be is available."
         )
         raise NotSupportedError(msg)
+
+
+def _station_details(timetable: Timetable, lang: str) -> dict[str, StationDetails]:
+    stations: dict[str, StationDetails] = {}
+    _add_stations(stations, timetable.tables["stops"], "name")
+    if (curated := timetable.extensions.get("stations")) is not None:
+        _add_stations(stations, curated, f"alternative{lang.title()}")
+    return stations
 
 
 def _add_stations(stations: dict[str, StationDetails], table: Table, name_column: str) -> None:
