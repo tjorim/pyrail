@@ -143,3 +143,42 @@ async def test_live_vehicle_parity(live: LiveApi, cdn: LiveApi, travel_date: tup
         ),
         sum(api_by_call[key].canceled != cdn_by_call[key].canceled for key in shared),
     )
+
+
+@pytest.mark.parametrize("selection", ["departure", "arrival"])
+async def test_live_journey_parity(
+    live: LiveApi,
+    cdn: LiveApi,
+    travel_date: tuple[str, str],
+    selection: Literal["departure", "arrival"],
+) -> None:
+    """Compare scheduled journey options and log differences in the planner's selection."""
+    date, time = travel_date
+    origin = BRUSSELS_CENTRAL_ID
+    destination = "BE.NMBS.008892007"
+
+    async def journeys_from(source: LiveApi) -> set[tuple[str, str, int]]:
+        response = await source.fetch(
+            f"connections ({selection})",
+            lambda rail: rail.get_connections(origin, destination, date, time, timesel=selection),
+        )
+        assert response.connections
+        assert all(j.departure.station_info.id == origin for j in response.connections)
+        assert all(j.arrival.station_info.id == destination for j in response.connections)
+        return {
+            (j.departure.time.isoformat(), j.arrival.time.isoformat(), len(j.vias or ())) for j in response.connections
+        }
+
+    api = await journeys_from(live)
+    published = await journeys_from(cdn)
+    shared = api & published
+    assert shared
+    logger.info(
+        "Journeys (%s): %d API, %d CDN, %d shared. Other options by scheduled times and transfer count: API %s; CDN %s",
+        selection,
+        len(api),
+        len(published),
+        len(shared),
+        sorted(api - shared),
+        sorted(published - shared),
+    )

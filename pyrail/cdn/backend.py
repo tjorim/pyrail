@@ -10,9 +10,16 @@ from aiohttp import ClientSession
 
 from pyrail.backend import Backend
 from pyrail.exceptions import NotSupportedError
-from pyrail.models import LiveboardApiResponse, StationDetails, StationsApiResponse, VehicleApiResponse
+from pyrail.models import (
+    ConnectionsApiResponse,
+    LiveboardApiResponse,
+    StationDetails,
+    StationsApiResponse,
+    VehicleApiResponse,
+)
 
 from .board import build_liveboard, query_time
+from .journey import build_connections
 from .manifest import MANIFEST_URL, SCHEMA_VERSION
 from .timetable import Table, Timetable, TimetableLoader
 from .vehicle import build_vehicle, service_day
@@ -112,6 +119,48 @@ class CdnBackend(Backend):
         )
 
     @override
+    async def get_connections(
+        self,
+        from_station: str,
+        to_station: str,
+        date: str | None = None,
+        time: str | None = None,
+        timesel: Literal["departure", "arrival"] = "departure",
+        type_of_transport: Literal["automatic", "trains", "no_international_trains", "all"] = "automatic",
+    ) -> ConnectionsApiResponse:
+        """Search the iRail timetable for departures or arrivals near the requested time."""
+        if timesel not in ("departure", "arrival"):
+            msg = "timesel must be departure or arrival"
+            raise ValueError(msg)
+        if type_of_transport not in ("automatic", "trains", "no_international_trains", "all"):
+            msg = "Invalid type_of_transport"
+            raise ValueError(msg)
+        if type_of_transport == "no_international_trains":
+            msg = "The CDN router does not yet support filtering international trains"
+            raise NotSupportedError(msg)
+        instant = query_time(date, time)
+        arrive_by = timesel == "arrival"
+        span = timedelta(hours=6)
+        window = (instant - span, instant + timedelta(seconds=1)) if arrive_by else (instant, instant + span)
+        timetable = await self._timetable_loader().load(
+            tables=("stops", "trips"),
+            window=window,
+            margin=timedelta(hours=1),
+            extensions=("stations", "tripEnrichment"),
+        )
+        rows = await self._connections(timetable)
+        return build_connections(
+            timetable,
+            rows,
+            _station_details(timetable, self.lang),
+            from_station,
+            to_station,
+            instant,
+            arrive_by=arrive_by,
+            trains_only=type_of_transport != "all",
+        )
+
+    @override
     async def get_vehicle(self, vehicle_id: str, date: str | None = None) -> VehicleApiResponse:
         """Build a vehicle response for a Belgian service date."""
         if not vehicle_id:
@@ -132,7 +181,7 @@ class CdnBackend(Backend):
             try:
                 from .realtime import RealtimeLoader  # noqa: PLC0415
             except ImportError as error:
-                msg = "Install pyrail[cdn] to use CDN liveboards, vehicle lookups and realtime updates"
+                msg = "Install pyrail[cdn] to use realtime CDN services"
                 raise NotSupportedError(msg) from error
             if self._session is None:
                 msg = "The CDN session is closed"

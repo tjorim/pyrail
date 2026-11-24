@@ -27,13 +27,14 @@ def service_day(date: str | None) -> tuple[int, Window]:
     return int(start.strftime("%Y%m%d")), (start.astimezone(UTC), (start + timedelta(days=1)).astimezone(UTC))
 
 
-def _stop(
+def build_vehicle_stop(
     index: int,
     station: StationDetails,
     incoming: Connection | None,
     outgoing: Connection | None,
     now: datetime,
 ) -> VehicleStop:
+    """Build a stop from its incoming and outgoing calls."""
     if incoming is None:
         assert outgoing is not None  # noqa: S101
         arriving, arrival_delay, arrival_canceled = outgoing.scheduled_departure, 0, outgoing.canceled
@@ -106,7 +107,7 @@ def build_vehicle(
         if station is None:
             msg = f"Missing station details for {stop_iris[stop]}"
             raise InvalidResponseError(msg)
-        stops.append(_stop(index, station, incoming, outgoing, now))
+        stops.append(build_vehicle_stop(index, station, incoming, outgoing, now))
     vehicle = replace(
         vehicles[trip], latitude=stops[0].station_info.latitude, longitude=stops[0].station_info.longitude
     )

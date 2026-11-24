@@ -223,3 +223,34 @@ def test_service_day_duration_across_dst() -> None:
     assert day == 20260329
     assert start == datetime(2026, 3, 28, 23, tzinfo=UTC)
     assert end == datetime(2026, 3, 29, 22, tzinfo=UTC)
+
+
+async def test_cdn_connections_returns_public_journey_models() -> None:
+    """Use the same scheduled and realtime model for both directions of search."""
+    timetable = _endpoint_timetable()
+    timetable = replace(
+        timetable,
+        tables={
+            **timetable.tables,
+            "stops": {**timetable.tables["stops"], "minTransferTime": (0,) * 5},
+        },
+    )
+    session = MagicMock(spec=ClientSession, closed=False)
+    session.get.return_value = _response(200, _feed().SerializeToString())
+    local = ZoneInfo("Europe/Brussels")
+    departure_time = datetime.fromtimestamp(_EPOCH, local).strftime("%H%M")
+    arrival_time = datetime.fromtimestamp(_EPOCH + 540, local).strftime("%H%M")
+    async with IRail(backend=CdnBackend(session=session)) as api:
+        with patch("pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=timetable)):
+            forward = await api.get_connections("Origin", "Destination", "241126", departure_time)
+            reverse = await api.get_connections("Origin", "Destination", "241126", arrival_time, timesel="arrival")
+    assert forward is not None
+    assert reverse is not None
+    assert forward.connections == reverse.connections
+    journey = forward.connections[0]
+    assert journey.departure.vehicle == "BE.NMBS.S102056"
+    assert journey.departure.platform == "2"
+    assert journey.arrival.station == "Destination"
+    assert [stop.station for stop in journey.departure.stops] == ["Exchange", "Skipped", "Later"]
+    assert journey.departure.stops[1].arrival_canceled
+    assert journey.duration == 340
