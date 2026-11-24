@@ -145,17 +145,25 @@ async def test_live_vehicle_parity(live: LiveApi, cdn: LiveApi, travel_date: tup
     )
 
 
-@pytest.mark.parametrize("selection", ["departure", "arrival"])
+@pytest.mark.parametrize(
+    ("origin", "destination", "selection"),
+    [
+        (BRUSSELS_CENTRAL_ID, "BE.NMBS.008892007", "departure"),
+        (BRUSSELS_CENTRAL_ID, "BE.NMBS.008892007", "arrival"),
+        ("BE.NMBS.008891702", "BE.NMBS.008866001", "departure"),  # Oostende-Arlon
+        ("BE.NMBS.008844628", "BE.NMBS.008863503", "departure"),  # Eupen-Dinant
+    ],
+)
 async def test_live_journey_parity(
     live: LiveApi,
     cdn: LiveApi,
     travel_date: tuple[str, str],
     selection: Literal["departure", "arrival"],
+    origin: str,
+    destination: str,
 ) -> None:
     """Compare scheduled journey options and log differences in the planner's selection."""
     date, time = travel_date
-    origin = BRUSSELS_CENTRAL_ID
-    destination = "BE.NMBS.008892007"
 
     async def journeys_from(source: LiveApi) -> set[tuple[str, str, int]]:
         response = await source.fetch(

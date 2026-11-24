@@ -4,6 +4,7 @@ from dataclasses import replace
 
 from pyrail.cdn.realtime import Connection
 from pyrail.cdn.routing import journeys
+from pyrail.cdn.transfers import TransferRule
 
 
 def _edge(
@@ -51,3 +52,56 @@ def test_scan_prefers_direct_journey_with_same_arrival() -> None:
         _edge("direct", 2, 0, 2, 22, 35),
     ]
     assert [[row.iri for row in path] for path in journeys(rows, (-1,) * 3, (0,) * 3, 0, 2, 10)] == [["direct"]]
+
+
+def test_specific_rules_preserve_alternate_feeders_in_both_directions() -> None:
+    """Honor trip-specific prohibitions and route-specific minimum time."""
+    rows = [
+        _edge("blocked", 0, 0, 1, 10, 15),
+        _edge("usable", 1, 0, 1, 11, 18),
+        _edge("onward", 2, 1, 2, 20, 30),
+    ]
+    rules = [
+        TransferRule(1, 1, None, None, 7, 8, 2, 2),
+        TransferRule(1, 1, 0, 2, None, None, 3, None),
+    ]
+    for reverse in (False, True):
+        paths = journeys(
+            rows,
+            (-1,) * 3,
+            (0, 10, 0),
+            0,
+            2,
+            30 if reverse else 10,
+            arrive_by=reverse,
+            transfer_rules=rules,
+            routes=(7, 7, 8),
+        )
+        assert paths == [[rows[1], rows[2]]]
+
+
+def test_same_vehicle_continuation_can_cross_a_trip_number_change() -> None:
+    """A type 4 continuation allows staying aboard without boarding again."""
+    first = replace(_edge("a", 0, 0, 1, 10, 20), drop_off_type=1)
+    second = replace(_edge("b", 1, 1, 2, 21, 30), pickup_type=1)
+    rule = TransferRule(None, None, 0, 1, None, None, 4, None)
+    for reverse in (False, True):
+        paths = journeys(
+            [first, second],
+            (-1,) * 3,
+            (0, 10, 0),
+            0,
+            2,
+            30 if reverse else 10,
+            arrive_by=reverse,
+            transfer_rules=[rule],
+        )
+        assert paths == [[first, second]]
+    assert journeys([first, second], (-1,) * 3, (0, 10, 0), 0, 2, 10) == []
+
+
+def test_explicit_timed_transfer_can_link_distinct_station_indices() -> None:
+    """A timed interchange can connect two published stops across station IDs."""
+    rows = [_edge("a", 0, 0, 1, 10, 20), _edge("b", 1, 2, 3, 21, 30)]
+    rule = TransferRule(1, 2, None, None, None, None, 1, None)
+    assert journeys(rows, (-1,) * 4, (10,) * 4, 0, 3, 10, transfer_rules=[rule]) == [rows]

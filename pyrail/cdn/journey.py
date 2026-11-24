@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from datetime import UTC, datetime
 from itertools import groupby, pairwise
 from typing import TYPE_CHECKING
@@ -24,6 +25,7 @@ from pyrail.models import (
 from .board import lookup_station, trip_vehicles
 from .manifest import SCHEMA_VERSION
 from .routing import journeys
+from .transfers import read_transfer_rules
 from .vehicle import build_vehicle_stop
 
 if TYPE_CHECKING:
@@ -121,10 +123,15 @@ def _connection(
         )
         for (_, arrival), (departure, _) in pairwise(legs)
     ]
+    canceled = any(row.canceled for row in path) or path[0].departure_skipped or path[-1].arrival_skipped
+    departure, arrival = legs[0][0], legs[-1][1]
+    if canceled:
+        departure = replace(departure, canceled=True, left=False)
+        arrival = replace(arrival, canceled=True, arrived=False)
     return ConnectionDetails(
         id=" ".join(row.iri for row in path),
-        departure=legs[0][0],
-        arrival=legs[-1][1],
+        departure=departure,
+        arrival=arrival,
         duration=path[-1].arrival - path[0].departure,
         vias=vias or None,
     )
@@ -166,15 +173,40 @@ def build_connections(
         and row.arrival_stop in by_index
         and (not trains_only or vehicles[row.trip_index].type != "BUS")
     ]
+    rules = read_transfer_rules(timetable.tables["transfers"])
+    route_indices = timetable.tables["trips"]["routeIdx"]
+    source, target = iris.index(start.at_id), iris.index(end.at_id)
+    time = int(instant.timestamp())
     paths = journeys(
         candidates,
         parents,
         stops["minTransferTime"],
-        iris.index(start.at_id),
-        iris.index(end.at_id),
-        int(instant.timestamp()),
+        source,
+        target,
+        time,
         arrive_by=arrive_by,
+        transfer_rules=rules,
+        routes=route_indices,
     )
+    if any(row.canceled or row.departure_skipped or row.arrival_skipped for row in candidates):
+        scheduled = journeys(
+            candidates,
+            parents,
+            stops["minTransferTime"],
+            source,
+            target,
+            time,
+            arrive_by=arrive_by,
+            transfer_rules=rules,
+            routes=route_indices,
+            include_canceled=True,
+        )
+        paths.extend(
+            [replace(row, departure_delay=0, arrival_delay=0) for row in path]
+            for path in scheduled
+            if any(row.canceled for row in path) or path[0].departure_skipped or path[-1].arrival_skipped
+        )
+        paths.sort(key=lambda path: path[0].departure)
     return ConnectionsApiResponse(
         version=SCHEMA_VERSION,
         timestamp=now,

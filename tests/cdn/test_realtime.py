@@ -232,6 +232,20 @@ async def test_cdn_connections_returns_public_journey_models() -> None:
         timetable,
         tables={
             **timetable.tables,
+            "trips": {**timetable.tables["trips"], "routeIdx": (0, 0)},
+            "transfers": dict.fromkeys(
+                (
+                    "fromStopIdx",
+                    "toStopIdx",
+                    "fromTripIdx",
+                    "toTripIdx",
+                    "fromRouteIdx",
+                    "toRouteIdx",
+                    "transferType",
+                    "minTransferTime",
+                ),
+                (),
+            ),
             "stops": {**timetable.tables["stops"], "minTransferTime": (0,) * 5},
         },
     )
@@ -244,13 +258,21 @@ async def test_cdn_connections_returns_public_journey_models() -> None:
         with patch("pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=timetable)):
             forward = await api.get_connections("Origin", "Destination", "241126", departure_time)
             reverse = await api.get_connections("Origin", "Destination", "241126", arrival_time, timesel="arrival")
+            canceled = await api.get_connections("Origin", "Exchange", "241126", departure_time)
     assert forward is not None
     assert reverse is not None
     assert forward.connections == reverse.connections
-    journey = forward.connections[0]
+    journey = next(journey for journey in forward.connections if not journey.departure.canceled)
     assert journey.departure.vehicle == "BE.NMBS.S102056"
     assert journey.departure.platform == "2"
     assert journey.arrival.station == "Destination"
     assert [stop.station for stop in journey.departure.stops] == ["Exchange", "Skipped", "Later"]
     assert journey.departure.stops[1].arrival_canceled
     assert journey.duration == 340
+
+    assert canceled is not None
+    assert len(canceled.connections) == 2
+    canceled_journey = next(journey for journey in canceled.connections if journey.departure.canceled)
+    assert canceled_journey.departure.vehicle == "BE.NMBS.L1234"
+    assert canceled_journey.arrival.canceled
+    assert not canceled_journey.departure.left

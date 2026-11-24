@@ -143,7 +143,7 @@ class CdnBackend(Backend):
         span = timedelta(hours=6)
         window = (instant - span, instant + timedelta(seconds=1)) if arrive_by else (instant, instant + span)
         timetable = await self._timetable_loader().load(
-            tables=("stops", "trips"),
+            tables=("stops", "trips", "transfers"),
             window=window,
             margin=timedelta(hours=1),
             extensions=("stations", "tripEnrichment"),
