@@ -111,7 +111,9 @@ def _minimum(network: _Network, before: Connection, after: Connection) -> int | 
     return {FORBIDDEN: None, TIMED: 0, MINIMUM_TIME: rule.minimum}.get(rule.kind)
 
 
-def _search(network: _Network, source: int, target: int, start: int) -> list[tuple[int, int, int]]:  # noqa: C901
+def _search(  # noqa: C901
+    network: _Network, source: int, target: int, start: int, deadline: int = 10**9
+) -> list[tuple[int, int, int]]:
     """Enumerate every legal journey as (arrival, transfers, departure)."""
     runs: dict[int, list[Connection]] = defaultdict(list)
     for row in network.rows:
@@ -132,7 +134,8 @@ def _search(network: _Network, source: int, target: int, start: int) -> list[tup
     def arrived(current: Connection, trip: int, transfers: int, departure: int, *, alight: bool) -> None:
         station = network.station(current.arrival_stop)
         if alight and station == target:
-            results.append((current.arrival, transfers, departure))
+            if current.arrival <= deadline:
+                results.append((current.arrival, transfers, departure))
             return
         last = runs[trip][-1] is current
         for other, edges in runs.items():
@@ -173,10 +176,9 @@ def _best(options: Iterable[tuple[int, int, int]]) -> set[tuple[int, int, int]]:
     }
 
 
-def _expected(network: _Network, source: int, target: int) -> set[tuple[int, int, int]]:
-    return _best(
-        (departure, arrival, transfers) for arrival, transfers, departure in _search(network, source, target, 0)
-    )
+def _expected(network: _Network, source: int, target: int, start: int, deadline: int) -> set[tuple[int, int, int]]:
+    found = _search(network, source, target, start, deadline)
+    return _best((departure, arrival, transfers) for arrival, transfers, departure in found)
 
 
 def _found(network: _Network, paths: list[list[Connection]]) -> set[tuple[int, int, int]]:
@@ -191,19 +193,21 @@ def test_scan_finds_every_best_journey(*, rules: bool, canceled: bool, arrive_by
     for seed in _SEEDS:
         network = _network(seed, rules=rules, canceled=canceled)
         source, target = random.Random(seed).sample(range(network.stations), 2)
+        # Search from a random time of day, or back from a random deadline.
+        start, deadline = random.Random(seed).randint(0, 50), random.Random(seed + 1).randint(40, 140)
         found = journeys(
             network.rows,
             network.parents,
             network.change,
             source,
             target,
-            400 if arrive_by else 0,
+            deadline if arrive_by else start,
             arrive_by=arrive_by,
             limit=1000,
             slack=10**9,
             transfer_rules=network.rules,
         )
-        expected = _expected(network, source, target)
+        expected = _expected(network, source, target, 0 if arrive_by else start, deadline if arrive_by else 10**9)
         assert _found(network, found) == expected, seed
         checked += bool(expected)
     assert checked > _SEEDS.stop // 4

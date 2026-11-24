@@ -1,6 +1,6 @@
 """Load release-consistent timetable data from the iRail CDN."""
 
-from asyncio import Lock
+from asyncio import Lock, to_thread
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -212,7 +212,8 @@ class TimetableLoader:
                         name: value for name, value in cached.headers.items() if name not in {"age", "date"}
                     } | response_headers
                 elif response.status == HTTPStatus.OK:
-                    value = decode(await response.read(), str(response.url))
+                    # Decoding is CPU-bound, so it must not hold up the caller's event loop.
+                    value = await to_thread(decode, await response.read(), str(response.url))
                 else:
                     msg = f"iRail CDN returned HTTP {response.status} for {url}"
                     raise InvalidResponseError(msg, status=response.status)

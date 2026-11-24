@@ -44,7 +44,10 @@ Front = list[_Path]
 """Labels reaching one point: no label has both at least as few transfers and an at least as late start."""
 
 
-def _edges(rows: Sequence[Connection], parents: Sequence[int], *, reverse: bool, scheduled: bool) -> list[_Edge]:
+def _edges(
+    rows: Sequence[Connection], parents: Sequence[int], *, reverse: bool, scheduled: bool, earliest: int
+) -> list[_Edge]:
+    """Build the usable edges, leaving out those that leave before the search begins."""
     stations = [index if parent == -1 else parent for index, parent in enumerate(parents)]
     result = []
     for row in rows:
@@ -55,6 +58,8 @@ def _edges(rows: Sequence[Connection], parents: Sequence[int], *, reverse: bool,
         arrival = row.scheduled_arrival if scheduled else row.arrival
         board = row.pickup_type != 1 and (scheduled or not row.departure_skipped)
         alight = row.drop_off_type != 1 and (scheduled or not row.arrival_skipped)
+        if (-arrival if reverse else departure) < earliest:
+            continue
         if reverse:
             result.append(
                 _Edge(
@@ -285,7 +290,9 @@ def journeys(
     """
     if source == target:
         return []
-    edges = _edges(rows, parents, reverse=arrive_by, scheduled=include_canceled)
+    edges = _edges(
+        rows, parents, reverse=arrive_by, scheduled=include_canceled, earliest=-instant if arrive_by else instant
+    )
     first, last = _run_endpoints(rows, reverse=arrive_by)
     stations = [index if parent == -1 else parent for index, parent in enumerate(parents)]
     rules = TransferRules(

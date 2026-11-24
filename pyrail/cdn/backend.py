@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from asyncio import to_thread
 from datetime import datetime, timedelta
 import re
 from typing import TYPE_CHECKING, Literal, override
@@ -120,7 +121,8 @@ class CdnBackend(Backend):
         )
         rows = await self._connections(timetable)
         stations = _station_details(timetable, self.lang)
-        return build_liveboard(
+        return await to_thread(
+            build_liveboard,
             timetable,
             rows,
             stations,
@@ -178,7 +180,8 @@ class CdnBackend(Backend):
             extensions=("stations", "tripEnrichment"),
         )
         rows = await self._connections(timetable)
-        return build_connections(
+        return await to_thread(
+            build_connections,
             timetable,
             rows,
             _station_details(timetable, self.lang),
@@ -204,7 +207,7 @@ class CdnBackend(Backend):
             extensions=("stations", "tripEnrichment"),
         )
         rows = await self._connections(timetable)
-        return build_vehicle(timetable, rows, _station_details(timetable, self.lang), vehicle_id, day)
+        return await to_thread(build_vehicle, timetable, rows, _station_details(timetable, self.lang), vehicle_id, day)
 
     async def _connections(self, timetable: Timetable) -> tuple[Connection, ...]:
         if self._realtime is None:

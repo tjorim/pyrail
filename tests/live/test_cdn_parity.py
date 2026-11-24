@@ -190,3 +190,42 @@ async def test_live_journey_parity(
         sorted(api - shared),
         sorted(published - shared),
     )
+
+
+@pytest.mark.parametrize("destination", ["BE.NMBS.008727100", "BE.NMBS.008200100"])  # Paris Nord, Luxembourg
+async def test_live_domestic_filter_parity(
+    live: LiveApi, cdn: LiveApi, travel_date: tuple[str, str], destination: str
+) -> None:
+    """Cross-border searches without international trains should stay close to the API's selection."""
+    date, time = travel_date
+
+    async def options(source: LiveApi) -> dict[tuple[str, str, int], str]:
+        response = await source.fetch(
+            "connections (no international trains)",
+            lambda rail: rail.get_connections(
+                BRUSSELS_CENTRAL_ID, destination, date, time, type_of_transport="no_international_trains"
+            ),
+        )
+        assert response.connections
+        return {
+            (j.departure.time.isoformat(), j.arrival.time.isoformat(), len(j.vias or ())): " > ".join(
+                [j.departure.vehicle_info.short_name, *(via.departure.vehicle_info.short_name for via in j.vias or ())]
+            )
+            for j in response.connections
+        }
+
+    api = await options(live)
+    published = await options(cdn)
+    international = {"EC", "EN", "EST", "EUR", "ICE", "NJ", "THA", "TGV"}
+    assert not any(leg.split(" ")[0] in international for legs in published.values() for leg in legs.split(" > "))
+    shared = api.keys() & published.keys()
+    logger.info(
+        "No international trains to %s: %d API, %d CDN, %d shared. API only %s; CDN only %s",
+        destination,
+        len(api),
+        len(published),
+        len(shared),
+        {key: api[key] for key in sorted(api.keys() - shared)},
+        {key: published[key] for key in sorted(published.keys() - shared)},
+    )
+    assert shared

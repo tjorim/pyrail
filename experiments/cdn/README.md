@@ -97,6 +97,8 @@ releases remain on disk until removed. Cache bodies duplicate the selected outpu
 | `check_static_gtfs.py` | The official static GTFS behind the CDN: files, version, platform share (#248, #249). |
 | `planner_spike.py` | Earliest-arrival Connection Scan over real pages: timing, memory, check against the live API (#261). |
 | `planner_benchmark.py` | Isolated 24/48-hour workers: sorting, early stop versus full scan, unreachable target, arrive-by and departure profiles; optional NumPy storage probe. |
+| `bench_connections.py` | Time per phase and peak memory of `CdnBackend.get_connections` on the live CDN, each query in a fresh process, cold and warm (#258). |
+| `compare_journeys.py` | Many random station pairs, searched with the CDN backend, the iRail API and the reference planner in `reference/` (`npm install --prefix experiments/cdn/reference`, Node 22.12+); reports options that only one side returned (#257, #258). |
 | `test_planner_benchmark.py` | Synthetic checks of the benchmark routing model; run separately with unittest (see below). |
 | `disturbances_feed.py` | Rebuilds the API's `/disturbances` response from NMBS's RSS feed, with a last-known-status fallback; `--compare` diffs it against the live API (#263). |
 | `test_disturbances_feed.py` | Offline checks of the conversion and the fallback; run with unittest like the other `test_*.py`. |

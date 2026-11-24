@@ -80,7 +80,7 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-### CDN stations, liveboards and vehicles
+### CDN stations, liveboards, vehicles and connections
 
 Use the experimental CDN backend for station listings.
 
@@ -102,6 +102,21 @@ Vehicle lookups use the Belgian service date and return the first run of the req
 vehicle number on that date. If the train continues under a different vehicle number,
 request that run separately. This keeps the lookup scoped to the requested train;
 in-seat transfer rules belong to journey planning.
+
+`get_connections` plans journeys itself, with a connection scan over the published connection pages.
+It starts with the next six hours, widens to 12 and then 24 hours until it has six usable options,
+and raises `NotFoundError` when it finds none, like the API. It honors the published minimum transfer
+times and transfer rules, platform changes within a station, in-seat continuations, skipped stops and
+realtime delays. Canceled journeys are listed next to the usable ones. Besides the fastest option it
+returns journeys with fewer transfers that arrive within an hour of it, so a slower direct train
+appears beside a faster one with a change. `type_of_transport="no_international_trains"` leaves out
+EC, EN, EST, EUR, ICE, NJ, THA and TGV trains; buses are excluded unless it is `"all"`.
+
+The CDN does not publish every train the API lists: Eurostar, Thalys and ICE services between Belgium and
+its neighbours are missing, as are stations outside Belgium, so journeys that use them are absent or longer.
+Searches take about a second on a desktop CPU (see
+[`experiments/cdn/results/2026-11-24-connections.md`](experiments/cdn/results/2026-11-24-connections.md)),
+so the CPU-bound steps run in worker threads and do not block the event loop.
 Calls the CDN backend cannot serve raise `NotSupportedError`.
 
 ### Response Objects

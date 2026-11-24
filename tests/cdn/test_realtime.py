@@ -1,9 +1,11 @@
 """Exercise GTFS Realtime matching, connection overlays and polling offline."""
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Any
+import threading
+from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -11,7 +13,7 @@ from aiohttp import ClientSession
 from google.transit import gtfs_realtime_pb2 as gtfs
 import pytest
 
-from pyrail import CdnBackend, IRail, NotFoundError
+from pyrail import CdnBackend, ConnectionsApiResponse, IRail, NotFoundError
 from pyrail.cdn.board import query_time
 from pyrail.cdn.manifest import ConnectionPage, Manifest, RealtimeFeed
 from pyrail.cdn.realtime import RealtimeLoader, apply_realtime
@@ -324,7 +326,9 @@ async def test_cdn_connections_returns_public_journey_models() -> None:
         (("BUS7", "BUS8"), "all", True),
     ],
 )
-async def test_cdn_connections_select_vehicle_kinds(vehicles: tuple[str, str], transport: str, *, found: bool) -> None:
+async def test_cdn_connections_select_vehicle_kinds(
+    vehicles: tuple[str, str], transport: Literal["automatic", "all", "no_international_trains"], *, found: bool
+) -> None:
     """International products and buses are left out only when the transport type says so."""
     session = MagicMock(spec=ClientSession, closed=False)
     session.get.return_value = _response(200, _feed().SerializeToString())
@@ -347,3 +351,32 @@ async def test_cdn_connections_select_vehicle_kinds(vehicles: tuple[str, str], t
                 # The search widens through every window before it gives up.
                 spans = [call.kwargs["window"][1] - call.kwargs["window"][0] for call in load.await_args_list]
                 assert [span.total_seconds() / 3600 for span in spans] == [12, 18, 30]
+
+
+async def test_cpu_bound_steps_run_off_the_event_loop() -> None:
+    """Journey building and the realtime merge use worker threads, so a slow device keeps its loop responsive."""
+    threads: dict[str, int] = {}
+
+    def record(name: str, result: object) -> Callable[..., object]:
+        def run(*args: object, **kwargs: object) -> object:
+            threads[name] = threading.get_ident()
+            return result
+
+        return run
+
+    timetable = _journey_timetable()
+    session = MagicMock(spec=ClientSession, closed=False)
+    session.get.return_value = _response(200, _feed().SerializeToString())
+    departure_time = datetime.fromtimestamp(_EPOCH, ZoneInfo("Europe/Brussels")).strftime("%H%M")
+    response = ConnectionsApiResponse(version="1.1", timestamp=datetime.now(UTC), connections=[])
+    async with IRail(backend=CdnBackend(session=session)) as api:
+        with (
+            patch("pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=timetable)),
+            patch("pyrail.cdn.backend.build_connections", new=record("route", response)),
+            patch("pyrail.cdn.realtime.apply_realtime", new=record("merge", ())),
+            pytest.raises(NotFoundError),
+        ):
+            await api.get_connections("Origin", "Destination", "241126", departure_time)
+    assert threads
+    assert all(thread != threading.get_ident() for thread in threads.values())
+    assert threads.keys() == {"route", "merge"}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from asyncio import Lock
+from asyncio import Lock, to_thread
 from bisect import bisect_right
 from collections import OrderedDict, defaultdict
 from collections.abc import Iterator, Mapping, Sequence
@@ -68,7 +68,7 @@ class RealtimeLoader:
             if (cached := self._results.get(key)) is not None:
                 self._results.move_to_end(key)
                 return cached[1]
-            result = apply_realtime(timetable, fetch)
+            result = await to_thread(apply_realtime, timetable, fetch)
             # Holding the inputs keeps their identities valid for the lifetime of the entry.
             self._results[key] = (inputs, result)
             if len(self._results) > _RESULT_CACHE:
@@ -89,7 +89,7 @@ class RealtimeLoader:
                 if response.status == HTTPStatus.NOT_MODIFIED and cache.snapshot is not None:
                     return cache.snapshot
                 response.raise_for_status()
-                snapshot = _decode(await response.read(), cache.snapshot)
+                snapshot = await to_thread(_decode, await response.read(), cache.snapshot)
                 cache.snapshot = snapshot
                 cache.etag = response.headers.get("ETag")
                 cache.last_modified = response.headers.get("Last-Modified")
