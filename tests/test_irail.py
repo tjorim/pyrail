@@ -873,6 +873,7 @@ def test_boolean_field_deserialization() -> None:
     assert departure.canceled is True, "Departure canceled field should be True when '1'"
     assert departure.left is False, "Departure left field should be False when '0'"
     assert departure.is_extra is True, "Departure is_extra field should be True when '1'"
+    assert departure.platform_info is not None
     assert departure.platform_info.normal is True, "Platform normal field should be True when '1'"
 
 

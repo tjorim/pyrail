@@ -93,9 +93,9 @@ class VehicleInfo(DataClassORJSONMixin):
     short_name: str = field(metadata=field_options(alias="shortname"))
     number: str
     type: str
-    longitude: float = field(metadata=field_options(alias="locationX"))
-    latitude: float = field(metadata=field_options(alias="locationY"))
     at_id: str = field(metadata=field_options(alias="@id"))
+    longitude: float | None = field(default=None, metadata=field_options(alias="locationX"))
+    latitude: float | None = field(default=None, metadata=field_options(alias="locationY"))
 
 
 @dataclass(slots=True)
@@ -103,7 +103,7 @@ class PlatformInfo(DataClassORJSONMixin):
     """Details about the platform, such as name and whether it is the normal one."""
 
     name: str
-    normal: bool = field(metadata=field_options(deserialize=_str_to_bool))
+    normal: bool | None = field(default=None, metadata=field_options(deserialize=_str_to_bool))
 
 
 @dataclass(slots=True)
@@ -125,13 +125,13 @@ class LiveboardDeparture(DataClassORJSONMixin):
     delay: int
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    is_extra: bool = field(metadata=field_options(alias="isExtra", deserialize=_str_to_bool))
     vehicle: str
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))
-    platform: str
-    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
-    occupancy: Occupancy
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))
+    platform: str | None = None
+    platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
+    is_extra: bool | None = field(default=None, metadata=field_options(alias="isExtra", deserialize=_str_to_bool))
+    occupancy: Occupancy | None = None
 
 
 @dataclass(slots=True)
@@ -145,12 +145,12 @@ class LiveboardArrival(DataClassORJSONMixin):
     delay: int
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))
     arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    is_extra: bool = field(metadata=field_options(alias="isExtra", deserialize=_str_to_bool))
     vehicle: str
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))
-    platform: str
-    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))
+    platform: str | None = None
+    platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
+    is_extra: bool | None = field(default=None, metadata=field_options(alias="isExtra", deserialize=_str_to_bool))
 
 
 @dataclass(slots=True)
@@ -193,9 +193,11 @@ class ConnectionStop(DataClassORJSONMixin):
     departure_delay: int = field(metadata=field_options(alias="departureDelay"))
     departure_canceled: bool = field(metadata=field_options(alias="departureCanceled", deserialize=_str_to_bool))
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    is_extra_stop: bool = field(metadata=field_options(alias="isExtraStop", deserialize=_str_to_bool))
-    platform: str
-    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
+    platform: str | None = None
+    platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
+    is_extra_stop: bool | None = field(
+        default=None, metadata=field_options(alias="isExtraStop", deserialize=_str_to_bool)
+    )
 
 
 @dataclass(slots=True)
@@ -215,15 +217,15 @@ class ConnectionDeparture(DataClassORJSONMixin):
     time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))
     vehicle: str
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))
-    platform: str
-    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))
     direction: Direction
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))
     walking: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    occupancy: Occupancy
     stops: list[ConnectionStop] = field(default_factory=list)
+    platform: str | None = None
+    platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
+    occupancy: Occupancy | None = None
 
     @classmethod
     @override
@@ -245,13 +247,13 @@ class ConnectionArrival(DataClassORJSONMixin):
     time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))
     vehicle: str
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))
-    platform: str
-    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))
     direction: Direction
     arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))
     walking: bool = field(metadata=field_options(deserialize=_str_to_bool))
     departure_connection: str = field(metadata=field_options(alias="departureConnection"))
+    platform: str | None = None
+    platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
 
 
 @dataclass(slots=True)
@@ -333,8 +335,6 @@ class VehicleStop(DataClassORJSONMixin):
     station: str
     station_info: StationDetails = field(metadata=field_options(alias="stationinfo"))
     time: datetime = field(metadata=field_options(deserialize=_timestamp_to_datetime))
-    platform: str
-    platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
     scheduled_departure_time: datetime = field(
         metadata=field_options(alias="scheduledDepartureTime", deserialize=_timestamp_to_datetime)
     )
@@ -349,9 +349,13 @@ class VehicleStop(DataClassORJSONMixin):
     arrival_canceled: bool = field(metadata=field_options(alias="arrivalCanceled", deserialize=_str_to_bool))
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))
     arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    is_extra_stop: bool = field(metadata=field_options(alias="isExtraStop", deserialize=_str_to_bool))
-    occupancy: Occupancy | None = field(default=None)  # Not present on the last stop.
+    occupancy: Occupancy | None = field(default=None)
     departure_connection: str | None = field(default=None, metadata=field_options(alias="departureConnection"))
+    platform: str | None = None
+    platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
+    is_extra_stop: bool | None = field(
+        default=None, metadata=field_options(alias="isExtraStop", deserialize=_str_to_bool)
+    )
 
 
 @dataclass(slots=True)
