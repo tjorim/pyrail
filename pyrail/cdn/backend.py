@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Literal, override
 from aiohttp import ClientSession
 
 from pyrail.backend import Backend
-from pyrail.exceptions import NotSupportedError
+from pyrail.exceptions import NotFoundError, NotSupportedError
 from pyrail.models import (
     ConnectionsApiResponse,
     LiveboardApiResponse,
@@ -19,7 +19,7 @@ from pyrail.models import (
 )
 
 from .board import build_liveboard, query_time
-from .journey import build_connections
+from .journey import Kinds, build_connections
 from .manifest import MANIFEST_URL, SCHEMA_VERSION
 from .timetable import Table, Timetable, TimetableLoader
 from .vehicle import build_vehicle, service_day
@@ -28,8 +28,17 @@ if TYPE_CHECKING:
     from .realtime import Connection, RealtimeLoader
 
 _JOURNEY_LIMIT = 6
-_INITIAL_JOURNEY_WINDOW = timedelta(hours=6)
-_MAX_JOURNEY_WINDOW = timedelta(hours=12)
+# A search widens until it finds enough usable options. Every step also loads the longest journey it should
+# be able to complete, since a connection page holds only the trips that depart within its hours.
+_JOURNEY_WINDOWS = (timedelta(hours=6), timedelta(hours=12), timedelta(hours=24))
+_JOURNEY_DURATION = timedelta(hours=6)
+
+_KINDS = {
+    "automatic": Kinds.TRAINS,
+    "trains": Kinds.TRAINS,
+    "no_international_trains": Kinds.DOMESTIC,
+    "all": Kinds.ALL,
+}
 
 _STATION_IRI = re.compile(r"https?://irail\.be/stations/NMBS/([0-9]+)")
 
@@ -139,39 +148,33 @@ class CdnBackend(Backend):
         if type_of_transport not in ("automatic", "trains", "no_international_trains", "all"):
             msg = "Invalid type_of_transport"
             raise ValueError(msg)
-        if type_of_transport == "no_international_trains":
-            msg = "The CDN router does not yet support filtering international trains"
-            raise NotSupportedError(msg)
         instant = query_time(date, time)
         arrive_by = timesel == "arrival"
+        kinds = _KINDS[type_of_transport]
+        *widening, widest = _JOURNEY_WINDOWS
+        for span in widening:
+            options = await self._journey_options(
+                from_station, to_station, instant, span, arrive_by=arrive_by, kinds=kinds
+            )
+            if sum(not connection.departure.canceled for connection in options.connections) >= _JOURNEY_LIMIT:
+                return options
         options = await self._journey_options(
-            from_station,
-            to_station,
-            instant,
-            _INITIAL_JOURNEY_WINDOW,
-            arrive_by=arrive_by,
-            trains_only=type_of_transport != "all",
+            from_station, to_station, instant, widest, arrive_by=arrive_by, kinds=kinds
         )
-        if sum(not connection.departure.canceled for connection in options.connections) >= _JOURNEY_LIMIT:
-            return options
-        return await self._journey_options(
-            from_station,
-            to_station,
-            instant,
-            _MAX_JOURNEY_WINDOW,
-            arrive_by=arrive_by,
-            trains_only=type_of_transport != "all",
-        )
+        if not options.connections:
+            msg = f"No journey found within {widest} of the requested time"
+            raise NotFoundError(msg)
+        return options
 
     async def _journey_options(
-        self, origin: str, destination: str, instant: datetime, span: timedelta, *, arrive_by: bool, trains_only: bool
+        self, origin: str, destination: str, instant: datetime, span: timedelta, *, arrive_by: bool, kinds: Kinds
     ) -> ConnectionsApiResponse:
-        window = (instant - span, instant + timedelta(seconds=1)) if arrive_by else (instant, instant + span)
+        reach = span + _JOURNEY_DURATION
+        window = (instant - reach, instant + timedelta(seconds=1)) if arrive_by else (instant, instant + reach)
         timetable = await self._timetable_loader().load(
             tables=("stops", "trips", "transfers"),
             window=window,
             window_anchor=instant,
-            margin=timedelta(hours=1),
             extensions=("stations", "tripEnrichment"),
         )
         rows = await self._connections(timetable)
@@ -183,7 +186,8 @@ class CdnBackend(Backend):
             destination,
             instant,
             arrive_by=arrive_by,
-            trains_only=trains_only,
+            kinds=kinds,
+            horizon=span,
         )
 
     @override

@@ -81,6 +81,8 @@ class TransferRules:
         self._station: dict[int | None, list[TransferRule]] = defaultdict(list)
         self._arrivals: dict[int, set[int]] = defaultdict(set)
         self._linked: dict[int, list[TransferRule]] = defaultdict(list)
+        self._rule_trips = {trip for rule in rules for trip in (rule.from_trip, rule.to_trip) if trip is not None}
+        self._rule_routes = {route for rule in rules for route in (rule.from_route, rule.to_route) if route is not None}
         for rule in rules:
             if rule.kind == IN_SEAT and rule.to_trip is not None:
                 self._linked[rule.to_trip].append(rule)
@@ -93,6 +95,10 @@ class TransferRules:
     def arrival_stations(self, station: int) -> set[int]:
         """Return the boarding station and explicit connecting stations."""
         return {station} | self._arrivals.get(station, set())
+
+    def constrained(self, trip: int) -> bool:
+        """Report whether any rule names the trip or its route, so it cannot be treated like its peers."""
+        return trip in self._rule_trips or self._route(trip) in self._rule_routes
 
     def linked(self, trip: int) -> Sequence[TransferRule]:
         """Return possible in-seat predecessors for a trip."""

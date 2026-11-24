@@ -105,3 +105,66 @@ def test_explicit_timed_transfer_can_link_distinct_station_indices() -> None:
     rows = [_edge("a", 0, 0, 1, 10, 20), _edge("b", 1, 2, 3, 21, 30)]
     rule = TransferRule(1, 2, None, None, None, None, 1, None)
     assert journeys(rows, (-1,) * 4, (10,) * 4, 0, 3, 10, transfer_rules=[rule]) == [rows]
+
+
+def test_slower_journey_with_fewer_transfers_is_offered_within_the_slack() -> None:
+    """Keep a direct train that arrives a little later than the fastest connection, in both directions."""
+    rows = [
+        _edge("first", 0, 0, 1, 10, 20),
+        _edge("second", 1, 1, 2, 22, 30),
+        _edge("direct", 2, 0, 2, 10, 40),
+    ]
+    parents, change = (-1,) * 3, (0,) * 3
+
+    def names(**options: object) -> list[list[str]]:
+        return [[row.iri for row in path] for path in journeys(rows, parents, change, 0, 2, 10, **options)]  # ty: ignore[invalid-argument-type]
+
+    assert names(slack=15) == [["first", "second"], ["direct"]]
+    assert names(slack=5) == [["first", "second"]]
+    reverse = journeys(rows, parents, change, 0, 2, 100, arrive_by=True, slack=15)
+    assert [[row.iri for row in path] for path in reverse] == [["first", "second"], ["direct"]]
+
+
+def test_dominated_alternatives_are_not_listed() -> None:
+    """A later departure with an earlier arrival and no more transfers replaces the earlier option."""
+    rows = [
+        _edge("early direct", 0, 0, 2, 10, 50),
+        _edge("late direct", 1, 0, 2, 20, 40),
+        _edge("late feeder", 2, 0, 1, 20, 25),
+        _edge("late onward", 3, 1, 2, 26, 40),
+    ]
+    paths = journeys(rows, (-1,) * 3, (0,) * 3, 0, 2, 10)
+    assert [[row.iri for row in path] for path in paths] == [["late direct"]]
+
+
+def test_horizon_limits_where_journeys_may_start() -> None:
+    """Journeys beyond the horizon are not reported, though they may use later connections."""
+    rows = [_edge("soon", 0, 0, 1, 10, 20), _edge("later", 1, 0, 1, 100, 400)]
+    parents, change = (-1,) * 2, (0,) * 2
+    assert [[row.iri for row in path] for path in journeys(rows, parents, change, 0, 1, 0, horizon=50)] == [["soon"]]
+    assert len(journeys(rows, parents, change, 0, 1, 0, horizon=500)) == 2
+    reverse = journeys(rows, parents, change, 0, 1, 1000, arrive_by=True, horizon=700)
+    assert [[row.iri for row in path] for path in reverse] == [["later"]]
+
+
+def test_canceled_last_stop_stops_a_shortened_run_from_continuing_in_seat() -> None:
+    """The vehicle never reaches the junction when its final connection is canceled."""
+    first = _edge("first", 0, 0, 1, 10, 20)
+    cut = replace(_edge("cut", 0, 1, 2, 22, 30, 2), canceled=True)
+    second = _edge("second", 1, 1, 3, 40, 50)
+    rule = TransferRule(None, None, 0, 1, None, None, 4, None)
+    change = (0, 30, 0, 0)  # too long to change trains, so only staying seated can work
+    assert journeys([first, cut, second], (-1,) * 4, change, 0, 3, 10, transfer_rules=[rule]) == []
+    assert journeys([first, second], (-1,) * 4, change, 0, 3, 10, transfer_rules=[rule]) == [[first, second]]
+
+
+def test_equivalent_trips_share_arrivals_but_named_trips_keep_their_own() -> None:
+    """Rules that name a trip stop it from being replaced by an earlier arrival of another."""
+    rows = [
+        _edge("plain", 0, 0, 1, 10, 20),
+        _edge("named", 1, 0, 1, 12, 22),
+        _edge("onward", 2, 1, 2, 30, 40),
+    ]
+    rule = TransferRule(None, None, 0, 2, None, None, 3, None)  # the earlier arrival may not connect
+    paths = journeys(rows, (-1,) * 3, (0,) * 3, 0, 2, 10, transfer_rules=[rule])
+    assert [[row.iri for row in path] for path in paths] == [["named", "onward"]]

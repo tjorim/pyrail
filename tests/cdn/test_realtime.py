@@ -106,6 +106,26 @@ def _response(status: int, body: bytes = b"", **headers: str) -> MagicMock:
     return result
 
 
+async def test_merge_is_repeated_only_for_new_inputs() -> None:
+    """Queries between refreshes share one merge; a changed snapshot or timetable gets its own."""
+    session = MagicMock(spec=ClientSession)
+    session.get.side_effect = [_response(200, _feed().SerializeToString()), _response(200, _feed().SerializeToString())]
+    loader = RealtimeLoader(session, poll_interval=1)
+    timetable = _timetable()
+    other = replace(timetable, tables={**timetable.tables, "stops": {**timetable.tables["stops"]}})
+    with patch("pyrail.cdn.realtime.monotonic", return_value=0) as clock:
+        first = await loader.connections(timetable)
+        assert await loader.connections(timetable) is first
+        assert await loader.connections(other) is not first
+        clock.return_value = 5
+        assert await loader.connections(timetable) is not first
+        for _ in range(3):
+            await loader.connections(
+                replace(timetable, tables={**timetable.tables, "stops": {**timetable.tables["stops"]}})
+            )
+    assert len(loader._results) == 2
+
+
 async def test_polling_is_conditional_serialized_and_retains_previous_snapshot() -> None:
     """Concurrent callers share a poll, with 304 and malformed data retaining predictions."""
     session = MagicMock(spec=ClientSession)
@@ -119,6 +139,7 @@ async def test_polling_is_conditional_serialized_and_retains_previous_snapshot()
     with patch("pyrail.cdn.realtime.monotonic", return_value=0) as clock:
         first, concurrent = await asyncio.gather(loader.connections(timetable), loader.connections(timetable))
         assert first == concurrent
+        assert concurrent is first
         assert session.get.call_count == 1
         clock.return_value = 30
         assert await loader.connections(timetable) == first
@@ -225,11 +246,17 @@ def test_service_day_duration_across_dst() -> None:
     assert end == datetime(2026, 3, 29, 22, tzinfo=UTC)
 
 
-async def test_cdn_connections_returns_public_journey_models() -> None:
-    """Use the same scheduled and realtime model for both directions of search."""
+def _journey_timetable(vehicles: tuple[str, str] = ("S102056", "L1234")) -> Timetable:
     timetable = _endpoint_timetable()
-    timetable = replace(
+    return replace(
         timetable,
+        extensions={
+            **timetable.extensions,
+            "tripEnrichment": {
+                "tripIdx": (0, 1),
+                "vehicleIri": tuple(f"http://irail.be/vehicle/{vehicle}" for vehicle in vehicles),
+            },
+        },
         tables={
             **timetable.tables,
             "trips": {**timetable.tables["trips"], "routeIdx": (0, 0)},
@@ -249,6 +276,11 @@ async def test_cdn_connections_returns_public_journey_models() -> None:
             "stops": {**timetable.tables["stops"], "minTransferTime": (0,) * 5},
         },
     )
+
+
+async def test_cdn_connections_returns_public_journey_models() -> None:
+    """Use the same scheduled and realtime model for both directions of search."""
+    timetable = _journey_timetable()
     session = MagicMock(spec=ClientSession, closed=False)
     session.get.return_value = _response(200, _feed().SerializeToString())
     local = ZoneInfo("Europe/Brussels")
@@ -261,8 +293,8 @@ async def test_cdn_connections_returns_public_journey_models() -> None:
             canceled = await api.get_connections("Origin", "Exchange", "241126", departure_time)
     windows = [call.kwargs["window"] for call in load.await_args_list[:2]]
     assert windows[0][0] == windows[1][0]
-    assert (windows[0][1] - windows[0][0]).total_seconds() == 6 * 3600
-    assert (windows[1][1] - windows[1][0]).total_seconds() == 12 * 3600
+    assert (windows[0][1] - windows[0][0]).total_seconds() == 12 * 3600
+    assert (windows[1][1] - windows[1][0]).total_seconds() == 18 * 3600
     assert forward is not None
     assert reverse is not None
     assert forward.connections == reverse.connections
@@ -280,3 +312,38 @@ async def test_cdn_connections_returns_public_journey_models() -> None:
     assert canceled_journey.departure.vehicle == "BE.NMBS.L1234"
     assert canceled_journey.arrival.canceled
     assert not canceled_journey.departure.left
+
+
+@pytest.mark.parametrize(
+    ("vehicles", "transport", "found"),
+    [
+        (("EC9224", "L1234"), "automatic", True),
+        (("EC9224", "L1234"), "no_international_trains", False),
+        (("S102056", "BUS7"), "no_international_trains", True),
+        (("BUS7", "BUS8"), "automatic", False),
+        (("BUS7", "BUS8"), "all", True),
+    ],
+)
+async def test_cdn_connections_select_vehicle_kinds(vehicles: tuple[str, str], transport: str, *, found: bool) -> None:
+    """International products and buses are left out only when the transport type says so."""
+    session = MagicMock(spec=ClientSession, closed=False)
+    session.get.return_value = _response(200, _feed().SerializeToString())
+    departure_time = datetime.fromtimestamp(_EPOCH, ZoneInfo("Europe/Brussels")).strftime("%H%M")
+    async with IRail(backend=CdnBackend(session=session)) as api:
+        with patch(
+            "pyrail.cdn.backend.TimetableLoader.load", new=AsyncMock(return_value=_journey_timetable(vehicles))
+        ) as load:
+            if found:
+                response = await api.get_connections(
+                    "Origin", "Destination", "241126", departure_time, type_of_transport=transport
+                )
+                assert response is not None
+                assert response.connections
+            else:
+                with pytest.raises(NotFoundError, match="No journey found"):
+                    await api.get_connections(
+                        "Origin", "Destination", "241126", departure_time, type_of_transport=transport
+                    )
+                # The search widens through every window before it gives up.
+                spans = [call.kwargs["window"][1] - call.kwargs["window"][0] for call in load.await_args_list]
+                assert [span.total_seconds() / 3600 for span in spans] == [12, 18, 30]

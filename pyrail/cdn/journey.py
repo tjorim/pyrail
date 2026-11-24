@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from enum import Enum
 from itertools import groupby, pairwise
 from typing import TYPE_CHECKING
 
@@ -27,6 +28,23 @@ from .manifest import SCHEMA_VERSION
 from .routing import journeys
 from .transfers import read_transfer_rules
 from .vehicle import build_vehicle_stop
+
+# Product types of cross-border trains. The CDN currently publishes only EC and NJ among them.
+INTERNATIONAL = frozenset({"EC", "EN", "EST", "EUR", "ICE", "NJ", "THA", "TGV"})
+
+
+class Kinds(Enum):
+    """Which published vehicle types a journey may use."""
+
+    ALL = frozenset[str]()
+    TRAINS = frozenset({"BUS"})
+    DOMESTIC = frozenset({"BUS", *INTERNATIONAL})
+
+    @property
+    def excluded(self) -> frozenset[str]:
+        """Vehicle types left out of the search."""
+        return self.value
+
 
 if TYPE_CHECKING:
     from .realtime import Connection
@@ -146,7 +164,8 @@ def build_connections(
     instant: datetime,
     *,
     arrive_by: bool,
-    trains_only: bool,
+    kinds: Kinds = Kinds.TRAINS,
+    horizon: timedelta | None = None,
 ) -> ConnectionsApiResponse:
     """Search one release and return journeys using the public connection models."""
     start = lookup_station(stations, origin)
@@ -171,12 +190,13 @@ def build_connections(
         if row.trip_index in vehicles
         and row.departure_stop in by_index
         and row.arrival_stop in by_index
-        and (not trains_only or vehicles[row.trip_index].type != "BUS")
+        and vehicles[row.trip_index].type not in kinds.excluded
     ]
     rules = read_transfer_rules(timetable.tables["transfers"])
     route_indices = timetable.tables["trips"]["routeIdx"]
     source, target = iris.index(start.at_id), iris.index(end.at_id)
     time = int(instant.timestamp())
+    seconds = None if horizon is None else int(horizon.total_seconds())
     paths = journeys(
         candidates,
         parents,
@@ -187,6 +207,7 @@ def build_connections(
         arrive_by=arrive_by,
         transfer_rules=rules,
         routes=route_indices,
+        horizon=seconds,
     )
     if any(row.canceled or row.departure_skipped or row.arrival_skipped for row in candidates):
         scheduled = journeys(
@@ -200,6 +221,7 @@ def build_connections(
             transfer_rules=rules,
             routes=route_indices,
             include_canceled=True,
+            horizon=seconds,
         )
         paths.extend(
             [replace(row, departure_delay=0, arrival_delay=0) for row in path]
