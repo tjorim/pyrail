@@ -3,11 +3,14 @@
 from importlib.metadata import PackageNotFoundError, version
 import logging
 
+from .api_backend import ApiBackend
+from .backend import Backend
 from .exceptions import (
     ApiUnavailableError,
     InvalidRequestError,
     InvalidResponseError,
     NotFoundError,
+    NotSupportedError,
     PyRailError,
     RateLimitError,
 )
@@ -55,8 +58,10 @@ except PackageNotFoundError:  # pragma: no cover
 
 __all__ = [
     "Alert",
+    "ApiBackend",
     "ApiResponse",
     "ApiUnavailableError",
+    "Backend",
     "CompositionApiResponse",
     "ConnectionArrival",
     "ConnectionDeparture",
@@ -76,6 +81,7 @@ __all__ = [
     "LiveboardDeparture",
     "MaterialType",
     "NotFoundError",
+    "NotSupportedError",
     "Occupancy",
     "OccupancyName",
     "Orientation",
