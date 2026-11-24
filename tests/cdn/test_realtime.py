@@ -24,7 +24,7 @@ def _timetable() -> Timetable:
 
     page = ConnectionPage("https://example.org/page.arrow", _EPOCH, _MINIMUM, _MAXIMUM)
     return Timetable(
-        Manifest("example", ZoneInfo("Europe/Brussels"), _MINIMUM, _MAXIMUM, {}, (page,), (_FEED,), None),
+        Manifest("example", ZoneInfo("Europe/Brussels"), _MINIMUM, _MAXIMUM, {}, (page,), (_FEED,), None, _MINIMUM),
         {
             "stops": {"iri": tuple(f"https://example.org/stops/{number}" for number in range(1, 6))},
             "trips": {"iri": ("https://example.org/trips/IC%3A20270930", "https://example.org/trips/L%3A20270930")},

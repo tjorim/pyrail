@@ -47,3 +47,17 @@ COLUMNS = {
         "toRouteIdx": "i",
     },
 }
+
+
+EXTENSION_COLUMNS = {
+    "stations": {
+        "iri": "utf8",
+        "name": "utf8",
+        "lat": "d",
+        "lon": "d",
+        "alternativeDe": "utf8",
+        "alternativeEn": "utf8",
+        "alternativeFr": "utf8",
+        "alternativeNl": "utf8",
+    },
+}

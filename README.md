@@ -80,6 +80,23 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+### CDN stations
+
+Use the experimental CDN backend for station listings.
+
+```python
+from pyrail import CdnBackend, IRail
+
+async with IRail(lang="en", backend=CdnBackend()) as api:
+    stations = await api.get_stations()
+```
+
+The CDN result combines parent timetable stops with the curated station catalog.
+The catalog supplies standard names and available translations. The station IDs use
+the digits in each published station IRI, keeping leading zeros. The CDN catalog can
+include stations absent from the API, and some published IDs or translations differ.
+Calls the CDN backend cannot serve raise `NotSupportedError`.
+
 ### Response Objects
 
 Every method returns the full iRail response object, mirroring the API: `version` and `timestamp` sit next to the data. For list endpoints the list is an attribute of that object, so use `stations.stations`, `disturbances.disturbances` and `connections.connections`:

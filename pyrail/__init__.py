@@ -5,6 +5,7 @@ import logging
 
 from .api_backend import ApiBackend
 from .backend import Backend
+from .cdn.backend import CdnBackend
 from .exceptions import (
     ApiUnavailableError,
     InvalidRequestError,
@@ -62,6 +63,7 @@ __all__ = [
     "ApiResponse",
     "ApiUnavailableError",
     "Backend",
+    "CdnBackend",
     "CompositionApiResponse",
     "ConnectionArrival",
     "ConnectionDeparture",
