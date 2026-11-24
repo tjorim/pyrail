@@ -10,11 +10,12 @@ from aiohttp import ClientSession
 
 from pyrail.backend import Backend
 from pyrail.exceptions import NotSupportedError
-from pyrail.models import LiveboardApiResponse, StationDetails, StationsApiResponse
+from pyrail.models import LiveboardApiResponse, StationDetails, StationsApiResponse, VehicleApiResponse
 
 from .board import build_liveboard, query_time
 from .manifest import MANIFEST_URL, SCHEMA_VERSION
 from .timetable import Table, Timetable, TimetableLoader
+from .vehicle import build_vehicle, service_day
 
 if TYPE_CHECKING:
     from .realtime import Connection, RealtimeLoader
@@ -110,12 +111,28 @@ class CdnBackend(Backend):
             arrdep,
         )
 
+    @override
+    async def get_vehicle(self, vehicle_id: str, date: str | None = None) -> VehicleApiResponse:
+        """Build a vehicle response for a Belgian service date."""
+        if not vehicle_id:
+            msg = "vehicle_id must be provided"
+            raise ValueError(msg)
+        day, window = service_day(date)
+        timetable = await self._timetable_loader().load(
+            tables=("stops", "trips"),
+            window=window,
+            margin=timedelta(hours=12),
+            extensions=("stations", "tripEnrichment"),
+        )
+        rows = await self._connections(timetable)
+        return build_vehicle(timetable, rows, _station_details(timetable, self.lang), vehicle_id, day)
+
     async def _connections(self, timetable: Timetable) -> tuple[Connection, ...]:
         if self._realtime is None:
             try:
                 from .realtime import RealtimeLoader  # noqa: PLC0415
             except ImportError as error:
-                msg = "Install pyrail[cdn] to use CDN liveboards and realtime updates"
+                msg = "Install pyrail[cdn] to use CDN liveboards, vehicle lookups and realtime updates"
                 raise NotSupportedError(msg) from error
             if self._session is None:
                 msg = "The CDN session is closed"
