@@ -27,7 +27,7 @@ On a Home Assistant Yellow (Raspberry Pi CM4) this reader decoded the 12 sample 
 The scripts, dependency group and dated results for all of these are in ``experiments/cdn``.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from itertools import pairwise
 import struct
@@ -267,10 +267,16 @@ def _read_batch(buf: memoryview, columns: list[_Column], block: tuple[int, int, 
     return result
 
 
-def read_table(data: bytes | bytearray | memoryview) -> dict[str, list[Any]]:
+def read_table(
+    data: bytes | bytearray | memoryview,
+    *,
+    expected_metadata: Mapping[str, str] | None = None,
+    expected_columns: Mapping[str, str] | None = None,
+) -> dict[str, list[Any]]:
     """Read an Arrow IPC file into a dict that maps each column name to its list of values.
 
     Null values become None. Record batches are concatenated in file order.
+    Expected metadata and column types must match the footer when supplied.
 
     Raises:
         ArrowError: If the data is not a valid Arrow IPC file, or uses compression, dictionary encoding or a
@@ -282,13 +288,17 @@ def read_table(data: bytes | bytearray | memoryview) -> dict[str, list[Any]]:
         msg = "not an Arrow IPC file"
         raise ArrowError(msg)
     try:
-        return _read_file(buf)
+        return _read_file(buf, expected_metadata, expected_columns)
     except (struct.error, IndexError, ValueError, UnicodeDecodeError, OverflowError) as error:
         msg = f"malformed Arrow file: {error}"
         raise ArrowError(msg) from error
 
 
-def _read_file(buf: memoryview) -> dict[str, list[Any]]:
+def _read_file(
+    buf: memoryview,
+    expected_metadata: Mapping[str, str] | None,
+    expected_columns: Mapping[str, str] | None,
+) -> dict[str, list[Any]]:
     footer_length = _unpack("<i", buf, len(buf) - _TAIL_SIZE)
     if footer_length <= 0 or footer_length > len(buf) - _TAIL_SIZE:
         msg = "footer length is out of range"
@@ -303,6 +313,7 @@ def _read_file(buf: memoryview) -> dict[str, list[Any]]:
         msg = "big-endian Arrow data is not supported"
         raise ArrowError(msg)
     columns = [_column(field) for field in schema.tables(1)]
+    _check_schema(schema, columns, expected_metadata or {}, expected_columns or {})
     if footer.vector(2)[1]:
         msg = "dictionary batches are not supported"
         raise ArrowError(msg)
@@ -320,3 +331,23 @@ def _read_file(buf: memoryview) -> dict[str, list[Any]]:
         for name, values in _read_batch(buf, columns, (offset, meta_length, body_length)).items():
             table[name].extend(values)
     return table
+
+
+def _check_schema(
+    schema: _Table,
+    columns: list[_Column],
+    expected_metadata: Mapping[str, str],
+    expected_columns: Mapping[str, str],
+) -> None:
+    if expected_metadata:
+        metadata = {entry.string(0): entry.string(1) for entry in schema.tables(2)}
+        for key, value in expected_metadata.items():
+            if metadata.get(key) != value:
+                msg = f"Arrow {key} must be {value!r}, got {metadata.get(key)!r}"
+                raise ArrowError(msg)
+    if expected_columns:
+        kinds = {column.name: column.kind for column in columns}
+        for name, kind in expected_columns.items():
+            if kinds.get(name) != kind:
+                msg = f"Arrow column {name!r} must have type {kind!r}, got {kinds.get(name)!r}"
+                raise ArrowError(msg)
