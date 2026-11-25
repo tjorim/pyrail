@@ -1,6 +1,6 @@
 """Load release-consistent timetable data from the iRail CDN."""
 
-from asyncio import Lock
+from asyncio import Lock, to_thread
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -101,10 +101,12 @@ class TimetableLoader:
         window: Window | None = None,
         extensions: Sequence[str] = (),
         margin: timedelta = timedelta(),
+        window_anchor: datetime | None = None,
     ) -> Timetable:
         """Load the selected core tables and the pages overlapping a departure window.
 
-        Omit the window for table-only calls. A malformed or incompatible response
+        Omit the window for table-only calls. A window with an anchor inside
+        coverage can be clipped at the release boundaries. A malformed or incompatible response
         raises InvalidResponseError or ArrowError and leaves the last snapshot intact.
         """
         if unknown := set(tables).difference(TABLES):
@@ -122,6 +124,8 @@ class TimetableLoader:
             )
             pages = ()
             if window is not None:
+                if window_anchor is not None and manifest.coverage_start <= window_anchor < manifest.coverage_end:
+                    window = (max(window[0], manifest.coverage_start), min(window[1], manifest.coverage_end))
                 pages = manifest.pages_between(*window)
                 if margin > timedelta():
                     start, end = window
@@ -208,7 +212,8 @@ class TimetableLoader:
                         name: value for name, value in cached.headers.items() if name not in {"age", "date"}
                     } | response_headers
                 elif response.status == HTTPStatus.OK:
-                    value = decode(await response.read(), str(response.url))
+                    # Decoding is CPU-bound, so it must not hold up the caller's event loop.
+                    value = await to_thread(decode, await response.read(), str(response.url))
                 else:
                     msg = f"iRail CDN returned HTTP {response.status} for {url}"
                     raise InvalidResponseError(msg, status=response.status)

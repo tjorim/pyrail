@@ -1,0 +1,552 @@
+{
+  "measured_at": "2026-11-24T06:24:20.586592+00:00",
+  "machine": "Linux-7.0.0-44-generic-x86_64-with-glibc2.43",
+  "python": "3.12.16",
+  "cpus": 8,
+  "pyrail": "0.6.2.dev24+g5c12db9a0.d20261124",
+  "runs": [
+    {
+      "query": "short",
+      "selection": "departure",
+      "samples": [
+        {
+          "query": "short",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1408.6,
+            "phases_ms": {
+              "load": 734.0,
+              "realtime": 375.2,
+              "route": 296.5
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 126,
+          "warm": {
+            "total_ms": 306.9,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 305.3
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 126,
+          "peak_rss_mb": 126
+        },
+        {
+          "query": "short",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1144.8,
+            "phases_ms": {
+              "load": 466.1,
+              "realtime": 367.4,
+              "route": 307.1
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 127,
+          "warm": {
+            "total_ms": 315.7,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 314.1
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 127,
+          "peak_rss_mb": 127
+        },
+        {
+          "query": "short",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1138.0,
+            "phases_ms": {
+              "load": 470.2,
+              "realtime": 363.6,
+              "route": 301.1
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 126,
+          "warm": {
+            "total_ms": 309.8,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 308.2
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 126,
+          "peak_rss_mb": 126
+        },
+        {
+          "query": "short",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1122.7,
+            "phases_ms": {
+              "load": 463.1,
+              "realtime": 361.1,
+              "route": 295.6
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 127,
+          "warm": {
+            "total_ms": 316.6,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 315.0
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 127,
+          "peak_rss_mb": 127
+        },
+        {
+          "query": "short",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1152.3,
+            "phases_ms": {
+              "load": 455.7,
+              "realtime": 393.1,
+              "route": 300.5
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 134,
+          "warm": {
+            "total_ms": 309.7,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 308.1
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 134,
+          "peak_rss_mb": 134
+        },
+        {
+          "query": "short",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1108.6,
+            "phases_ms": {
+              "load": 462.4,
+              "realtime": 349.8,
+              "route": 293.4
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 127,
+          "warm": {
+            "total_ms": 307.4,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 305.8
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 127,
+          "peak_rss_mb": 127
+        },
+        {
+          "query": "short",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1145.9,
+            "phases_ms": {
+              "load": 479.8,
+              "realtime": 366.5,
+              "route": 296.5
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 127,
+          "warm": {
+            "total_ms": 348.6,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 347.0
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 127,
+          "peak_rss_mb": 127
+        }
+      ]
+    },
+    {
+      "query": "long",
+      "selection": "departure",
+      "samples": [
+        {
+          "query": "long",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1527.5,
+            "phases_ms": {
+              "load": 456.6,
+              "realtime": 336.7,
+              "route": 731.2
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 135,
+          "warm": {
+            "total_ms": 708.5,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 706.8
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 135,
+          "peak_rss_mb": 135
+        },
+        {
+          "query": "long",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1557.2,
+            "phases_ms": {
+              "load": 470.3,
+              "realtime": 352.7,
+              "route": 731.2
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 127,
+          "warm": {
+            "total_ms": 704.1,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 702.4
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 127,
+          "peak_rss_mb": 127
+        },
+        {
+          "query": "long",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1579.2,
+            "phases_ms": {
+              "load": 462.7,
+              "realtime": 396.7,
+              "route": 716.8
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 130,
+          "warm": {
+            "total_ms": 700.9,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 699.3
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 130,
+          "peak_rss_mb": 130
+        },
+        {
+          "query": "long",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1549.8,
+            "phases_ms": {
+              "load": 459.0,
+              "realtime": 360.9,
+              "route": 726.8
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 128,
+          "warm": {
+            "total_ms": 722.7,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 721.1
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 128,
+          "peak_rss_mb": 128
+        },
+        {
+          "query": "long",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1549.4,
+            "phases_ms": {
+              "load": 476.0,
+              "realtime": 351.3,
+              "route": 719.2
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 128,
+          "warm": {
+            "total_ms": 714.0,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 712.4
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 128,
+          "peak_rss_mb": 128
+        },
+        {
+          "query": "long",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1578.0,
+            "phases_ms": {
+              "load": 463.2,
+              "realtime": 386.5,
+              "route": 725.3
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 127,
+          "warm": {
+            "total_ms": 704.8,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 703.2
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 128,
+          "peak_rss_mb": 128
+        },
+        {
+          "query": "long",
+          "selection": "departure",
+          "cold": {
+            "total_ms": 1557.3,
+            "phases_ms": {
+              "load": 473.6,
+              "realtime": 359.2,
+              "route": 721.6
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 129,
+          "warm": {
+            "total_ms": 700.4,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 698.6
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 130,
+          "peak_rss_mb": 130
+        }
+      ]
+    },
+    {
+      "query": "arrive-by",
+      "selection": "arrival",
+      "samples": [
+        {
+          "query": "arrive-by",
+          "selection": "arrival",
+          "cold": {
+            "total_ms": 980.4,
+            "phases_ms": {
+              "load": 445.1,
+              "realtime": 346.9,
+              "route": 185.4
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 112,
+          "warm": {
+            "total_ms": 181.7,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 179.9
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 113,
+          "peak_rss_mb": 113
+        },
+        {
+          "query": "arrive-by",
+          "selection": "arrival",
+          "cold": {
+            "total_ms": 1007.6,
+            "phases_ms": {
+              "load": 483.9,
+              "realtime": 333.2,
+              "route": 187.7
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 112,
+          "warm": {
+            "total_ms": 180.6,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 179.0
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 113,
+          "peak_rss_mb": 113
+        },
+        {
+          "query": "arrive-by",
+          "selection": "arrival",
+          "cold": {
+            "total_ms": 991.9,
+            "phases_ms": {
+              "load": 443.6,
+              "realtime": 356.5,
+              "route": 188.9
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 112,
+          "warm": {
+            "total_ms": 207.1,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 205.2
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 112,
+          "peak_rss_mb": 112
+        },
+        {
+          "query": "arrive-by",
+          "selection": "arrival",
+          "cold": {
+            "total_ms": 967.8,
+            "phases_ms": {
+              "load": 443.5,
+              "realtime": 336.4,
+              "route": 185.0
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 113,
+          "warm": {
+            "total_ms": 180.2,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 178.7
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 113,
+          "peak_rss_mb": 113
+        },
+        {
+          "query": "arrive-by",
+          "selection": "arrival",
+          "cold": {
+            "total_ms": 989.4,
+            "phases_ms": {
+              "load": 466.7,
+              "realtime": 333.2,
+              "route": 186.5
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 112,
+          "warm": {
+            "total_ms": 180.0,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 178.4
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 112,
+          "peak_rss_mb": 112
+        },
+        {
+          "query": "arrive-by",
+          "selection": "arrival",
+          "cold": {
+            "total_ms": 963.9,
+            "phases_ms": {
+              "load": 440.4,
+              "realtime": 335.7,
+              "route": 185.0
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 112,
+          "warm": {
+            "total_ms": 185.8,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 184.2
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 112,
+          "peak_rss_mb": 112
+        },
+        {
+          "query": "arrive-by",
+          "selection": "arrival",
+          "cold": {
+            "total_ms": 972.6,
+            "phases_ms": {
+              "load": 433.5,
+              "realtime": 354.6,
+              "route": 181.7
+            },
+            "journeys": 6
+          },
+          "rss_after_cold_mb": 113,
+          "warm": {
+            "total_ms": 179.8,
+            "phases_ms": {
+              "load": 0.1,
+              "realtime": 0.0,
+              "route": 178.1
+            },
+            "journeys": 6
+          },
+          "rss_after_warm_mb": 113,
+          "peak_rss_mb": 113
+        }
+      ]
+    }
+  ]
+}

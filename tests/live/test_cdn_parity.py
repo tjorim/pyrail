@@ -143,3 +143,89 @@ async def test_live_vehicle_parity(live: LiveApi, cdn: LiveApi, travel_date: tup
         ),
         sum(api_by_call[key].canceled != cdn_by_call[key].canceled for key in shared),
     )
+
+
+@pytest.mark.parametrize(
+    ("origin", "destination", "selection"),
+    [
+        (BRUSSELS_CENTRAL_ID, "BE.NMBS.008892007", "departure"),
+        (BRUSSELS_CENTRAL_ID, "BE.NMBS.008892007", "arrival"),
+        ("BE.NMBS.008891702", "BE.NMBS.008866001", "departure"),  # Oostende-Arlon
+        ("BE.NMBS.008844628", "BE.NMBS.008863503", "departure"),  # Eupen-Dinant
+    ],
+)
+async def test_live_journey_parity(
+    live: LiveApi,
+    cdn: LiveApi,
+    travel_date: tuple[str, str],
+    selection: Literal["departure", "arrival"],
+    origin: str,
+    destination: str,
+) -> None:
+    """Compare scheduled journey options and log differences in the planner's selection."""
+    date, time = travel_date
+
+    async def journeys_from(source: LiveApi) -> set[tuple[str, str, int]]:
+        response = await source.fetch(
+            f"connections ({selection})",
+            lambda rail: rail.get_connections(origin, destination, date, time, timesel=selection),
+        )
+        assert response.connections
+        assert all(j.departure.station_info.id == origin for j in response.connections)
+        assert all(j.arrival.station_info.id == destination for j in response.connections)
+        return {
+            (j.departure.time.isoformat(), j.arrival.time.isoformat(), len(j.vias or ())) for j in response.connections
+        }
+
+    api = await journeys_from(live)
+    published = await journeys_from(cdn)
+    shared = api & published
+    assert shared
+    logger.info(
+        "Journeys (%s): %d API, %d CDN, %d shared. Other options by scheduled times and transfer count: API %s; CDN %s",
+        selection,
+        len(api),
+        len(published),
+        len(shared),
+        sorted(api - shared),
+        sorted(published - shared),
+    )
+
+
+@pytest.mark.parametrize("destination", ["BE.NMBS.008727100", "BE.NMBS.008200100"])  # Paris Nord, Luxembourg
+async def test_live_domestic_filter_parity(
+    live: LiveApi, cdn: LiveApi, travel_date: tuple[str, str], destination: str
+) -> None:
+    """Cross-border searches without international trains should stay close to the API's selection."""
+    date, time = travel_date
+
+    async def options(source: LiveApi) -> dict[tuple[str, str, int], str]:
+        response = await source.fetch(
+            "connections (no international trains)",
+            lambda rail: rail.get_connections(
+                BRUSSELS_CENTRAL_ID, destination, date, time, type_of_transport="no_international_trains"
+            ),
+        )
+        assert response.connections
+        return {
+            (j.departure.time.isoformat(), j.arrival.time.isoformat(), len(j.vias or ())): " > ".join(
+                [j.departure.vehicle_info.short_name, *(via.departure.vehicle_info.short_name for via in j.vias or ())]
+            )
+            for j in response.connections
+        }
+
+    api = await options(live)
+    published = await options(cdn)
+    international = {"EC", "EN", "EST", "EUR", "ICE", "NJ", "THA", "TGV"}
+    assert not any(leg.split(" ")[0] in international for legs in published.values() for leg in legs.split(" > "))
+    shared = api.keys() & published.keys()
+    logger.info(
+        "No international trains to %s: %d API, %d CDN, %d shared. API only %s; CDN only %s",
+        destination,
+        len(api),
+        len(published),
+        len(shared),
+        {key: api[key] for key in sorted(api.keys() - shared)},
+        {key: published[key] for key in sorted(published.keys() - shared)},
+    )
+    assert shared

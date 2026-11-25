@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from asyncio import Lock
+from asyncio import Lock, to_thread
 from bisect import bisect_right
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
@@ -25,6 +25,7 @@ from .timetable import Timetable
 
 logger = logging.getLogger(__name__)
 _SERVICE_DATE_LENGTH = 8
+_RESULT_CACHE = 2
 
 
 @dataclass(slots=True)
@@ -47,12 +48,32 @@ class RealtimeLoader:
         self._poll_interval = poll_interval
         self._lock = Lock()
         self._feeds: dict[str, _Feed] = {}
+        self._results: OrderedDict[tuple[int, ...], tuple[tuple[Any, ...], tuple[Connection, ...]]] = OrderedDict()
 
     async def connections(self, timetable: Timetable) -> tuple[Connection, ...]:
-        """Return scheduled connections with applicable realtime updates."""
+        """Return scheduled connections with applicable realtime updates.
+
+        The merge is repeated only when a page, table or feed snapshot has changed, so queries between
+        two feed refreshes share one result.
+        """
         async with self._lock:
             fetch = [(source, await self._refresh(source.url)) for source in timetable.manifest.realtime]
-        return apply_realtime(timetable, fetch)
+            inputs = (
+                *(table for _, table in timetable.pages),
+                *(feed for _, feed in fetch),
+                timetable.tables["trips"],
+                timetable.tables["stops"],
+            )
+            key = tuple(id(item) for item in inputs)
+            if (cached := self._results.get(key)) is not None:
+                self._results.move_to_end(key)
+                return cached[1]
+            result = await to_thread(apply_realtime, timetable, fetch)
+            # Holding the inputs keeps their identities valid for the lifetime of the entry.
+            self._results[key] = (inputs, result)
+            if len(self._results) > _RESULT_CACHE:
+                self._results.popitem(last=False)
+            return result
 
     async def _refresh(self, url: str) -> Any:
         cache = self._feeds.setdefault(url, _Feed())
@@ -68,7 +89,7 @@ class RealtimeLoader:
                 if response.status == HTTPStatus.NOT_MODIFIED and cache.snapshot is not None:
                     return cache.snapshot
                 response.raise_for_status()
-                snapshot = _decode(await response.read(), cache.snapshot)
+                snapshot = await to_thread(_decode, await response.read(), cache.snapshot)
                 cache.snapshot = snapshot
                 cache.etag = response.headers.get("ETag")
                 cache.last_modified = response.headers.get("Last-Modified")

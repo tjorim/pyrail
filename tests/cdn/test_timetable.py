@@ -243,3 +243,20 @@ async def test_cdn_backend_closes_owned_session_and_reopens() -> None:
         async with api:
             assert create_session.call_count == 2
     assert session.close.await_count == 2
+
+
+async def test_journey_window_can_clip_to_release_coverage() -> None:
+    """An in-range search still works when its requested horizon exceeds coverage."""
+    session = MagicMock(spec=ClientSession)
+    session.get.side_effect = [
+        _response(json.dumps(_manifest("one")).encode()),
+        _response(_file("connections", "one")),
+        _response(_file("connections", "one")),
+    ]
+    loader = TimetableLoader(session, manifest_url=_MANIFEST_URL)
+    snapshot = await loader.load(
+        tables=(),
+        window=(_WINDOW[0], datetime(2026, 11, 25, 12, tzinfo=UTC)),
+        window_anchor=_WINDOW[0],
+    )
+    assert len(snapshot.pages) == 2

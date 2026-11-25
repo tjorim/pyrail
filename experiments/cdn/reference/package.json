@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "description": "Reference planner for experiments/cdn/compare_journeys.py; not part of pyrail",
+  "type": "module",
+  "dependencies": {
+    "@irail/planner": "0.1.3"
+  }
+}

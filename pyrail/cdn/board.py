@@ -47,7 +47,8 @@ def query_time(date: str | None, time: str | None) -> datetime:
     return utc
 
 
-def _lookup_station(stations: Mapping[str, StationDetails], query: str) -> StationDetails:
+def lookup_station(stations: Mapping[str, StationDetails], query: str) -> StationDetails:
+    """Find a station by its ID, IRI or name."""
     key = query.strip().casefold()
     matches = [
         station
@@ -124,7 +125,7 @@ def build_liveboard(
     kind: Literal["departure", "arrival"],
 ) -> LiveboardApiResponse:
     """Show station calls from one release, including skipped or canceled calls."""
-    station = _lookup_station(stations, query)
+    station = lookup_station(stations, query)
     by_iri = {stop.at_id: stop for stop in stations.values()}
     stop_iris = timetable.tables["stops"]["iri"]
     parents = timetable.tables["stops"]["parentIdx"]

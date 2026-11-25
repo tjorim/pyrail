@@ -2,23 +2,44 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from asyncio import to_thread
+from datetime import datetime, timedelta
 import re
 from typing import TYPE_CHECKING, Literal, override
 
 from aiohttp import ClientSession
 
 from pyrail.backend import Backend
-from pyrail.exceptions import NotSupportedError
-from pyrail.models import LiveboardApiResponse, StationDetails, StationsApiResponse, VehicleApiResponse
+from pyrail.exceptions import NotFoundError, NotSupportedError
+from pyrail.models import (
+    ConnectionsApiResponse,
+    LiveboardApiResponse,
+    StationDetails,
+    StationsApiResponse,
+    VehicleApiResponse,
+)
 
 from .board import build_liveboard, query_time
+from .journey import Kinds, build_connections
 from .manifest import MANIFEST_URL, SCHEMA_VERSION
 from .timetable import Table, Timetable, TimetableLoader
 from .vehicle import build_vehicle, service_day
 
 if TYPE_CHECKING:
     from .realtime import Connection, RealtimeLoader
+
+_JOURNEY_LIMIT = 6
+# A search widens until it finds enough usable options. Every step also loads the longest journey it should
+# be able to complete, since a connection page holds only the trips that depart within its hours.
+_JOURNEY_WINDOWS = (timedelta(hours=6), timedelta(hours=12), timedelta(hours=24))
+_JOURNEY_DURATION = timedelta(hours=6)
+
+_KINDS = {
+    "automatic": Kinds.TRAINS,
+    "trains": Kinds.TRAINS,
+    "no_international_trains": Kinds.DOMESTIC,
+    "all": Kinds.ALL,
+}
 
 _STATION_IRI = re.compile(r"https?://irail\.be/stations/NMBS/([0-9]+)")
 
@@ -100,7 +121,8 @@ class CdnBackend(Backend):
         )
         rows = await self._connections(timetable)
         stations = _station_details(timetable, self.lang)
-        return build_liveboard(
+        return await to_thread(
+            build_liveboard,
             timetable,
             rows,
             stations,
@@ -109,6 +131,66 @@ class CdnBackend(Backend):
             start,
             end,
             arrdep,
+        )
+
+    @override
+    async def get_connections(
+        self,
+        from_station: str,
+        to_station: str,
+        date: str | None = None,
+        time: str | None = None,
+        timesel: Literal["departure", "arrival"] = "departure",
+        type_of_transport: Literal["automatic", "trains", "no_international_trains", "all"] = "automatic",
+    ) -> ConnectionsApiResponse:
+        """Search the iRail timetable for departures or arrivals near the requested time."""
+        if timesel not in ("departure", "arrival"):
+            msg = "timesel must be departure or arrival"
+            raise ValueError(msg)
+        if type_of_transport not in ("automatic", "trains", "no_international_trains", "all"):
+            msg = "Invalid type_of_transport"
+            raise ValueError(msg)
+        instant = query_time(date, time)
+        arrive_by = timesel == "arrival"
+        kinds = _KINDS[type_of_transport]
+        *widening, widest = _JOURNEY_WINDOWS
+        for span in widening:
+            options = await self._journey_options(
+                from_station, to_station, instant, span, arrive_by=arrive_by, kinds=kinds
+            )
+            if sum(not connection.departure.canceled for connection in options.connections) >= _JOURNEY_LIMIT:
+                return options
+        options = await self._journey_options(
+            from_station, to_station, instant, widest, arrive_by=arrive_by, kinds=kinds
+        )
+        if not options.connections:
+            msg = f"No journey found within {widest} of the requested time"
+            raise NotFoundError(msg)
+        return options
+
+    async def _journey_options(
+        self, origin: str, destination: str, instant: datetime, span: timedelta, *, arrive_by: bool, kinds: Kinds
+    ) -> ConnectionsApiResponse:
+        reach = span + _JOURNEY_DURATION
+        window = (instant - reach, instant + timedelta(seconds=1)) if arrive_by else (instant, instant + reach)
+        timetable = await self._timetable_loader().load(
+            tables=("stops", "trips", "transfers"),
+            window=window,
+            window_anchor=instant,
+            extensions=("stations", "tripEnrichment"),
+        )
+        rows = await self._connections(timetable)
+        return await to_thread(
+            build_connections,
+            timetable,
+            rows,
+            _station_details(timetable, self.lang),
+            origin,
+            destination,
+            instant,
+            arrive_by=arrive_by,
+            kinds=kinds,
+            horizon=span,
         )
 
     @override
@@ -125,14 +207,14 @@ class CdnBackend(Backend):
             extensions=("stations", "tripEnrichment"),
         )
         rows = await self._connections(timetable)
-        return build_vehicle(timetable, rows, _station_details(timetable, self.lang), vehicle_id, day)
+        return await to_thread(build_vehicle, timetable, rows, _station_details(timetable, self.lang), vehicle_id, day)
 
     async def _connections(self, timetable: Timetable) -> tuple[Connection, ...]:
         if self._realtime is None:
             try:
                 from .realtime import RealtimeLoader  # noqa: PLC0415
             except ImportError as error:
-                msg = "Install pyrail[cdn] to use CDN liveboards, vehicle lookups and realtime updates"
+                msg = "Install pyrail[cdn] to use realtime CDN services"
                 raise NotSupportedError(msg) from error
             if self._session is None:
                 msg = "The CDN session is closed"
