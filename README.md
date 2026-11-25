@@ -90,6 +90,8 @@ if __name__ == "__main__":
 
 ### CDN stations, liveboards, vehicles and connections
 
+See the [migration guide](MIGRATION.md) for how to switch, what is not supported and which fields can be `None`.
+
 Use the experimental CDN backend for station listings.
 
 ```python
