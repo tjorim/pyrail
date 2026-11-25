@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - CDN-rebase
   pull_request:
 
 permissions:
