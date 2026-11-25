@@ -130,7 +130,7 @@ def _connection(
 
     vias = [
         Via(
-            id=departure.departure_connection,
+            id=departure.departure_connection or "",  # A CDN leg always has a connection.
             arrival=arrival,
             departure=departure,
             timebetween=int((departure.time - arrival.time).total_seconds()) + departure.delay - arrival.delay,
