@@ -59,6 +59,12 @@ _ALLOWED_VALUES: Mapping[str, frozenset[str]] = MappingProxyType(
         "typeOfTransport": frozenset({"automatic", "trains", "no_international_trains", "all"}),
     }
 )
+# Free-text parameters that name a station or a vehicle. iRail asked clients to keep
+# templates and other junk out of its logs (#10): the longest station name has 41
+# characters, and no name or vehicle id holds one of the forbidden characters.
+_NAME_PARAMETERS = ("station", "id", "from", "to")
+_MAX_NAME_LENGTH = 72
+_FORBIDDEN_CHARACTERS = frozenset("%|{}[]")
 
 
 def _describe(error: BaseException) -> str:
@@ -310,6 +316,30 @@ class ApiBackend(Backend):
         except ValueError:
             raise ValueError(msg) from None
 
+    def _validate_name(self, name: str, value: object) -> None:
+        """Reject a station name or vehicle id that cannot be one, before it reaches the API.
+
+        Args:
+            name (str): The parameter name, for the error message.
+            value (object): The parameter value, or None when absent.
+
+        Raises:
+            ValueError: If the value is empty, longer than 72 characters, or holds a
+                control character or one of % | { } [ ].
+
+        """
+        if value is None:
+            return
+        if not isinstance(value, str) or not value.strip():
+            msg = f"Invalid {name}: expected a non-empty string"
+            raise ValueError(msg)
+        if len(value) > _MAX_NAME_LENGTH:
+            msg = f"Invalid {name}: longer than {_MAX_NAME_LENGTH} characters"
+            raise ValueError(msg)
+        if any(character in _FORBIDDEN_CHARACTERS or not character.isprintable() for character in value):
+            msg = f"Invalid {name}: contains a character that no station or vehicle uses: {value!r}"
+            raise ValueError(msg)
+
     def _validate_values(self, params: dict[str, Any]) -> None:
         """Validate the date, the time and the parameters that only accept a fixed set of values.
 
@@ -326,6 +356,8 @@ class ApiBackend(Backend):
         """
         self._validate_date(params.get("date"))
         self._validate_time(params.get("time"))
+        for name in _NAME_PARAMETERS:
+            self._validate_name(name, params.get(name))
         for name, allowed in _ALLOWED_VALUES.items():
             if name in params and params[name] not in allowed:
                 msg = f"Invalid {name}: expected one of {sorted(allowed)}, got: {params[name]}"

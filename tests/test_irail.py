@@ -443,6 +443,26 @@ async def test_get_connections(mock_get: MagicMock) -> None:
 
 
 @patch("pyrail.irail.ClientSession.get")
+async def test_get_connections_with_walking_leg(mock_get: MagicMock) -> None:
+    """A walking leg has no departureConnection, on the via departure and on the final arrival (#290)."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections_walking.json"))
+
+    async with IRail() as api:
+        connections = await api.get_connections("Namur", "Jambes-Est")
+
+    assert connections is not None
+    walking, direct = connections.connections
+    assert walking.vias is not None
+    via = walking.vias[0]
+    assert via.departure.walking
+    assert via.departure.departure_connection is None
+    assert walking.arrival.walking
+    assert walking.arrival.departure_connection is None
+    assert via.arrival.departure_connection == "http://irail.be/connections/8863115/20261125/S614565"
+    assert direct.arrival.departure_connection is not None
+
+
+@patch("pyrail.irail.ClientSession.get")
 async def test_get_connections_timesel_and_type_of_transport(mock_get: MagicMock) -> None:
     """The time selection and transport filter are sent to the API as given."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
@@ -481,6 +501,86 @@ async def test_fixed_value_parameters_reject_unknown_values(
 
     mock_get.assert_not_called()
     assert api.session is None
+
+
+_TEMPLATE = "{% set ns = namespace(x=[]) %} {% for zone in states.zone %} {{ (ns.x|sort)[0][1] }}\n"  # From #10.
+
+
+@patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize(
+    ("call", "message"),
+    [
+        (lambda api: api.get_connections(_TEMPLATE, "Turnhout"), "Invalid from"),
+        (lambda api: api.get_connections("Turnhout", "{{ states('input_text.station') }}"), "Invalid to"),
+        (lambda api: api.get_connections("Turnhout", "Gent|Brugge"), "Invalid to"),
+        (lambda api: api.get_connections("Turnhout", "100%"), "Invalid to"),
+        (lambda api: api.get_connections("Turnhout\n", "Gent"), "Invalid from"),
+        (lambda api: api.get_connections("Turnhout", "   "), "Invalid to"),
+        (lambda api: api.get_liveboard(station="x" * 73), "longer than 72"),
+        (lambda api: api.get_liveboard(station_id="[BE.NMBS.008821006]"), "Invalid id"),
+        (lambda api: api.get_vehicle("{{ vehicle }}"), "Invalid id"),
+        (lambda api: api.get_composition("S10[2092]"), "Invalid id"),
+    ],
+)
+async def test_names_that_cannot_be_stations_are_rejected(
+    mock_get: MagicMock, call: Callable[[IRail], Awaitable[object]], message: str
+) -> None:
+    """Templates, control characters and overlong names never reach the API (#10)."""
+    api = IRail()
+    with pytest.raises(ValueError, match=message):
+        await call(api)
+
+    mock_get.assert_not_called()
+
+
+@patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Bruxelles-Central/Brussel-Centraal",
+        "Braine-l'Alleud",
+        "Saint-Ghislain",
+        "Gent-Sint-Pieters",
+        "Liège-Guillemins",
+        "Aéroport de Bruxelles-National",
+        "x" * 72,
+    ],
+)
+async def test_real_station_names_are_accepted(mock_get: MagicMock, name: str) -> None:
+    """Accents, apostrophes, slashes and names up to 72 characters still pass."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("liveboard.json"))
+
+    async with IRail() as api:
+        await api.get_liveboard(station=name)
+
+    assert mock_get.call_args.kwargs["params"]["station"] == name
+
+
+@patch("pyrail.irail.ClientSession.get")
+@pytest.mark.parametrize(("key", "value"), [("locationX", "181"), ("locationY", "-90.5")])
+async def test_coordinates_off_the_globe_are_rejected(mock_get: MagicMock, key: str, value: str) -> None:
+    """A station with an impossible longitude or latitude fails validation (#27)."""
+    data = _load_example("stations.json")
+    data["station"][0][key] = value
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=data)
+
+    async with IRail() as api:
+        with pytest.raises(InvalidResponseError, match="does not match the expected model") as excinfo:
+            await api.get_stations()
+
+    causes = []
+    error: BaseException | None = excinfo.value
+    while error is not None:
+        causes.append(str(error))
+        error = error.__cause__ or error.__context__
+    assert any("Coordinates out of range" in cause for cause in causes)
+
+
+def test_coordinates_on_the_edge_are_accepted() -> None:
+    """The bounds themselves are valid coordinates, and so is the 0, 0 the API sends for vehicles."""
+    StationDetails("", "", "", -180, 90, "")
+    VehicleInfo("", "", "", "", "", 0, 0)
+    VehicleInfo("", "", "", "", "")  # Unknown coordinates are not checked.
 
 
 @patch("pyrail.irail.ClientSession.get")

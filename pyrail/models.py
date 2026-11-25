@@ -22,6 +22,20 @@ def _timestamp_to_datetime(timestamp: str) -> datetime:
     return datetime.fromtimestamp(int(timestamp), UTC)
 
 
+def _check_coordinates(longitude: float | None, latitude: float | None) -> None:
+    """Check that a longitude and latitude, when known, lie on the globe.
+
+    Raises:
+        ValueError: If the longitude is outside [-180, 180] or the latitude outside [-90, 90].
+
+    """
+    if (longitude is not None and not -180 <= longitude <= 180) or (  # noqa: PLR2004
+        latitude is not None and not -90 <= latitude <= 90  # noqa: PLR2004
+    ):
+        msg = f"Coordinates out of range: longitude {longitude}, latitude {latitude}"
+        raise ValueError(msg)
+
+
 def _str_to_bool(strbool: str) -> bool:
     """Convert a string ("0" or "1") to a boolean.
 
@@ -77,6 +91,10 @@ class StationDetails(DataClassORJSONMixin):
     latitude: float = field(metadata=field_options(alias="locationY"))
     standard_name: str = field(metadata=field_options(alias="standardname"))
 
+    def __post_init__(self) -> None:
+        """Reject coordinates that are not on the globe."""
+        _check_coordinates(self.longitude, self.latitude)
+
 
 @dataclass(slots=True)
 class StationsApiResponse(ApiResponse):
@@ -96,6 +114,10 @@ class VehicleInfo(DataClassORJSONMixin):
     at_id: str = field(metadata=field_options(alias="@id"))
     longitude: float | None = field(default=None, metadata=field_options(alias="locationX"))
     latitude: float | None = field(default=None, metadata=field_options(alias="locationY"))
+
+    def __post_init__(self) -> None:
+        """Reject coordinates that are not on the globe."""
+        _check_coordinates(self.longitude, self.latitude)
 
 
 @dataclass(slots=True)
@@ -218,7 +240,6 @@ class ConnectionDeparture(DataClassORJSONMixin):
     vehicle: str
     vehicle_info: VehicleInfo = field(metadata=field_options(alias="vehicleinfo"))
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    departure_connection: str = field(metadata=field_options(alias="departureConnection"))
     direction: Direction
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))
     walking: bool = field(metadata=field_options(deserialize=_str_to_bool))
@@ -226,6 +247,8 @@ class ConnectionDeparture(DataClassORJSONMixin):
     platform: str | None = None
     platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
     occupancy: Occupancy | None = None
+    # A walking leg has no connection.
+    departure_connection: str | None = field(default=None, metadata=field_options(alias="departureConnection"))
 
     @classmethod
     @override
@@ -251,7 +274,8 @@ class ConnectionArrival(DataClassORJSONMixin):
     direction: Direction
     arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))
     walking: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    departure_connection: str = field(metadata=field_options(alias="departureConnection"))
+    # A journey that ends on foot has no arriving connection.
+    departure_connection: str | None = field(default=None, metadata=field_options(alias="departureConnection"))
     platform: str | None = None
     platform_info: PlatformInfo | None = field(default=None, metadata=field_options(alias="platforminfo"))
 

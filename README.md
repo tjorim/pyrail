@@ -3,6 +3,14 @@
 An async Python wrapper for the iRail API, designed to make interacting with iRail simple and efficient.
 Built with aiohttp, it provides non-blocking I/O operations for optimal performance in async applications.
 
+> [!NOTE]
+> **The iRail API is planned to be switched off in 2027.** iRail has announced that `api.irail.be` will be
+> replaced by static Linked Connections files on a CDN, and stricter rate limiting may apply from Q2 2027
+> ([#245](https://github.com/tjorim/pyrail/issues/245)). pyRail is preparing a replacement backend so that
+> your code keeps working. No date is fixed yet. Progress and details are tracked in
+> [#246](https://github.com/tjorim/pyrail/issues/246), and the work in progress lives on the
+> [`CDN-rebase` branch](https://github.com/tjorim/pyrail/tree/CDN-rebase).
+
 ## Overview
 
 pyRail is a Python library that provides a convenient interface for interacting with the iRail API. It supports various endpoints such as stations, liveboard, connections, vehicle, composition, and disturbances. The library includes features like caching and rate limiting to optimize API usage.

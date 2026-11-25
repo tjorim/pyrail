@@ -37,7 +37,7 @@ test = [
     # Only the reference that pyrail/cdn/arrow.py is tested against; it is not a runtime dependency.
     "pyarrow>=26",
     "pytest>=9.2.0",
-    "pytest-asyncio>=1.4.1.post1",
+    "pytest-asyncio>=1.5.0",
     "pytest-cov>=7.1.0",
 ]
 dev = [
@@ -134,5 +134,5 @@ include = ["/pyrail", "/README.md", "/LICENSE"]
 packages = ["pyrail"]
 
 [build-system]
-requires = ["hatchling>=1.27.0", "hatch-vcs"]
+requires = ["hatchling>=1.33.0", "hatch-vcs"]
 build-backend = "hatchling.build"
