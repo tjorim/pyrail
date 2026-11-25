@@ -218,12 +218,13 @@ class ConnectionDeparture(DataClassORJSONMixin):
     platform: str
     platform_info: PlatformInfo = field(metadata=field_options(alias="platforminfo"))
     canceled: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    departure_connection: str = field(metadata=field_options(alias="departureConnection"))
     direction: Direction
     left: bool = field(metadata=field_options(deserialize=_str_to_bool))
     walking: bool = field(metadata=field_options(deserialize=_str_to_bool))
     occupancy: Occupancy
     stops: list[ConnectionStop] = field(default_factory=list)
+    # A walking leg has no connection.
+    departure_connection: str | None = field(default=None, metadata=field_options(alias="departureConnection"))
 
     @classmethod
     @override
@@ -251,7 +252,8 @@ class ConnectionArrival(DataClassORJSONMixin):
     direction: Direction
     arrived: bool = field(metadata=field_options(deserialize=_str_to_bool))
     walking: bool = field(metadata=field_options(deserialize=_str_to_bool))
-    departure_connection: str = field(metadata=field_options(alias="departureConnection"))
+    # A journey that ends on foot has no arriving connection.
+    departure_connection: str | None = field(default=None, metadata=field_options(alias="departureConnection"))
 
 
 @dataclass(slots=True)
