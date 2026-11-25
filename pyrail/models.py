@@ -22,6 +22,18 @@ def _timestamp_to_datetime(timestamp: str) -> datetime:
     return datetime.fromtimestamp(int(timestamp), UTC)
 
 
+def _check_coordinates(longitude: float, latitude: float) -> None:
+    """Check that a longitude and latitude lie on the globe.
+
+    Raises:
+        ValueError: If the longitude is outside [-180, 180] or the latitude outside [-90, 90].
+
+    """
+    if not -180 <= longitude <= 180 or not -90 <= latitude <= 90:  # noqa: PLR2004
+        msg = f"Coordinates out of range: longitude {longitude}, latitude {latitude}"
+        raise ValueError(msg)
+
+
 def _str_to_bool(strbool: str) -> bool:
     """Convert a string ("0" or "1") to a boolean.
 
@@ -77,6 +89,10 @@ class StationDetails(DataClassORJSONMixin):
     latitude: float = field(metadata=field_options(alias="locationY"))
     standard_name: str = field(metadata=field_options(alias="standardname"))
 
+    def __post_init__(self) -> None:
+        """Reject coordinates that are not on the globe."""
+        _check_coordinates(self.longitude, self.latitude)
+
 
 @dataclass(slots=True)
 class StationsApiResponse(ApiResponse):
@@ -96,6 +112,10 @@ class VehicleInfo(DataClassORJSONMixin):
     longitude: float = field(metadata=field_options(alias="locationX"))
     latitude: float = field(metadata=field_options(alias="locationY"))
     at_id: str = field(metadata=field_options(alias="@id"))
+
+    def __post_init__(self) -> None:
+        """Reject coordinates that are not on the globe."""
+        _check_coordinates(self.longitude, self.latitude)
 
 
 @dataclass(slots=True)
