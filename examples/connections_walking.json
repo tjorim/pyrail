@@ -1,0 +1,291 @@
+{
+    "version": "1.4",
+    "timestamp": "1795622949",
+    "connection": [
+        {
+            "id": "0",
+            "departure": {
+                "delay": "0",
+                "station": "Namur",
+                "stationinfo": {
+                    "@id": "http://irail.be/stations/NMBS/008863008",
+                    "id": "BE.NMBS.008863008",
+                    "name": "Namur",
+                    "locationX": "4.86222",
+                    "locationY": "50.468794",
+                    "standardname": "Namur"
+                },
+                "time": "1795623240",
+                "vehicle": "BE.NMBS.S614565",
+                "vehicleinfo": {
+                    "name": "BE.NMBS.S614565",
+                    "shortname": "S61 4565",
+                    "number": "4565",
+                    "type": "S61",
+                    "locationX": "0",
+                    "locationY": "0",
+                    "@id": "http://irail.be/vehicle/S614565"
+                },
+                "platform": "7",
+                "platforminfo": {
+                    "name": "7",
+                    "normal": "1"
+                },
+                "canceled": "0",
+                "stops": {
+                    "number": "0",
+                    "stop": []
+                },
+                "departureConnection": "http://irail.be/connections/8863008/20261125/S614565",
+                "direction": {
+                    "name": "Jambes"
+                },
+                "left": "0",
+                "walking": "0",
+                "occupancy": {
+                    "@id": "http://api.irail.be/terms/low",
+                    "name": "low"
+                }
+            },
+            "arrival": {
+                "delay": "60",
+                "station": "Jambes-Est",
+                "stationinfo": {
+                    "@id": "http://irail.be/stations/NMBS/008863354",
+                    "id": "BE.NMBS.008863354",
+                    "name": "Jambes-Est",
+                    "locationX": "4.880261",
+                    "locationY": "50.454798",
+                    "standardname": "Jambes-Est"
+                },
+                "time": "1795623900",
+                "vehicle": "BE.NMBS.WALK",
+                "vehicleinfo": {
+                    "name": "BE.NMBS.WALK",
+                    "shortname": "WALK",
+                    "number": "",
+                    "type": "",
+                    "locationX": "0",
+                    "locationY": "0",
+                    "@id": ""
+                },
+                "platform": "?",
+                "platforminfo": {
+                    "name": "?",
+                    "normal": "1"
+                },
+                "canceled": "0",
+                "direction": {
+                    "name": "Walk"
+                },
+                "arrived": "0",
+                "walking": "1"
+            },
+            "vias": {
+                "number": "1",
+                "via": [
+                    {
+                        "id": "0",
+                        "arrival": {
+                            "delay": "60",
+                            "station": "Jambes",
+                            "stationinfo": {
+                                "@id": "http://irail.be/stations/NMBS/008863115",
+                                "id": "BE.NMBS.008863115",
+                                "name": "Jambes",
+                                "locationX": "4.876144",
+                                "locationY": "50.454843",
+                                "standardname": "Jambes"
+                            },
+                            "time": "1795623480",
+                            "vehicle": "BE.NMBS.S614565",
+                            "vehicleinfo": {
+                                "name": "BE.NMBS.S614565",
+                                "shortname": "S61 4565",
+                                "number": "4565",
+                                "type": "S61",
+                                "locationX": "0",
+                                "locationY": "0",
+                                "@id": "http://irail.be/vehicle/S614565"
+                            },
+                            "platform": "3",
+                            "platforminfo": {
+                                "name": "3",
+                                "normal": "1"
+                            },
+                            "canceled": "0",
+                            "direction": {
+                                "name": "Jambes"
+                            },
+                            "arrived": "0",
+                            "walking": "0",
+                            "departureConnection": "http://irail.be/connections/8863115/20261125/S614565"
+                        },
+                        "departure": {
+                            "delay": "60",
+                            "station": "Jambes",
+                            "stationinfo": {
+                                "@id": "http://irail.be/stations/NMBS/008863115",
+                                "id": "BE.NMBS.008863115",
+                                "name": "Jambes",
+                                "locationX": "4.876144",
+                                "locationY": "50.454843",
+                                "standardname": "Jambes"
+                            },
+                            "time": "1795623480",
+                            "vehicle": "BE.NMBS.WALK",
+                            "vehicleinfo": {
+                                "name": "BE.NMBS.WALK",
+                                "shortname": "WALK",
+                                "number": "",
+                                "type": "",
+                                "locationX": "0",
+                                "locationY": "0",
+                                "@id": ""
+                            },
+                            "platform": "?",
+                            "platforminfo": {
+                                "name": "?",
+                                "normal": "1"
+                            },
+                            "canceled": "0",
+                            "stops": {
+                                "number": "0",
+                                "stop": []
+                            },
+                            "direction": {
+                                "name": "Walk"
+                            },
+                            "left": "0",
+                            "walking": "1",
+                            "occupancy": {
+                                "@id": "http://api.irail.be/terms/unknown",
+                                "name": "unknown"
+                            }
+                        },
+                        "timebetween": "0",
+                        "station": "Jambes",
+                        "stationinfo": {
+                            "@id": "http://irail.be/stations/NMBS/008863115",
+                            "id": "BE.NMBS.008863115",
+                            "name": "Jambes",
+                            "locationX": "4.876144",
+                            "locationY": "50.454843",
+                            "standardname": "Jambes"
+                        },
+                        "vehicle": "BE.NMBS.WALK",
+                        "vehicleinfo": {
+                            "name": "BE.NMBS.WALK",
+                            "shortname": "WALK",
+                            "number": "",
+                            "type": "",
+                            "locationX": "0",
+                            "locationY": "0",
+                            "@id": ""
+                        }
+                    }
+                ]
+            },
+            "duration": "720",
+            "remarks": {
+                "number": "0",
+                "remark": []
+            },
+            "alerts": {
+                "number": "0",
+                "alert": []
+            }
+        },
+        {
+            "id": "1",
+            "departure": {
+                "delay": "0",
+                "station": "Namur",
+                "stationinfo": {
+                    "@id": "http://irail.be/stations/NMBS/008863008",
+                    "id": "BE.NMBS.008863008",
+                    "name": "Namur",
+                    "locationX": "4.86222",
+                    "locationY": "50.468794",
+                    "standardname": "Namur"
+                },
+                "time": "1795624080",
+                "vehicle": "BE.NMBS.L5767",
+                "vehicleinfo": {
+                    "name": "BE.NMBS.L5767",
+                    "shortname": "L 5767",
+                    "number": "5767",
+                    "type": "L",
+                    "locationX": "0",
+                    "locationY": "0",
+                    "@id": "http://irail.be/vehicle/L5767"
+                },
+                "platform": "8",
+                "platforminfo": {
+                    "name": "8",
+                    "normal": "1"
+                },
+                "canceled": "0",
+                "stops": {
+                    "number": "0",
+                    "stop": []
+                },
+                "departureConnection": "http://irail.be/connections/8863008/20261125/L5767",
+                "direction": {
+                    "name": "Ciney"
+                },
+                "left": "0",
+                "walking": "0",
+                "occupancy": {
+                    "@id": "http://api.irail.be/terms/low",
+                    "name": "low"
+                }
+            },
+            "arrival": {
+                "delay": "0",
+                "station": "Jambes-Est",
+                "stationinfo": {
+                    "@id": "http://irail.be/stations/NMBS/008863354",
+                    "id": "BE.NMBS.008863354",
+                    "name": "Jambes-Est",
+                    "locationX": "4.880261",
+                    "locationY": "50.454798",
+                    "standardname": "Jambes-Est"
+                },
+                "time": "1795624260",
+                "vehicle": "BE.NMBS.L5767",
+                "vehicleinfo": {
+                    "name": "BE.NMBS.L5767",
+                    "shortname": "L 5767",
+                    "number": "5767",
+                    "type": "L",
+                    "locationX": "0",
+                    "locationY": "0",
+                    "@id": "http://irail.be/vehicle/L5767"
+                },
+                "platform": "1",
+                "platforminfo": {
+                    "name": "1",
+                    "normal": "1"
+                },
+                "canceled": "0",
+                "direction": {
+                    "name": "Ciney"
+                },
+                "arrived": "0",
+                "walking": "0",
+                "departureConnection": "http://irail.be/connections/8863354/20261125/L5767"
+            },
+            "duration": "180",
+            "remarks": {
+                "number": "0",
+                "remark": []
+            },
+            "alerts": {
+                "number": "0",
+                "alert": []
+            }
+        }
+    ],
+    "number": "2"
+}

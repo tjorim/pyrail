@@ -443,6 +443,26 @@ async def test_get_connections(mock_get: MagicMock) -> None:
 
 
 @patch("pyrail.irail.ClientSession.get")
+async def test_get_connections_with_walking_leg(mock_get: MagicMock) -> None:
+    """A walking leg has no departureConnection, on the via departure and on the final arrival (#290)."""
+    mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections_walking.json"))
+
+    async with IRail() as api:
+        connections = await api.get_connections("Namur", "Jambes-Est")
+
+    assert connections is not None
+    walking, direct = connections.connections
+    assert walking.vias is not None
+    via = walking.vias[0]
+    assert via.departure.walking
+    assert via.departure.departure_connection is None
+    assert walking.arrival.walking
+    assert walking.arrival.departure_connection is None
+    assert via.arrival.departure_connection == "http://irail.be/connections/8863115/20261125/S614565"
+    assert direct.arrival.departure_connection is not None
+
+
+@patch("pyrail.irail.ClientSession.get")
 async def test_get_connections_timesel_and_type_of_transport(mock_get: MagicMock) -> None:
     """The time selection and transport filter are sent to the API as given."""
     mock_get.return_value.__aenter__.return_value = _mock_response(data=_load_example("connections.json"))
